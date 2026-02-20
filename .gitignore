@@ -25,6 +25,18 @@ package-lock.json
 # Temp files
 tmp/
 desktop.ini
+_cleanup.ps1
+cleanup-repo.sh
+
+# Archive (historical files, still local)
+_archive/
 
 # Claude Code internal
 .claude/
+
+# Cursor
+.cursor/
+
+# Dashboard build artifacts
+dashboard/dist/
+dashboard/node_modules/
