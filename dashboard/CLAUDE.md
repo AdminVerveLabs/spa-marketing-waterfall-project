@@ -1,84 +1,159 @@
-# CLAUDE.md — Dashboard Project Rules
+# CLAUDE.md — Project Rules
 
 ## Identity
 
-You are working on the VerveLabs Run Manager — a React dashboard that manages pipeline runs for the Spa Marketing Waterfall system. The app was initially scaffolded in Lovable, then extracted here for integration and deployment. Your job is to wire it into the real infrastructure (Supabase, n8n webhooks, Coolify/Docker) and fix/refine anything that doesn't work correctly.
+You are working on the Spa Marketing Waterfall project — an n8n pipeline that discovers and enriches massage therapy business leads. The system uses n8n for orchestration, Supabase (PostgreSQL) for storage, and Apify/Hunter/NamSor/Telnyx for data.
+
+## Current State
+
+The pipeline was simplified from 127 → 27 → 22+6 nodes (main workflow + sub-workflow) across Sessions 34-36. It ran Sedona AZ end-to-end (exec #170) but a diagnostic revealed **all digital signals are zero** — the root cause is 2 HTTP Request nodes that drop 12 fields from the insert payload. See `docs/HANDOFF-pipeline-recovery.md` for the full diagnosis and fix plan.
+
+## Architecture
+
+```
+Main Workflow (22 nodes, webhook-triggered):
+  Webhook → Metro Config → Google Places → Yelp (Apify) 
+  → Normalize → Dedupe → Prepare for Supabase → Insert to Supabase
+  → Batch Dispatcher (polls for discovered companies, dispatches batches of 25)
+
+Sub-Workflow (6 nodes, webhook POST from Batch Dispatcher):
+  Webhook → Respond → Enrich Companies → Find Contacts 
+  → Enrich Contacts → Mark Fully Enriched
+
+Main Workflow (continued after all batches):
+  → Calculate Lead Scores → Run Summary
+```
+
+### Key Workflow IDs
+- **Main:** `yxvQst30sWlNIeZq` (webhook: `001b878c-b5af-4c3c-8b78-d41e526049f4`)
+- **Sub:** `fGm4IP0rWxgHptN8` (webhook: `batch-enrichment-v1`)
+
+### Key Files
+| File | Lines | Purpose |
+|---|---|---|
+| `scripts/nodes/enrich-companies.js` | 554 | Google Details, website scrape, booking detection, email extraction, PATCH to Supabase |
+| `scripts/nodes/find-contacts.js` | 629 | Apollo search, solo detection, about page scraping, INSERT contacts |
+| `scripts/nodes/enrich-contacts.js` | 613 | Hunter email finder/verifier, NamSor, Telnyx phone verify, PATCH contacts |
+| `scripts/nodes/prepare-for-supabase.js` | ~100 | Maps discovery data to 26-field Supabase insert payload |
+| `scripts/nodes/batch-dispatcher.js` | 151 | Polls Supabase for discovered companies, dispatches batches to sub-workflow |
+| `scripts/nodes/mark-fully-enriched.js` | 42 | PATCHes companies to fully_enriched |
+| `scripts/diagnostic.sql` | 301 | Single-JSON health check per metro |
+| `docs/architecture/schema.sql` | 348 | Full Supabase schema |
+
+---
 
 ## Critical Rules
 
 ### 1. Always Track Your Work
-- **START** every session by reading `dashboard/tracking/PROGRESS.md`
+- **START** every session by reading `tracking/PROGRESS.md`
 - **END** every session by updating:
-  - `dashboard/tracking/PROGRESS.md` — What you accomplished
-  - `dashboard/tracking/TODO.md` — New tasks discovered, completed tasks moved
-  - `dashboard/tracking/BUGS.md` — Any bugs found or fixed
-  - `dashboard/tracking/CHANGELOG.md` — Dated entry of changes
-  - `dashboard/docs/decisions/DECISIONS.md` — Any architectural decisions made
-- **NEVER** skip tracking updates. This is how continuity works across sessions.
+  - `tracking/PROGRESS.md` — What you accomplished
+  - `tracking/TODO.md` — New tasks discovered, completed tasks moved
+  - `tracking/BUGS.md` — Any bugs found or fixed
+  - `tracking/CHANGELOG.md` — Dated entry of changes
+  - `docs/decisions/DECISIONS.md` — Any architectural decisions made
+- **NEVER** skip tracking updates.
 
-### 2. Understand Before Changing
-- **Read** the existing Lovable-generated code before modifying it
-- **Check** if Lovable already handles something before reimplementing it
-- **Preserve** Lovable's component structure unless there's a clear reason to refactor
-- The app should already have pages, routing, and basic UI — your job is integration, not rebuilding
+### 2. n8n MCP Access
+You have MCP tools for n8n workflow management:
+- `n8n_list_workflows` — List all workflows
+- `n8n_get_workflow` — Get workflow JSON by ID
+- `n8n_update_partial_workflow` — Update specific nodes (use `updateNode` operations)
+- `n8n_executions` — Get execution data (use `action=get id=<id> mode=summary` or `mode=full`)
 
-### 3. Supabase Rules
-- Use `@supabase/supabase-js` client, initialized once in `src/lib/supabase.ts`
-- **Auth:** Supabase email/password auth. No sign-up flow — users are pre-created in Supabase dashboard
-- **Anon key only** in the frontend — RLS policies handle authorization server-side
-- **Service role key** is NEVER in the frontend — only n8n uses it for write-back callbacks
-- New tables (`pipeline_runs`, `search_query_templates`) must be created in Supabase SQL Editor using the schema in `dashboard/docs/architecture/schema.sql`
-- The `run_coverage_stats` view must also be created — it powers the Coverage Report page
+**Critical MCP rules:**
+- Array index notation silently fails (e.g., `parameters.assignments[2].value`). Always replace entire `parameters` object instead.
+- Any MCP change is overwritten if someone saves from the n8n editor UI.
+- Always backup workflow state before modifying via MCP.
 
-### 4. n8n Webhook Integration
-- The dashboard triggers pipeline runs via a POST to the n8n webhook URL
-- Webhook URL comes from `VITE_N8N_WEBHOOK_URL` env var
-- The webhook call should fire-and-forget (don't wait for pipeline completion)
-- The pipeline_runs record is inserted into Supabase FIRST, then the webhook is called with the `run_id`
-- If the webhook fails, the pipeline_runs record stays in 'queued' status — show an error toast but don't delete the record
-- n8n handles updating the pipeline_runs record status via callback (this is configured in the n8n workflow, not in the dashboard)
+### 3. Supabase Access Pattern
+- Always use HTTP Request nodes (NOT the n8n Supabase connector)
+- Auth: `apikey` header + `Authorization: Bearer {service_key}`
+- Upserts: Include `Prefer: resolution=merge-duplicates` header
+- Updates (PATCH): Include `Prefer: return=minimal` header
+- Base URL: `$env.SUPABASE_URL` + `/rest/v1/{table}`
+- **Always filter by `discovery_metro`** — every Supabase fetch must be metro-scoped to prevent cross-contamination
 
-### 5. n8n Workflow Changes Required
-The existing n8n workflows need these modifications to work with the dashboard (documented in `dashboard/docs/architecture/n8n-integration.md`):
-- Replace `Manual Trigger` → `Webhook Trigger` node
-- Update `Metro Config` node to read from webhook body
-- Add status update nodes at start (→ running) and end (→ completed/failed)
-- These are n8n-side changes, NOT dashboard code changes
+### 4. No Secrets in Code
+All API keys, URLs, tokens are n8n environment variables. Reference as `$env.VARIABLE_NAME`. Never hardcode credentials.
 
-### 6. Metro Data
-- City/state/country data for the New Run form is a **static TypeScript file** (`src/data/metros.ts`)
-- Do NOT fetch metro data from an API or database
-- The file should cover top ~50 US metros and ~15 Canadian metros with accurate lat/lng coordinates
-- Structure: `Country → State → City[]` with lat, lng, metro_name, yelp_location per city
-- If Lovable generated this file, verify coordinates are accurate
+---
 
-### 7. Styling Rules
-- Dark theme matching spamarketing.com brand
-- Primary accent: `#3ecfad` (teal/mint)
-- Font: DM Sans from Google Fonts
-- Tailwind CSS for all styling — no separate CSS files unless absolutely necessary
-- If Lovable's output looks good, leave it. Don't redesign for the sake of redesigning.
+## Hard-Won Rules (From 35+ Bugs)
 
-### 8. No Secrets in Code
-- All credentials are environment variables (`VITE_*` prefix for Vite)
-- `.env` files are gitignored
-- Never hardcode Supabase URLs, keys, or webhook URLs
+These rules are non-negotiable. Every one was learned from a production failure.
 
-### 9. Docker Deployment
-- Dockerfile: 2-stage build (Node for Vite build → Nginx for serving)
-- nginx.conf: SPA routing (try_files → /index.html)
-- Coolify handles: Git pull, Docker build, SSL cert, domain routing
-- Target: deploy as a new service on the existing Hetzner VPS/Coolify instance
+### Architecture
+1. **No multi-path convergence.** Use Code nodes with loops instead of branching pipelines. This is non-negotiable.
+2. **No polling for step coordination.** Each step should have its own data, fetched inline. If you need to "wait" for something, the architecture is wrong.
+3. **Idempotent everything.** Re-running any step should produce the same result. Include partial states in retry queries (e.g., `enrichment_status=in.(discovered,partially_enriched)`).
 
-### 10. What This Dashboard Does NOT Do
-- Does NOT modify pipeline logic (that's in `workflows/`)
-- Does NOT store or display individual lead/company data (that's in Supabase Table Editor)
-- Does NOT have real-time status updates (users refresh manually)
-- Does NOT have user management (users are created directly in Supabase)
-- Does NOT export data
+### n8n-Specific
+4. **Inline HTTP in Code nodes.** Use `this.helpers.httpRequest()` with try/catch per item. One failure shouldn't stop the batch. `$http` does not exist in n8n Code nodes.
+5. **Per-execution scope only.** Don't use `$getWorkflowStaticData('global')` for dedup — it persists across executions. Use local variables.
+6. **Merge (Append) nodes fire per-batch**, not after all batches complete. Don't rely on them for aggregation.
+7. **`onError: continueRegularOutput` hides failures.** Use intentionally with logging, never as a catch-all.
+8. **Task runner timeout** is 1800s. Design Code nodes to complete within this. For >200 companies, batch into sub-workflows.
 
-### 11. Communication Style
-- Be direct. State what you're doing and why.
-- When you find a bug, log it in `dashboard/tracking/BUGS.md`
-- When you make a decision, log it in `dashboard/docs/decisions/DECISIONS.md`
-- If something Lovable generated is broken, document the issue before fixing it
+### Data Quality
+9. **Whitelist audit on new fields.** Any new database column must be traced through the entire insert chain: Normalize → Deduplicate → Prepare for Supabase → Insert HTTP body.
+10. **Account for DEFAULT values in queries.** `is.null` doesn't match columns with DEFAULT values. Use `or=(field.is.null,field.eq.default_value)`.
+11. **Domain blocklist at discovery, not enrichment.** Block booking platforms (wixsite.com, setmore.com, vagaro.com, etc.) before inserting to Supabase. Full list: wixsite.com, wix.com, setmore.com, schedulista.com, glossgenius.com, square.site, genbook.com, jane.app, acuityscheduling.com, mindbodyonline.com, mindbody.io, vagaro.com, fresha.com, schedulicity.com, booksy.com, massagebook.com, noterro.com, clinicsense.com, calendly.com, squarespace.com.
+12. **Franchise chains share domains/phones.** Only `google_place_id` is truly unique per location. Domain and phone indexes are NOT unique.
+13. **Role-based emails (info@, contact@) are valid for solo practitioners** (~30-40% of this vertical). Don't blanket-reject them. Route to `company.email` when appropriate.
+14. **Credential patterns** (LMT, CMT, RMT) appear as last names. Filter them in validation.
+15. **Non-target businesses** appear in Google/Yelp results. Filter with blocklist: school, college, university, association, federation, union, board of, institute, academy, program.
+
+### API-Specific
+16. **Apollo returns ~0% contacts** for local massage businesses. Real value comes from Google Places (phone, website) and solo detection (owner name).
+17. **Rate limiting:** All API calls need explicit delays. Apollo: 2s after every 3 calls. Hunter/NamSor/Telnyx: 100-200ms between calls.
+18. **About page scraping** must try 6 URL paths: /about, /about-us, /about-me, /our-team, /team, /our-story.
+
+---
+
+## Code Node Patterns
+
+```javascript
+// In Code nodes, use this.helpers.httpRequest() — NOT $http
+const response = await this.helpers.httpRequest({
+  method: 'GET',
+  url: `${process.env.SUPABASE_URL}/rest/v1/companies`,
+  headers: {
+    'apikey': process.env.SUPABASE_SERVICE_KEY,
+    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json'
+  },
+  qs: { discovery_metro: 'eq.Sedona, AZ', enrichment_status: 'eq.discovered' }
+});
+// Response is parsed JSON directly (no .body wrapper)
+
+// Sub-workflow Code nodes must unwrap webhook body:
+const inputData = $input.first().json;
+const payload = inputData.body || inputData;  // Webhook v2 wraps under .body
+```
+
+---
+
+## Notifications
+
+You have access to a notification system to communicate with Zack asynchronously.
+
+**Send `completion` notifications when:** a major task finishes, a deployment completes, tests pass after a significant change.
+
+**Send `decision` notifications when:** an architectural choice needs to be made, something is broken/blocked and you need direction.
+
+**Do NOT notify for:** routine file edits, small refactors, easily reversible decisions.
+
+```bash
+curl -s -X POST https://ping-zack.vercel.app/api/notify \
+  -H "Authorization: Bearer $PING_ZACK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "completion",
+    "title": "Brief title",
+    "message": "Details about what was accomplished.",
+    "source": "claude-code"
+  }'
+```
+
+For decision notifications, add `"urgency": "normal"` and `"options": ["Option A", "Option B"]`. **Pause work on that decision branch** until you hear back.
