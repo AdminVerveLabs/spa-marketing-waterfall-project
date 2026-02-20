@@ -1,0 +1,1568 @@
+===== CODE NODE: Enrich Contacts =====
+// Enrich Contacts — Single Code node replacing the entire Step 4 branching pipeline
+// Mode: runOnceForAllItems
+// Uses this.helpers.httpRequest() for inline HTTP calls (NOT $http which is unavailable)
+
+const config = $('Step 4 Config').first().json;
+const contacts = $input.all().filter(item => !item.json._empty);
+
+const results = [];
+
+// Helper: delay between API calls for rate limiting
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Dedup guard: track companies that already had email set/verified this execution
+const staticData = $getWorkflowStaticData('global');
+if (!staticData._companyEmailsSet) staticData._companyEmailsSet = {};
+const companyEmailsSet = staticData._companyEmailsSet;
+
+// BUG-F019 FIX: Clear ALL stale keys from previous executions.
+// $getWorkflowStaticData('global') persists across executions, not just batches.
+// Without this, company phone/email dedup guards from previous runs permanently
+// block verification for companies that were already processed.
+// Within a single execution, keys are rebuilt as contacts are processed.
+for (const key of Object.keys(companyEmailsSet)) {
+  delete companyEmailsSet[key];
+}
+
+// ADR-024: Per-contact dedup — track enriched contacts across convergence batches
+if (!staticData._enriched_contact_ids) {
+  staticData._enriched_contact_ids = {};
+}
+
+// Phone validation (from Prepare Contact Update)
+function validatePhone(phone) {
+  if (!phone) return null;
+  if (typeof phone === 'object' && phone !== null) {
+    phone = phone.sanitized_number || phone.raw_number || phone.number || '';
+  }
+  let cleaned = phone.toString().trim().replace(/[^\d]/g, '');
+  if (!cleaned || cleaned.length === 0) return null;
+  if (cleaned.length === 11 && cleaned.startsWith('1')) { /* ok */ }
+  else if (cleaned.length === 10) { cleaned = '1' + cleaned; }
+  else if (cleaned.length < 10) { return null; }
+  else if (cleaned.length > 11 && cleaned.length <= 15) {
+    // International number - allow if not starting with 1 (NA)
+    if (cleaned.startsWith('1')) return null;  // NA number too long
+    return '+' + cleaned;
+  }
+  else if (cleaned.length > 15) { return null; }  // ITU max is 15 digits
+  const areaCode = cleaned.substring(1, 4);
+  if (areaCode.startsWith('0') || areaCode.startsWith('1')) return null;
+  return '+' + cleaned;
+}
+
+// Role-based email detection (same 19+1 patterns as Validate & Clean Contact)
+const rolePatterns = [
+  /^info@/i, /^contact@/i, /^hello@/i, /^support@/i, /^sales@/i,
+  /^office@/i, /^billing@/i, /^reception@/i, /^frontdesk@/i, /^front\.desk@/i,
+  /^appointments@/i, /^booking@/i, /^bookings@/i, /^schedule@/i, /^scheduling@/i,
+  /^inquiries@/i, /^inquiry@/i, /^general@/i, /^team@/i, /^staff@/i
+];
+
+function isRoleBased(email) {
+  if (!email) return false;
+  return rolePatterns.some(p => p.test(email));
+}
+
+// Free webmail domains (role-based check doesn't apply to these)
+const freeWebmailDomains = [
+  'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'aol.com',
+  'icloud.com', 'me.com', 'mac.com', 'live.com', 'msn.com',
+  'protonmail.com', 'proton.me', 'zoho.com', 'yandex.com',
+  'mail.com', 'gmx.com', 'fastmail.com', 'tutanota.com'
+];
+
+function isFreeWebmail(email) {
+  if (!email) return false;
+  const domain = email.split('@')[1];
+  return freeWebmailDomains.includes(domain);
+}
+
+// Helper: verify an email via Hunter Verifier API
+async function verifyEmail(email) {
+  try {
+    const verifyUrl = `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${$env.HUNTER_API_KEY}`;
+    const verifyResp = await this.helpers.httpRequest({ method: 'GET', url: verifyUrl, headers: { 'Accept': 'application/json' }, json: true });
+    const vBody = verifyResp.data || verifyResp;
+    if (vBody && vBody.status) {
+      let status;
+      switch (vBody.status) {
+        case 'valid': status = 'verified'; break;
+        case 'invalid': status = 'invalid'; break;
+        case 'accept_all': status = 'accept_all'; break;
+        case 'disposable': status = 'invalid'; break;
+        case 'webmail': status = 'verified'; break;
+        default: status = 'risky'; break;
+      }
+      return { status, score: vBody.score || null, verified_at: new Date().toISOString() };
+    }
+  } catch(e) {
+    console.log(`Verifier error for ${email}: ${e.message}`);
+  }
+  return null;
+}
+
+// Helper: verify a phone number via Telnyx Number Lookup API
+async function verifyPhone(phoneNumber) {
+  try {
+    const resp = await this.helpers.httpRequest({
+      method: 'GET',
+      url: `https://api.telnyx.com/v2/number_lookup/${encodeURIComponent(phoneNumber)}?type=carrier`,
+      headers: {
+        'Authorization': `Bearer ${$env.TELNYX_API_KEY}`,
+        'Accept': 'application/json'
+      },
+      json: true
+    });
+    const data = resp.data || resp;
+    if (data && data.valid === false) {
+      return { phone_status: 'invalid', phone_line_type: null, phone_carrier: null };
+    }
+    // Map carrier type
+    let lineType = null;
+    const carrierType = (data.carrier && data.carrier.type) || null;
+    if (carrierType) {
+      const typeMap = { 'mobile': 'mobile', 'landline': 'landline', 'fixed line': 'landline', 'voip': 'voip', 'toll free': 'toll_free', 'toll_free': 'toll_free' };
+      lineType = typeMap[carrierType.toLowerCase()] || null;
+    }
+    const carrierName = (data.carrier && data.carrier.name) || null;
+    const phoneStatus = lineType === 'voip' ? 'voip' : 'valid';
+    return {
+      phone_status: phoneStatus,
+      phone_line_type: lineType,
+      phone_carrier: carrierName
+    };
+  } catch(e) {
+    // 404 or 422 = invalid number
+    if (e.statusCode === 404 || e.statusCode === 422) {
+      return { phone_status: 'invalid', phone_line_type: null, phone_carrier: null };
+    }
+    console.log(`Telnyx error for ${phoneNumber}: ${e.message} (status: ${e.statusCode || 'unknown'})`);
+    return { phone_status: null, phone_line_type: null, phone_carrier: null, _error: `${e.statusCode || 'unknown'}: ${e.message}` };
+  }
+}
+
+for (const item of contacts) {
+  const contact = { ...item.json };
+
+  // ADR-024: Skip if already enriched in a previous convergence batch
+  const contactId = contact.id;
+  if (staticData._enriched_contact_ids[contactId]) {
+    results.push({
+      json: {
+        _contact_id: contactId,
+        _company_id: contact.company_id,
+        _first_name: contact.first_name,
+        _last_name: contact.last_name,
+        _company_name: contact._company_name,
+        _skip_reason: 'already_enriched_in_earlier_batch',
+        _has_updates: false
+      }
+    });
+    continue;
+  }
+  // Mark as enriched
+  staticData._enriched_contact_ids[contactId] = true;
+
+  // Initialize enrichment fields
+  contact._hunter_email = null;
+  contact._hunter_score = 0;
+  contact._hunter_linkedin = null;
+  contact._hunter_phone = null;
+  contact._snovio_email = null;
+  contact._email_source = null;
+  contact._best_email = contact.email_business || null;
+  contact._best_phone = contact.phone_direct || contact._company_phone || null;
+  contact._best_linkedin = contact.linkedin_url || null;
+  contact._email_status = null;
+  contact._email_verified_at = null;
+  contact._verifier_score = null;
+  contact._cultural_affinity = contact.cultural_affinity || null;
+  contact._namsor_country = null;
+  contact._namsor_region = null;
+  contact._namsor_probability = null;
+  contact._company_email_routed = false;
+  contact._company_email_verified = false;
+  contact._phone_status = null;
+  contact._phone_line_type = null;
+  contact._phone_carrier = null;
+  contact._company_phone_verified = false;
+  contact._phone_error = null;
+
+  const needsEmail = !contact.email_business;
+  const hasDomainAndName = contact._company_domain && contact.first_name;
+  const verifiedStatuses = ['verified', 'invalid', 'risky', 'accept_all'];
+  const emailNeedsVerification = contact.email_business && !verifiedStatuses.includes(contact.email_status);
+
+  // EMAIL WATERFALL
+
+  if (needsEmail && hasDomainAndName) {
+    // --- HUNTER EMAIL FINDER ---
+    if (config.skip_hunter !== 'true') {
+      try {
+        const hunterUrl = `https://api.hunter.io/v2/email-finder?domain=${encodeURIComponent(contact._company_domain)}&first_name=${encodeURIComponent(contact.first_name)}&last_name=${encodeURIComponent(contact.last_name || '')}&api_key=${$env.HUNTER_API_KEY}`;
+        const hunterResp = await this.helpers.httpRequest({ method: 'GET', url: hunterUrl, headers: { 'Accept': 'application/json' }, json: true });
+        const hData = hunterResp.data || hunterResp;
+        if (hData && hData.email && (hData.score === undefined || hData.score >= 50)) {
+          contact._hunter_email = hData.email;
+          contact._hunter_score = hData.score || 0;
+          contact._hunter_linkedin = hData.linkedin_url || null;
+          contact._hunter_phone = hData.phone_number || null;
+          contact._email_source = 'hunter';
+        }
+        await delay(200);
+      } catch(e) {
+        console.log(`Hunter error for ${contact.first_name}: ${e.message}`);
+      }
+    }
+
+    // --- SNOV.IO EMAIL FINDER (fallback) ---
+    if (!contact._hunter_email && config.skip_snovio !== 'true') {
+      try {
+        const snovResp = await this.helpers.httpRequest({
+          method: 'POST',
+          url: 'https://api.snov.io/v1/get-emails-from-names',
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            firstName: contact.first_name,
+            lastName: contact.last_name || '',
+            domain: contact._company_domain
+          },
+          json: true
+        });
+        const emails = snovResp.emails || snovResp.data?.emails || [];
+        if (Array.isArray(emails) && emails.length > 0) {
+          const valid = emails.find(e => e.emailStatus === 'valid' || e.status === 'valid') || emails[0];
+          contact._snovio_email = valid.email || valid.value || null;
+          if (contact._snovio_email) contact._email_source = 'snovio';
+        }
+        await delay(500);
+      } catch(e) {
+        console.log(`Snov.io error for ${contact.first_name}: ${e.message}`);
+      }
+    }
+
+    contact._best_email = contact._hunter_email || contact._snovio_email || null;
+    contact._best_phone = contact.phone_direct || contact._hunter_phone || contact._company_phone || null;
+    contact._best_linkedin = contact.linkedin_url || contact._hunter_linkedin || null;
+  } else if (contact.email_business) {
+    contact._best_email = contact.email_business;
+    contact._email_source = 'existing';
+  }
+
+  // COMPANY EMAIL ROUTING
+  // If contact's email is role-based, route it to the company
+
+  if (contact._best_email && isRoleBased(contact._best_email) && !isFreeWebmail(contact._best_email)) {
+    const companyId = contact.company_id;
+    const companyHasEmail = !!(contact._company_email);
+
+    if (!companyHasEmail && !companyEmailsSet[companyId]) {
+      contact._routed_company_email = contact._best_email;
+      contact._company_email_routed = true;
+      companyEmailsSet[companyId] = contact._best_email;
+      console.log(`Routed role-based email ${contact._best_email} to company ${contact._company_name || companyId}`);
+    }
+
+    if (contact.email_personal) {
+      contact._best_email = contact.email_personal;
+      contact._email_source = 'personal_promoted';
+      console.log(`Promoted personal email ${contact.email_personal} for ${contact.first_name} (role-based went to company)`);
+    }
+  }
+
+  // EMAIL VERIFICATION (contact email)
+
+  if (contact._best_email && config.skip_hunter_verifier !== 'true') {
+    const shouldVerify = !contact.email_business || emailNeedsVerification || contact._email_source === 'hunter' || contact._email_source === 'snovio' || contact._email_source === 'personal_promoted';
+    if (shouldVerify) {
+      const vResult = await verifyEmail.call(this, contact._best_email);
+      if (vResult) {
+        contact._email_status = vResult.status;
+        contact._email_verified_at = vResult.verified_at;
+        contact._verifier_score = vResult.score;
+      }
+      await delay(700);
+    }
+  } else if (contact._best_email) {
+    contact._email_status = 'unverified';
+  }
+
+  // COMPANY EMAIL VERIFICATION
+  // Verify company email if it hasn't been verified yet (from website scrape OR routing)
+
+  const companyEmailToVerify = contact._routed_company_email || contact._company_email;
+  const companyEmailNeedsVerification = companyEmailToVerify && !contact._company_email_status;
+  const companyId = contact.company_id;
+
+  if (companyEmailNeedsVerification && config.skip_hunter_verifier !== 'true' && !companyEmailsSet[companyId + '_verified']) {
+    const vResult = await verifyEmail.call(this, companyEmailToVerify);
+    let companyPatch = {};
+
+    if (contact._routed_company_email) {
+      companyPatch.email = contact._routed_company_email;
+    }
+
+    if (vResult) {
+      companyPatch.email_status = vResult.status;
+      contact._company_email_verified = true;
+      console.log(`Verified company email ${companyEmailToVerify}: ${vResult.status}`);
+    }
+
+    if (Object.keys(companyPatch).length > 0) {
+      try {
+        await this.helpers.httpRequest({
+          method: 'PATCH',
+          url: `${$env.SUPABASE_URL}/rest/v1/companies?id=eq.${companyId}`,
+          headers: {
+            'apikey': $env.SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${$env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: companyPatch,
+          json: true
+        });
+        console.log(`PATCHed company ${contact._company_name || companyId}: ${JSON.stringify(companyPatch)}`);
+      } catch(e) {
+        console.log(`Company PATCH error for ${companyId}: ${e.message}`);
+      }
+    }
+
+    companyEmailsSet[companyId + '_verified'] = true;
+    await delay(700);
+  } else if (contact._routed_company_email && !companyEmailsSet[companyId + '_verified']) {
+    try {
+      await this.helpers.httpRequest({
+        method: 'PATCH',
+        url: `${$env.SUPABASE_URL}/rest/v1/companies?id=eq.${companyId}`,
+        headers: {
+          'apikey': $env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${$env.SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: { email: contact._routed_company_email },
+        json: true
+      });
+      console.log(`PATCHed company email (unverified) ${contact._company_name || companyId}: ${contact._routed_company_email}`);
+    } catch(e) {
+      console.log(`Company PATCH error for ${companyId}: ${e.message}`);
+    }
+    companyEmailsSet[companyId + '_verified'] = true;
+    await delay(50);
+  }
+
+  // NAMSOR CULTURAL AFFINITY
+
+  if (!contact.cultural_affinity && contact.first_name && (contact.last_name || '').length > 0 && config.skip_namsor !== 'true') {
+    try {
+      const namsorUrl = `https://v2.namsor.com/NamSorAPIv2/api2/json/origin/${encodeURIComponent(contact.first_name)}/${encodeURIComponent(contact.last_name || 'Unknown')}`;
+      const namsorResp = await this.helpers.httpRequest({ method: 'GET', url: namsorUrl, headers: { 'X-API-KEY': $env.NAMSOR_API_KEY, 'Accept': 'application/json' }, json: true });
+      if (namsorResp && namsorResp.countryOrigin) {
+        const parts = [];
+        if (namsorResp.regionOrigin) parts.push(namsorResp.regionOrigin);
+        if (namsorResp.subRegionOrigin && namsorResp.subRegionOrigin !== namsorResp.regionOrigin) parts.push(namsorResp.subRegionOrigin);
+        if (namsorResp.countryOrigin) parts.push(namsorResp.countryOrigin);
+        contact._cultural_affinity = parts.join(' / ');
+        if (namsorResp.probabilityCalibrated && namsorResp.probabilityCalibrated < 0.3) {
+          contact._cultural_affinity += ' (low confidence)';
+        }
+        contact._namsor_country = namsorResp.countryOrigin;
+        contact._namsor_region = namsorResp.regionOrigin;
+        contact._namsor_probability = namsorResp.probabilityCalibrated;
+      }
+      await delay(100);
+    } catch(e) {
+      console.log(`NamSor error for ${contact.first_name}: ${e.message}`);
+    }
+  }
+
+  // PHONE VERIFICATION (Telnyx Number Lookup)
+
+  if (contact._best_phone && !contact.phone_status && config.skip_phone_verifier !== 'true') {
+    const phoneResult = await verifyPhone.call(this, contact._best_phone);
+    if (phoneResult) {
+      contact._phone_status = phoneResult.phone_status;
+      contact._phone_line_type = phoneResult.phone_line_type;
+      contact._phone_carrier = phoneResult.phone_carrier;
+      if (phoneResult._error) {
+        contact._phone_error = phoneResult._error;
+      } else {
+        console.log(`Phone verified ${contact._best_phone}: ${phoneResult.phone_status} (${phoneResult.phone_line_type || 'unknown type'}, ${phoneResult.phone_carrier || 'unknown carrier'})`);
+      }
+    }
+    await delay(100);
+  }
+
+  // COMPANY PHONE VERIFICATION (Telnyx)
+  if (contact._company_phone && !contact._company_phone_status && config.skip_phone_verifier !== 'true' && !companyEmailsSet[companyId + '_phone_verified']) {
+    const compPhoneResult = await verifyPhone.call(this, contact._company_phone);
+    if (compPhoneResult && !compPhoneResult._error) {
+      try {
+        await this.helpers.httpRequest({
+          method: 'PATCH',
+          url: `${$env.SUPABASE_URL}/rest/v1/companies?id=eq.${companyId}`,
+          headers: {
+            'apikey': $env.SUPABASE_SERVICE_KEY,
+            'Authorization': `Bearer ${$env.SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: {
+            phone_status: compPhoneResult.phone_status,
+            phone_line_type: compPhoneResult.phone_line_type
+          },
+          json: true
+        });
+        contact._company_phone_verified = true;
+        console.log(`Company phone verified ${contact._company_phone}: ${compPhoneResult.phone_status} (${compPhoneResult.phone_line_type || 'unknown'})`);
+      } catch(e) {
+        console.log(`Company phone PATCH error for ${companyId}: ${e.message}`);
+      }
+    } else if (compPhoneResult && compPhoneResult._error) {
+      contact._phone_error = contact._phone_error || compPhoneResult._error;
+    }
+    companyEmailsSet[companyId + '_phone_verified'] = true;
+    await delay(100);
+  }
+
+  // BUILD UPDATE PAYLOAD
+
+  const update = {};
+  if (contact._best_email && !contact.email_business) {
+    update.email_business = contact._best_email;
+  }
+  if (contact._email_status && contact._email_status !== 'unverified') {
+    update.email_status = contact._email_status;
+    update.email_verified_at = contact._email_verified_at;
+    if (contact._email_status === 'invalid') {
+      update.email_business = null;
+    }
+  } else if (contact._best_email || contact.email_business) {
+    update.email_status = 'unverified';
+  }
+
+  const newPhone = validatePhone(contact._best_phone);
+  if (newPhone && !contact.phone_direct) update.phone_direct = newPhone;
+  if (contact._best_linkedin && !contact.linkedin_url) update.linkedin_url = contact._best_linkedin;
+  if (contact._cultural_affinity && !contact.cultural_affinity) update.cultural_affinity = contact._cultural_affinity;
+
+  // Phone verification fields
+  if (contact._phone_status) {
+    update.phone_status = contact._phone_status;
+    update.phone_verified_at = new Date().toISOString();
+    update.phone_line_type = contact._phone_line_type;
+    update.phone_carrier = contact._phone_carrier;
+    if (contact._phone_status === 'invalid' || contact._phone_status === 'disconnected') {
+      update.phone_direct = null;  // Remove bad numbers, keep status for audit
+    }
+  }
+
+  contact._update_payload = Object.keys(update).length > 0 ? update : null;
+  contact._has_updates = Object.keys(update).length > 0;
+
+  // SUPABASE UPDATE (inline)
+
+  if (contact._has_updates) {
+    try {
+      await this.helpers.httpRequest({
+        method: 'PATCH',
+        url: `${$env.SUPABASE_URL}/rest/v1/contacts?id=eq.${contact.id}`,
+        headers: {
+          'apikey': $env.SUPABASE_SERVICE_KEY,
+          'Authorization': `Bearer ${$env.SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: update,
+        json: true
+      });
+      console.log(`Updated ${contact.first_name} ${contact.last_name || ''}: ${JSON.stringify(update)}`);
+    } catch(e) {
+      console.log(`Supabase update error for ${contact.id}: ${e.message}`);
+      contact._update_error = e.message;
+    }
+    await delay(50);
+  }
+
+  results.push({
+    json: {
+      _contact_id: contact.id,
+      _company_id: contact.company_id,
+      _first_name: contact.first_name,
+      _last_name: contact.last_name,
+      _company_name: contact._company_name,
+      _update_payload: contact._update_payload,
+      _has_updates: contact._has_updates,
+      _email_source: contact._email_source,
+      _email_status: contact._email_status,
+      _verifier_score: contact._verifier_score,
+      _namsor_country: contact._namsor_country,
+      _namsor_probability: contact._namsor_probability,
+      _company_email_routed: contact._company_email_routed,
+      _company_email_verified: contact._company_email_verified,
+      _routed_company_email: contact._routed_company_email || null,
+      _phone_status: contact._phone_status,
+      _phone_line_type: contact._phone_line_type,
+      _phone_carrier: contact._phone_carrier,
+      _company_phone_verified: contact._company_phone_verified,
+      _phone_error: contact._phone_error,
+      _update_error: contact._update_error || null
+    }
+  });
+}
+
+if (results.length === 0) {
+  return [{ json: { _empty: true, _count: 0 } }];
+}
+
+return results;
+===== END NODE =====
+
+===== CODE NODE: Filter & Merge Contacts =====
+// Merge contacts with their company data and filter to those needing enrichment
+// Metro-scoped: only process contacts whose company is in the current metro
+const contactItems = $('Fetch Contacts').all();
+const companyItems = $('Fetch Companies1').all();
+
+// Parse contacts - deduplicate by id
+let rawContacts = [];
+for (const item of contactItems) {
+  if (item.json && Array.isArray(item.json)) {
+    rawContacts.push(...item.json);
+  } else if (item.json && item.json.id) {
+    rawContacts.push(item.json);
+  }
+}
+
+// Deduplicate by contact id
+const seenIds = new Set();
+let contacts = [];
+for (const c of rawContacts) {
+  if (c.id && !seenIds.has(c.id)) {
+    seenIds.add(c.id);
+    contacts.push(c);
+  }
+}
+
+// Parse companies into a lookup map (map deduplicates naturally)
+// NOTE: Fetch Companies1 is now metro-scoped, so this map only contains current metro companies
+let companyMap = {};
+for (const item of companyItems) {
+  if (Array.isArray(item.json)) {
+    for (const co of item.json) {
+      if (co.id) companyMap[co.id] = co;
+    }
+  } else if (item.json && item.json.id) {
+    companyMap[item.json.id] = item.json;
+  }
+}
+
+// Filter contacts that need enrichment:
+// any contact where there's still something to enrich
+const needsEnrichment = contacts.filter(c => {
+  const missingEmail = !c.email_business;
+  const missingCulturalAffinity = !c.cultural_affinity;
+  const missingPhone = !c.phone_direct;
+  const missingLinkedin = !c.linkedin_url;
+  const verifiedStatuses = ['verified', 'invalid', 'risky', 'accept_all'];
+  const emailNeedsVerification = c.email_business && !verifiedStatuses.includes(c.email_status);
+  const phoneNeedsVerification = c.phone_direct && !c.phone_status;
+  return missingEmail || missingCulturalAffinity || missingPhone || missingLinkedin || emailNeedsVerification || phoneNeedsVerification;
+});
+
+// Metro filter: only keep contacts whose company is in the metro-scoped companyMap
+const metroFiltered = needsEnrichment.filter(c => companyMap[c.company_id]);
+const crossMetroSkipped = needsEnrichment.length - metroFiltered.length;
+
+console.log(`Contacts: ${rawContacts.length} raw, ${contacts.length} unique, ${needsEnrichment.length} need enrichment, ${crossMetroSkipped} skipped (other metro), ${metroFiltered.length} in current metro`);
+
+if (metroFiltered.length === 0) {
+  return [{ json: { _empty: true, _count: 0, _message: 'All contacts are already enriched or belong to other metros' } }];
+}
+
+// Merge company data into each contact
+const merged = metroFiltered.map(c => {
+  const company = companyMap[c.company_id];
+  return {
+    json: {
+      ...c,
+      _company_name: company.name || null,
+      _company_domain: company.domain || null,
+      _company_phone: company.phone || null,
+      _company_email: company.email || null,
+      _company_email_status: company.email_status || null,
+      _company_phone_status: company.phone_status || null,
+      _company_phone_line_type: company.phone_line_type || null,
+      _company_city: company.city || null,
+      _company_state: company.state || null
+    }
+  };
+});
+
+return merged;
+===== END NODE =====
+
+===== CODE NODE: Run Summary4 =====
+const config = $('Step 4 Config').first().json;
+const items = $input.all();
+
+let totalProcessed = 0;
+let emailsFound = 0;
+let emailsFromHunter = 0;
+let emailsFromSnovio = 0;
+let emailsExisting = 0;
+let emailsPersonalPromoted = 0;
+let phonesEnriched = 0;
+let linkedinEnriched = 0;
+let namsorProcessed = 0;
+let namsorSuccess = 0;
+let contactsUpdated = 0;
+let contactsSkipped = 0;
+
+let emailsVerified = 0;
+let emailsInvalid = 0;
+let emailsRisky = 0;
+let emailsAcceptAll = 0;
+let emailsUnverified = 0;
+let verificationTotal = 0;
+let updateErrors = 0;
+
+// Company email routing stats
+let companyEmailsRouted = 0;
+let companyEmailsVerified = 0;
+
+// Phone verification stats
+let phonesVerifiedValid = 0;
+let phonesInvalidRemoved = 0;
+let phonesVoipFlagged = 0;
+let phonesDisconnectedRemoved = 0;
+let companyPhonesVerified = 0;
+
+for (const item of items) {
+  const d = item.json;
+  if (d._empty) continue;
+  totalProcessed++;
+
+  if (d._has_updates) contactsUpdated++;
+  else contactsSkipped++;
+
+  if (d._email_source === 'hunter') emailsFromHunter++;
+  else if (d._email_source === 'snovio') emailsFromSnovio++;
+  else if (d._email_source === 'existing') emailsExisting++;
+  else if (d._email_source === 'personal_promoted') emailsPersonalPromoted++;
+
+  if (d._update_payload && d._update_payload.email_business) emailsFound++;
+  if (d._update_payload && d._update_payload.phone_direct) phonesEnriched++;
+  if (d._update_payload && d._update_payload.linkedin_url) linkedinEnriched++;
+  if (d._namsor_country) namsorProcessed++;
+  if (d._namsor_country && d._update_payload && d._update_payload.cultural_affinity) namsorSuccess++;
+
+  if (d._email_status) {
+    verificationTotal++;
+    switch (d._email_status) {
+      case 'verified': emailsVerified++; break;
+      case 'invalid': emailsInvalid++; break;
+      case 'risky': emailsRisky++; break;
+      case 'accept_all': emailsAcceptAll++; break;
+      case 'unverified': emailsUnverified++; break;
+    }
+  }
+
+  if (d._company_email_routed) companyEmailsRouted++;
+  if (d._company_email_verified) companyEmailsVerified++;
+  if (d._update_error) updateErrors++;
+
+  // Phone verification stats
+  if (d._phone_status) {
+    switch (d._phone_status) {
+      case 'valid': phonesVerifiedValid++; break;
+      case 'invalid': phonesInvalidRemoved++; break;
+      case 'voip': phonesVoipFlagged++; break;
+      case 'disconnected': phonesDisconnectedRemoved++; break;
+    }
+  }
+  if (d._company_phone_verified) companyPhonesVerified++;
+}
+
+const summary = {
+  run_completed_at: new Date().toISOString(),
+  config: {
+    batch_size: config.batch_size,
+    hunter_finder_enabled: config.skip_hunter !== 'true',
+    hunter_verifier_enabled: config.skip_hunter_verifier !== 'true',
+    snovio_enabled: config.skip_snovio !== 'true',
+    namsor_enabled: config.skip_namsor !== 'true',
+    phone_verifier_enabled: config.skip_phone_verifier !== 'true'
+  },
+  contacts_processed: totalProcessed,
+  contacts_updated: contactsUpdated,
+  contacts_no_changes: contactsSkipped,
+  update_errors: updateErrors,
+  email_enrichment: {
+    new_emails_found: emailsFound,
+    from_hunter: emailsFromHunter,
+    from_snovio: emailsFromSnovio,
+    personal_promoted: emailsPersonalPromoted,
+    already_had_email: emailsExisting
+  },
+  email_verification: {
+    total_checked: verificationTotal,
+    verified: emailsVerified,
+    invalid_removed: emailsInvalid,
+    risky: emailsRisky,
+    accept_all: emailsAcceptAll,
+    not_verified: emailsUnverified
+  },
+  company_email_routing: {
+    role_based_routed_to_company: companyEmailsRouted,
+    company_emails_verified: companyEmailsVerified
+  },
+  phone_verification: {
+    verified_valid: phonesVerifiedValid,
+    invalid_removed: phonesInvalidRemoved,
+    voip_flagged: phonesVoipFlagged,
+    disconnected_removed: phonesDisconnectedRemoved,
+    company_phones_verified: companyPhonesVerified
+  },
+  phone_enrichment: { phones_added: phonesEnriched },
+  linkedin_enrichment: { linkedin_added: linkedinEnriched },
+  namsor_enrichment: { names_sent: namsorProcessed, cultural_affinity_set: namsorSuccess },
+  message: `Processed ${totalProcessed} contacts. Updated ${contactsUpdated} (${emailsFound} emails, ${phonesEnriched} phones, ${linkedinEnriched} LinkedIn, ${namsorSuccess} cultural affinity). Email verification: ${emailsVerified} valid, ${emailsInvalid} invalid, ${emailsRisky} risky, ${emailsAcceptAll} accept_all. Phone verification: ${phonesVerifiedValid} valid, ${phonesInvalidRemoved} invalid removed, ${phonesVoipFlagged} voip, ${phonesDisconnectedRemoved} disconnected removed, ${companyPhonesVerified} company phones. Company emails: ${companyEmailsRouted} routed, ${companyEmailsVerified} verified. ${contactsSkipped} no changes. ${updateErrors} errors.`
+};
+
+console.log('=== STEP 4: ENRICH PEOPLE SUMMARY ===');
+console.log(JSON.stringify(summary, null, 2));
+
+return [{ json: summary }];
+===== END NODE =====
+
+===== CODE NODE: Run Summary =====
+const allItems = $('Deduplicate Records').all();
+const metro = $('Metro Config').first().json.metro_name;
+const fromGoogle = allItems.filter(i => (i.json.source_urls || []).some(s => s.source === 'google_places')).length;
+const fromYelp = allItems.filter(i => (i.json.source_urls || []).some(s => s.source === 'yelp_apify')).length;
+const bothSources = allItems.filter(i => { const s = (i.json.source_urls || []).map(x => x.source); return s.includes('google_places') && s.includes('yelp_apify'); }).length;
+const fuzzyFlagged = allItems.filter(i => i.json._fuzzy_match_flag).length;
+
+const summary = {
+  metro, run_timestamp: new Date().toISOString(),
+  total_unique_records: allItems.length,
+  found_on_google: fromGoogle, found_on_yelp: fromYelp, found_on_both: bothSources,
+  flagged_for_review: fuzzyFlagged,
+  clean_records: allItems.length - fuzzyFlagged,
+  sources_used: ['google_places', 'yelp_apify']
+};
+console.log('=== DISCOVERY RUN SUMMARY ===');
+console.log(JSON.stringify(summary, null, 2));
+return [{ json: summary }];
+===== END NODE =====
+
+===== CODE NODE: Run Summary1 =====
+// Final summary of the enrichment batch run
+const config = $('Enrichment Config').first().json;
+
+// Collect stats from various paths
+let companiesProcessed = 0;
+let websitesFetched = 0;
+let websiteErrors = 0;
+let bookingDetected = 0;
+let paidAdsDetected = 0;
+let socialFromWebsite = 0;
+let fbDiscovered = 0;
+let igDiscovered = 0;
+
+try {
+  const batchItems = $('Parse Batch').all();
+  companiesProcessed = batchItems.filter(i => !i.json._empty).length;
+} catch(e) {}
+
+try {
+  const websiteItems = $('Analyze Website HTML').all();
+  for (const item of websiteItems) {
+    const enrichment = item.json._website_enrichment || {};
+    if (enrichment._website_fetch_status === 'success') websitesFetched++;
+    if (enrichment._website_fetch_status === 'error') websiteErrors++;
+    if (enrichment.has_online_booking) bookingDetected++;
+    if (enrichment.has_paid_ads) paidAdsDetected++;
+    socialFromWebsite += (enrichment.social_links_found || []).length;
+  }
+} catch(e) {}
+
+try {
+  const fbResults = $('Match FB Results to Companies').first().json;
+  fbDiscovered = fbResults._fb_match_count || 0;
+} catch(e) {}
+
+try {
+  const igResults = $('Match IG Results to Companies').first().json;
+  igDiscovered = igResults._ig_match_count || 0;
+} catch(e) {}
+
+const summary = {
+  run_completed_at: new Date().toISOString(),
+  batch_size: config.batch_size,
+  batch_offset: config.batch_offset,
+  companies_processed: companiesProcessed,
+  websites_fetched_successfully: websitesFetched,
+  website_fetch_errors: websiteErrors,
+  booking_platforms_detected: bookingDetected,
+  paid_ads_detected: paidAdsDetected,
+  social_links_from_websites: socialFromWebsite,
+  facebook_pages_discovered: fbDiscovered,
+  instagram_profiles_discovered: igDiscovered,
+  total_social_profiles_created: socialFromWebsite + fbDiscovered + igDiscovered,
+  next_offset: Number(config.batch_offset) + Number(config.batch_size),
+  message: `Enriched ${companiesProcessed} companies. Update batch_offset to ${Number(config.batch_offset) + Number(config.batch_size)} for next run.`
+};
+
+console.log('=== ENRICHMENT RUN SUMMARY ===');
+console.log(JSON.stringify(summary, null, 2));
+
+return [{ json: summary }];
+===== END NODE =====
+
+===== CODE NODE: Run Summary3 =====
+// Collect stats from all paths
+const config = $('Step 3a Config').first().json;
+let companiesProcessed = 0;
+let soloDetected = 0;
+let soloWithName = 0;
+let apolloSearched = 0;
+let apolloFound = 0;
+let apolloEnriched = 0;
+let websiteScraped = 0;
+let websiteFoundName = 0;
+let noDomainFallback = 0;
+let noDomainFoundName = 0;
+let totalContactsInserted = 0;
+
+// Validation stats
+let validationTotal = 0;
+let emailsNulled = 0;
+let phonesNulled = 0;
+let namesNulled = 0;
+let linkedinNulled = 0;
+let roleBasedEmails = 0;
+let contactsWithFlags = 0;
+let allFlags = [];
+
+try {
+  const batchItems = $('Filter & Parse Batch').all();
+  companiesProcessed = batchItems.filter(i => !i.json._empty).length;
+} catch(e) {}
+
+try {
+  const soloItems = $('Prepare Solo Contact').all();
+  soloDetected = soloItems.length;
+  soloWithName = soloItems.filter(i => i.json._has_contact).length;
+} catch(e) {}
+
+try {
+  const apolloItems = $('Parse Apollo Search').all();
+  apolloSearched = apolloItems.length;
+  apolloFound = apolloItems.filter(i => i.json._apollo_found).length;
+} catch(e) {}
+
+try {
+  const enrichItems = $('Parse Apollo Enrich').all();
+  apolloEnriched = enrichItems.filter(i => i.json._has_contact).length;
+} catch(e) {}
+
+try {
+  const searchOnlyItems = $('Apollo Search Only Contact').all();
+  apolloEnriched += searchOnlyItems.filter(i => i.json._has_contact).length;
+} catch(e) {}
+
+try {
+  const aboutItems = $('Parse About Page').all();
+  websiteScraped = aboutItems.length;
+  websiteFoundName = aboutItems.filter(i => i.json._has_contact).length;
+} catch(e) {}
+
+try {
+  const noDomainItems = $('No Domain Fallback').all();
+  noDomainFallback = noDomainItems.length;
+  noDomainFoundName = noDomainItems.filter(i => i.json._has_contact).length;
+} catch(e) {}
+
+// Collect validation stats from all 5 Validate & Clean nodes
+const validateNodeNames = [
+  'Validate & Clean Contact',
+  'Validate & Clean Contact1',
+  'Validate & Clean Contact2',
+  'Validate & Clean Contact3',
+  'Validate & Clean Contact4'
+];
+
+for (const nodeName of validateNodeNames) {
+  try {
+    const validatedItems = $(nodeName).all();
+    validationTotal += validatedItems.length;
+    for (const item of validatedItems) {
+      const flags = item.json._validation_flags || [];
+      if (flags.length > 0) {
+        contactsWithFlags++;
+        allFlags.push(...flags);
+      }
+    }
+  } catch(e) {
+    // Node didn't execute in this run (normal - not all paths fire every time)
+  }
+}
+
+emailsNulled = allFlags.filter(f => f.startsWith('email_business_') || f.startsWith('email_personal_')).length;
+phonesNulled = allFlags.filter(f => f.startsWith('phone_direct_')).length;
+namesNulled = allFlags.filter(f => f.startsWith('first_name_') || f.startsWith('last_name_') || f === 'contact_has_no_valid_first_name').length;
+linkedinNulled = allFlags.filter(f => f.startsWith('linkedin_')).length;
+roleBasedEmails = allFlags.filter(f => f.includes('_role_based')).length;
+
+totalContactsInserted = soloWithName + apolloEnriched + websiteFoundName + noDomainFoundName;
+
+const summary = {
+  run_completed_at: new Date().toISOString(),
+  batch_size: config.batch_size,
+  companies_processed: companiesProcessed,
+  solo_detected: soloDetected,
+  solo_with_name_extracted: soloWithName,
+  apollo_searched: apolloSearched,
+  apollo_found_people: apolloFound,
+  apollo_contacts_created: apolloEnriched,
+  website_scraped: websiteScraped,
+  website_names_found: websiteFoundName,
+  no_domain_fallback: noDomainFallback,
+  no_domain_names_found: noDomainFoundName,
+  total_contacts_inserted: totalContactsInserted,
+  companies_without_contacts: companiesProcessed - totalContactsInserted,
+  validation: {
+    contacts_validated: validationTotal,
+    contacts_with_issues: contactsWithFlags,
+    emails_nulled: emailsNulled,
+    role_based_emails_rejected: roleBasedEmails,
+    phones_nulled: phonesNulled,
+    names_nulled: namesNulled,
+    linkedin_nulled: linkedinNulled,
+    all_flags: allFlags
+  },
+  message: `Created ${totalContactsInserted} contacts from ${companiesProcessed} companies. Sources: ${soloWithName} solo, ${apolloEnriched} Apollo, ${websiteFoundName} website, ${noDomainFoundName} name extraction. Validation cleaned ${contactsWithFlags}/${validationTotal} contacts (${emailsNulled} emails, ${phonesNulled} phones, ${namesNulled} names nulled).`
+};
+
+console.log('=== STEP 3a: FIND PEOPLE SUMMARY ===');
+console.log(JSON.stringify(summary, null, 2));
+
+return [{ json: summary }];
+===== END NODE =====
+
+===== CODE NODE: Collapse to Single =====
+// Collapse to single item - Fetch Contacts data is accessed by name in Filter & Merge
+return [{ json: { _trigger: 'fetch_companies' } }];
+===== END NODE =====
+
+===== CODE NODE: Bridge to 3b =====
+// Collapse all input items into a single trigger item for the next step
+return [{ json: { _trigger: 'continue', _timestamp: new Date().toISOString() } }];
+===== END NODE =====
+
+===== CODE NODE: Bridge to 3a =====
+// Collapse all input items into a single trigger item for the next step
+return [{ json: { _trigger: 'continue', _timestamp: new Date().toISOString() } }];
+===== END NODE =====
+
+===== CODE NODE: Bridge to 4 =====
+// Collapse all input items into a single trigger item for the next step
+return [{ json: { _trigger: 'continue', _timestamp: new Date().toISOString() } }];
+===== END NODE =====
+
+===== SET NODE: Enrichment Config =====
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "batch-size",
+        "name": "batch_size",
+        "value": "1000",
+        "type": "string"
+      },
+      {
+        "id": "batch-offset",
+        "name": "batch_offset",
+        "value": "0",
+        "type": "string"
+      },
+      {
+        "id": "http-timeout",
+        "name": "http_timeout_ms",
+        "value": "15000",
+        "type": "string"
+      },
+      {
+        "id": "skip-google-details",
+        "name": "skip_google_details",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "id": "skip-social-discovery",
+        "name": "skip_social_discovery",
+        "value": "true",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+===== END NODE =====
+
+===== SET NODE: Step 3a Config =====
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "batch-size",
+        "name": "batch_size",
+        "value": "1000",
+        "type": "string"
+      },
+      {
+        "id": "batch-offset",
+        "name": "batch_offset",
+        "value": "0",
+        "type": "string"
+      },
+      {
+        "id": "skip-apollo",
+        "name": "skip_apollo",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "id": "skip-website-scrape",
+        "name": "skip_website_scrape",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "id": "apollo-enrich-enabled",
+        "name": "apollo_enrich_enabled",
+        "value": "true",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+===== END NODE =====
+
+===== SET NODE: Step 3b Config =====
+{
+  "assignments": {
+    "assignments": [
+      {
+        "id": "batch-size",
+        "name": "batch_size",
+        "value": "100",
+        "type": "string"
+      },
+      {
+        "id": "batch-offset",
+        "name": "batch_offset",
+        "value": "0",
+        "type": "string"
+      },
+      {
+        "id": "skip-instagram",
+        "name": "skip_instagram",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "id": "skip-facebook",
+        "name": "skip_facebook",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "id": "skip-tiktok",
+        "name": "skip_tiktok",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "id": "skip-twitter",
+        "name": "skip_twitter",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "id": "skip-linkedin",
+        "name": "skip_linkedin",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "id": "skip-youtube",
+        "name": "skip_youtube",
+        "value": "true",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+===== END NODE =====
+
+===== SET NODE: Step 4 Config =====
+{
+  "assignments": {
+    "assignments": [
+      {
+        "name": "skip_hunter",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "name": "skip_snovio",
+        "value": "true",
+        "type": "string"
+      },
+      {
+        "name": "skip_hunter_verifier",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "name": "skip_namsor",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "name": "skip_phone_verifier",
+        "value": "false",
+        "type": "string"
+      },
+      {
+        "name": "batch_size",
+        "value": "1000",
+        "type": "string"
+      },
+      {
+        "name": "batch_offset",
+        "value": "0",
+        "type": "string"
+      }
+    ]
+  },
+  "options": {}
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Batch from Supabase =====
+{
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?enrichment_status=in.(discovered,partially_enriched)&discovery_metro=eq.{{ $('Metro Config').first().json.metro_name }}&order=discovered_at.asc&limit={{ $json.batch_size }}&offset={{ $json.batch_offset }}&select=id,name,phone,domain,address,city,state,country,google_place_id,category,has_website,google_review_count,google_rating,source_urls,on_yelp,on_groupon",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 30000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Google Places Lookup =====
+{
+  "method": "POST",
+  "url": "https://places.googleapis.com/v1/places:searchText",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "X-Goog-FieldMask",
+        "value": "places.id,places.displayName,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount"
+      },
+      {
+        "name": "X-Goog-Api-Key",
+        "value": "={{ $env.GOOGLE_PLACES_API_KEY }}"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={\n  \"textQuery\": \"{{ $json.name }} {{ $json.city }} {{ $json.state }}\",\n  \"maxResultCount\": 3\n}",
+  "options": {
+    "batching": {
+      "batch": {
+        "batchSize": 5
+      }
+    }
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Website HTML =====
+{
+  "url": "=https://{{ $json.domain }}",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "User-Agent",
+        "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      {
+        "name": "Accept",
+        "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      }
+    ]
+  },
+  "options": {
+    "redirect": {
+      "redirect": {
+        "maxRedirects": 5
+      }
+    },
+    "response": {
+      "response": {
+        "fullResponse": true,
+        "responseFormat": "text"
+      }
+    },
+    "timeout": "={{ Number($('Enrichment Config').first().json.http_timeout_ms) }}"
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Google Places Details =====
+{
+  "url": "=https://places.googleapis.com/v1/places/{{ $json.google_place_id }}",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "X-Goog-FieldMask",
+        "value": "currentOpeningHours,regularOpeningHours,types,photos,priceLevel,businessStatus"
+      },
+      {
+        "name": "X-Goog-Api-Key",
+        "value": "={{ $env.GOOGLE_PLACES_API_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 15000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Update Company in Supabase =====
+{
+  "method": "PATCH",
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?id=eq.{{ $json._company_id }}",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Prefer",
+        "value": "return=minimal"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={{ JSON.stringify($json._update_payload) }}",
+  "options": {
+    "batching": {
+      "batch": {
+        "batchSize": 10,
+        "batchInterval": 500
+      }
+    }
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Insert Social Profiles =====
+{
+  "method": "POST",
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/social_profiles",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Prefer",
+        "value": "resolution=merge-duplicates,return=minimal"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={{ JSON.stringify($json._social_rows) }}",
+  "options": {}
+}
+===== END NODE =====
+
+===== HTTP NODE: Apollo People Search =====
+{
+  "method": "POST",
+  "url": "https://api.apollo.io/api/v1/mixed_people/api_search",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Cache-Control",
+        "value": "no-cache"
+      },
+      {
+        "name": "X-Api-Key",
+        "value": "={{ $env.APOLLO_API_KEY }}"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={\n  \"q_organization_domains\": \"{{ $json.domain }}\",\n  \"person_titles\": [\"owner\", \"founder\", \"ceo\", \"proprietor\", \"director\", \"manager\", \"massage therapist\", \"licensed massage therapist\"],\n  \"per_page\": 5\n}",
+  "options": {
+    "timeout": 15000,
+    "batching": {
+      "batch": {
+        "batchSize": 3,
+        "batchInterval": 2000
+      }
+    }
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Apollo People Enrich =====
+{
+  "method": "POST",
+  "url": "https://api.apollo.io/api/v1/people/match",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Cache-Control",
+        "value": "no-cache"
+      },
+      {
+        "name": "X-Api-Key",
+        "value": "={{ $env.APOLLO_API_KEY }}"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={\n  \"id\": \"{{ $json._apollo_person_id }}\",\n  \"reveal_personal_emails\": true,\n  \"reveal_phone_number\": false\n}",
+  "options": {
+    "batching": {
+      "batch": {
+        "batchSize": 5
+      }
+    },
+    "timeout": 15000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch About Page =====
+{
+  "url": "=https://{{ $json.domain }}/about",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "User-Agent",
+        "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+      },
+      {
+        "name": "Accept",
+        "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      }
+    ]
+  },
+  "options": {
+    "redirect": {
+      "redirect": {
+        "maxRedirects": 5
+      }
+    },
+    "response": {
+      "response": {
+        "fullResponse": true,
+        "responseFormat": "text"
+      }
+    },
+    "timeout": 15000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Insert Contact to Supabase =====
+{
+  "method": "POST",
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/contacts?on_conflict=company_id,first_name,last_name,source",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Content-Type",
+        "value": "application/json"
+      },
+      {
+        "name": "Prefer",
+        "value": "resolution=ignore-duplicates,return=minimal"
+      }
+    ]
+  },
+  "sendBody": true,
+  "specifyBody": "json",
+  "jsonBody": "={{ JSON.stringify($json._contact) }}",
+  "options": {
+    "batching": {
+      "batch": {
+        "batchSize": 10,
+        "batchInterval": 500
+      }
+    }
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Companies =====
+{
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?enrichment_status=in.(partially_enriched,fully_enriched)&discovery_metro=eq.{{ $('Metro Config').first().json.metro_name }}&order=lead_score.desc,discovered_at.asc&limit={{ $json.batch_size }}&offset={{ $json.batch_offset }}&select=id,name,phone,domain,address,city,state,country,google_place_id,category,estimated_size,has_website,google_review_count,google_rating",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 30000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Existing Contacts =====
+{
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/contacts?select=company_id",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 30000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Contacts =====
+{
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/contacts?select=id,company_id,first_name,last_name,role,is_owner,email_business,email_personal,phone_direct,linkedin_url,cultural_affinity,source,email_status,phone_status,phone_line_type,phone_carrier&or=(email_status.is.null,email_status.eq.unverified,and(phone_direct.not.is.null,phone_status.is.null))&order=created_at.asc&limit={{ $json.batch_size }}&offset={{ $json.batch_offset }}",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 30000
+  }
+}
+===== END NODE =====
+
+===== HTTP NODE: Fetch Companies1 =====
+{
+  "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?select=id,name,phone,domain,email,email_status,phone_status,phone_line_type,city,state&enrichment_status=in.(partially_enriched,fully_enriched)&discovery_metro=eq.{{ $('Metro Config').first().json.metro_name }}",
+  "sendHeaders": true,
+  "headerParameters": {
+    "parameters": [
+      {
+        "name": "apikey",
+        "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+      },
+      {
+        "name": "Authorization",
+        "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+      }
+    ]
+  },
+  "options": {
+    "timeout": 30000
+  }
+}
+===== END NODE =====

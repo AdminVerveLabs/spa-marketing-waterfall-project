@@ -1,0 +1,800 @@
+===== NODE: Parse Batch =====
+// Supabase HTTP node may return items individually (one per row) or as a single array.
+// Handle both cases.
+const allInputs = $input.all();
+
+let companies = [];
+
+if (allInputs.length === 1 && Array.isArray(allInputs[0].json)) {
+  // Single item containing an array
+  companies = allInputs[0].json;
+} else if (allInputs.length === 1 && allInputs[0].json[0]) {
+  // Single item with nested array
+  companies = allInputs[0].json;
+} else {
+  // Multiple items, one company per item (this is what n8n HTTP node does)
+  companies = allInputs.map(i => i.json);
+}
+
+if (!companies || companies.length === 0 || (companies.length === 1 && !companies[0].id)) {
+  return [{ json: { _empty: true, _count: 0, _message: 'No companies to enrich in this batch' } }];
+}
+
+console.log(`Batch loaded: ${companies.length} companies to enrich`);
+
+return companies.map(c => ({ json: c }));
+===== END NODE =====
+
+===== NODE: Skip - No Website =====
+// For companies without a website, pass through with empty enrichment
+// but still check domain for booking platform signals
+const items = $input.all();
+const results = [];
+
+const bookingSignatures = {
+  'jane_app': ['jane.app', 'janeapp.com'],
+  'acuity': ['acuityscheduling.com', 'squareup.com/appointments'],
+  'mindbody': ['mindbodyonline.com', 'clients.mindbodyonline.com', 'mindbody.io'],
+  'square': ['square.site', 'squareup.com'],
+  'vagaro': ['vagaro.com'],
+  'fresha': ['fresha.com', 'shedul.com'],
+  'schedulicity': ['schedulicity.com'],
+  'schedulista': ['schedulista.com'],
+  'booksy': ['booksy.com'],
+  'massagebook': ['massagebook.com'],
+  'genbook': ['genbook.com'],
+  'noterro': ['noterro.com'],
+  'clinicsense': ['clinicsense.com'],
+  'wix_bookings': ['wix.com/booking'],
+  'calendly': ['calendly.com']
+};
+
+for (const entry of items) {
+  const item = entry.json;
+  const domain = (item.domain || '').toLowerCase();
+
+  let booking_platform = null;
+  let has_online_booking = false;
+
+  for (const [platform, signatures] of Object.entries(bookingSignatures)) {
+    for (const sig of signatures) {
+      if (domain.includes(sig)) {
+        booking_platform = platform;
+        has_online_booking = true;
+        break;
+      }
+    }
+    if (has_online_booking) break;
+  }
+
+  results.push({
+    json: {
+      ...item,
+      _website_enrichment: {
+        has_online_booking,
+        booking_platform,
+        has_paid_ads: false,
+        estimated_size: null,
+        social_links_found: [],
+        _website_fetch_status: 'skipped_no_website'
+      }
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Analyze Website HTML =====
+// runOnceForAllItems — index-paired with Has Website?
+const upstreamAll = $('Has Website?').all();
+const inputAll = $input.all();
+const results = [];
+
+// === HOISTED CONSTANTS ===
+const bookingSignatures = {
+  'jane_app': ['jane.app', 'janeapp.com'],
+  'acuity': ['acuityscheduling.com', 'squareup.com/appointments', 'app.acuityscheduling.com'],
+  'mindbody': ['mindbodyonline.com', 'clients.mindbodyonline.com', 'mindbody.io', 'healcode.com'],
+  'square': ['square.site', 'squareup.com'],
+  'vagaro': ['vagaro.com'],
+  'fresha': ['fresha.com', 'shedul.com'],
+  'schedulicity': ['schedulicity.com'],
+  'schedulista': ['schedulista.com'],
+  'booksy': ['booksy.com'],
+  'massagebook': ['massagebook.com'],
+  'genbook': ['genbook.com'],
+  'noterro': ['noterro.com'],
+  'clinicsense': ['clinicsense.com'],
+  'wix_bookings': ['wix.com/booking', 'bookings.wixapps.net'],
+  'calendly': ['calendly.com']
+};
+
+const junkEmailDomains = [
+  'sentry.io', 'schema.org', 'w3.org', 'wordpress.com', 'wordpress.org',
+  'squarespace.com', 'wix.com', 'gravatar.com', 'facebook.com', 'twitter.com',
+  'instagram.com', 'youtube.com', 'linkedin.com', 'pinterest.com', 'tiktok.com',
+  'cloudflare.com', 'googleapis.com', 'googletagmanager.com', 'google-analytics.com',
+  'gstatic.com', 'jsdelivr.net', 'cdnjs.cloudflare.com', 'unpkg.com',
+  'bootstrapcdn.com', 'fontawesome.com', 'typekit.net', 'fonts.googleapis.com',
+  'example.com', 'example.org', 'test.com', 'localhost',
+  'mailinator.com', 'guerrillamail.com', 'tempmail.com', 'yopmail.com'
+];
+
+const junkLocalPatterns = [
+  /^noreply$/i, /^no-reply$/i, /^donotreply$/i, /^do-not-reply$/i,
+  /^postmaster$/i, /^mailer-daemon$/i, /^webmaster$/i, /^root$/i,
+  /^null$/i, /^test$/i, /^admin$/i, /^abuse$/i
+];
+
+const roleBasedPrefixes = ['info', 'contact', 'hello', 'office', 'reception',
+  'frontdesk', 'front.desk', 'appointments', 'booking', 'bookings',
+  'schedule', 'scheduling', 'inquiries', 'inquiry', 'general', 'team', 'staff',
+  'support', 'sales', 'billing'];
+
+const adSignatures = [
+  'googleadservices.com', 'googlesyndication.com', 'googleads.g.doubleclick.net',
+  'google_conversion', 'conversion_async', 'ads/ga-audiences',
+  'fbevents.js', 'fbq(', 'snap.licdn.com', 'linkedin.com/insight',
+  'analytics.tiktok.com', 'tiktok.com/i18n/pixel', 'ads-twitter.com', 'static.ads-twitter.com'
+];
+
+const socialPatterns = {
+  facebook: /https?:\/\/(?:www\.)?facebook\.com\/[a-zA-Z0-9._-]+/gi,
+  instagram: /https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9._-]+/gi,
+  tiktok: /https?:\/\/(?:www\.)?tiktok\.com\/@[a-zA-Z0-9._-]+/gi,
+  linkedin: /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[a-zA-Z0-9._-]+/gi,
+  x: /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[a-zA-Z0-9._-]+/gi,
+  youtube: /https?:\/\/(?:www\.)?youtube\.com\/(?:c\/|channel\/|@)[a-zA-Z0-9._-]+/gi
+};
+
+const teamPatterns = [
+  /our\s+team/i, /meet\s+(?:the\s+)?team/i, /our\s+(?:therapists|practitioners|staff|massage\s+therapists)/i,
+  /meet\s+(?:our|the)\s+(?:therapists|practitioners|staff)/i
+];
+
+const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+const mailtoRegex = /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi;
+
+const bookingPatterns = ['book now', 'book online', 'book appointment', 'schedule now', 'schedule online', 'book a massage', 'online booking'];
+
+const soloSignals = ['sole proprietor', 'solo practice', 'independent massage',
+  'i am a licensed', "i'm a licensed", 'about me', 'my practice', 'my approach',
+  'my services', 'i specialize', 'i provide'];
+
+for (let i = 0; i < inputAll.length; i++) {
+  const company = upstreamAll[i].json;
+  const response = inputAll[i].json;
+  const domain = (company.domain || '').toLowerCase();
+
+  // === DOMAIN-BASED BOOKING DETECTION (runs even if fetch fails) ===
+  let booking_platform = null;
+  let has_online_booking = false;
+
+  // Check domain first
+  for (const [platform, signatures] of Object.entries(bookingSignatures)) {
+    for (const sig of signatures) {
+      if (domain.includes(sig)) {
+        booking_platform = platform;
+        has_online_booking = true;
+        break;
+      }
+    }
+    if (has_online_booking) break;
+  }
+
+  // Handle fetch errors
+  if (response.error || (!response.body && !response.data)) {
+    results.push({
+      json: {
+        ...company,
+        _website_enrichment: {
+          has_online_booking,
+          booking_platform,
+          has_paid_ads: false,
+          estimated_size: null,
+          social_links_found: [],
+          emails_found: [],
+          best_email: null,
+          _website_fetch_status: 'error',
+          _website_error: response.error || 'Empty response'
+        }
+      }
+    });
+    continue;
+  }
+
+  const rawHtml = response.body || response.data || '';
+  const html = (typeof rawHtml === 'string' ? rawHtml : '').toLowerCase();
+  const htmlOriginal = typeof rawHtml === 'string' ? rawHtml : '';
+
+  // === EMAIL EXTRACTION ===
+  const allEmailMatches = htmlOriginal.match(emailRegex) || [];
+
+  // Also extract from mailto: links (higher confidence)
+  // Reset regex lastIndex since we reuse it across loop iterations
+  mailtoRegex.lastIndex = 0;
+  const mailtoEmails = new Set();
+  let mailtoMatch;
+  while ((mailtoMatch = mailtoRegex.exec(htmlOriginal)) !== null) {
+    mailtoEmails.add(mailtoMatch[1].toLowerCase());
+  }
+
+  // Deduplicate and filter
+  const uniqueEmails = [...new Set(allEmailMatches.map(e => e.toLowerCase()))];
+  const scoredEmails = [];
+
+  for (const email of uniqueEmails) {
+    const [localPart, emailDomain] = email.split('@');
+    if (!emailDomain) continue;
+
+    // Filter out junk domains
+    if (junkEmailDomains.some(d => emailDomain.includes(d))) continue;
+
+    // Filter out junk local parts
+    if (junkLocalPatterns.some(p => p.test(localPart))) continue;
+
+    // Filter out numeric-only local parts
+    if (/^\d+$/.test(localPart)) continue;
+
+    // Score the email
+    let score = 0;
+    if (domain && emailDomain.includes(domain.replace('www.', ''))) score += 20;
+    if (mailtoEmails.has(email)) score += 10;
+    if (roleBasedPrefixes.some(p => localPart === p || localPart.startsWith(p + '.'))) score += 5;
+
+    scoredEmails.push({ email, score, from_mailto: mailtoEmails.has(email) });
+  }
+
+  // Sort by score descending
+  scoredEmails.sort((a, b) => b.score - a.score);
+  const best_email = scoredEmails.length > 0 ? scoredEmails[0].email : null;
+
+  // === HTML-BASED BOOKING DETECTION ===
+  if (!has_online_booking) {
+    for (const [platform, signatures] of Object.entries(bookingSignatures)) {
+      for (const sig of signatures) {
+        if (html.includes(sig)) {
+          booking_platform = platform;
+          has_online_booking = true;
+          break;
+        }
+      }
+      if (has_online_booking) break;
+    }
+  }
+
+  if (!has_online_booking) {
+    for (const pattern of bookingPatterns) {
+      if (html.includes(pattern)) {
+        has_online_booking = true;
+        booking_platform = 'unknown';
+        break;
+      }
+    }
+  }
+
+  // === PAID ADS DETECTION ===
+  let has_paid_ads = false;
+  for (const sig of adSignatures) {
+    if (html.includes(sig)) {
+      has_paid_ads = true;
+      break;
+    }
+  }
+
+  // === SOCIAL LINKS EXTRACTION ===
+  const social_links_found = [];
+  const seenPlatforms = new Set();
+
+  for (const [platform, regex] of Object.entries(socialPatterns)) {
+    // Reset regex lastIndex since we reuse across loop iterations
+    regex.lastIndex = 0;
+    const matches = htmlOriginal.match(regex) || [];
+    for (const url of matches) {
+      const lowerUrl = url.toLowerCase();
+      if (lowerUrl.includes('/sharer') || lowerUrl.includes('/share') ||
+          lowerUrl.includes('/intent') || lowerUrl.includes('/login') ||
+          lowerUrl.includes('/help') || lowerUrl.includes('/about') ||
+          lowerUrl.includes('/policies') || lowerUrl.includes('/privacy')) {
+        continue;
+      }
+      if (!seenPlatforms.has(platform)) {
+        social_links_found.push({ platform, url: url.replace(/\/+$/, '') });
+        seenPlatforms.add(platform);
+      }
+    }
+  }
+
+  // === TEAM SIZE ESTIMATION ===
+  let estimated_size = null;
+
+  let hasTeamPage = false;
+  for (const p of teamPatterns) {
+    if (p.test(htmlOriginal)) {
+      hasTeamPage = true;
+      break;
+    }
+  }
+
+  if (hasTeamPage) {
+    const namePatterns = htmlOriginal.match(/<h[2-4][^>]*>[^<]{2,40}<\/h[2-4]>/gi) || [];
+    const staffLinks = htmlOriginal.match(/\/(?:team|staff|therapist|practitioner)s?\/[a-z-]+/gi) || [];
+    const memberCount = Math.max(namePatterns.length, staffLinks.length);
+    if (memberCount <= 1) estimated_size = 'solo';
+    else if (memberCount <= 5) estimated_size = 'small';
+    else estimated_size = 'medium';
+  } else {
+    const isSolo = soloSignals.some(s => html.includes(s));
+    if (isSolo) estimated_size = 'solo';
+  }
+
+  results.push({
+    json: {
+      ...company,
+      _website_enrichment: {
+        has_online_booking,
+        booking_platform,
+        has_paid_ads,
+        estimated_size,
+        social_links_found,
+        emails_found: scoredEmails.slice(0, 5),
+        best_email,
+        _website_fetch_status: 'success'
+      }
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Merge Website Results =====
+// Merge website-enriched (from both paths: with website and without)
+const items = $input.all();
+const results = [];
+// Enrichment Config is a single-item node, .first() is correct here
+const config = $('Enrichment Config').first().json;
+const skipGoogleDetails = config.skip_google_details === 'true' || config.skip_google_details === true;
+
+for (const entry of items) {
+  const item = entry.json;
+  const enrichment = item._website_enrichment || {};
+
+  // Prepare the enriched company object
+  const enriched = {
+    id: item.id,
+    name: item.name,
+    phone: item.phone,
+    domain: item.domain,
+    address: item.address,
+    city: item.city,
+    state: item.state,
+    country: item.country,
+    google_place_id: item.google_place_id,
+    category: item.category,
+    has_website: item.has_website,
+    google_review_count: item.google_review_count,
+    google_rating: item.google_rating,
+    source_urls: item.source_urls,
+    on_yelp: item.on_yelp,
+    on_groupon: item.on_groupon,
+
+    // Enriched fields from website analysis
+    has_online_booking: enrichment.has_online_booking || false,
+    booking_platform: enrichment.booking_platform || null,
+    has_paid_ads: enrichment.has_paid_ads || false,
+    estimated_size: enrichment.estimated_size || null,
+
+    // Email fields from website scraping (BUG-F012 fix)
+    _emails_found: enrichment.emails_found || [],
+    _best_email: enrichment.best_email || null,
+
+    // Backfill data from Google Places lookup (BUG-F013 fix)
+    _backfill_patch: item._backfill_patch || null,
+
+    // Social links for later processing
+    _social_links_found: enrichment.social_links_found || [],
+    _website_fetch_status: enrichment._website_fetch_status || 'unknown',
+    _website_error: enrichment._website_error || null,
+    _needs_social_discovery: (enrichment.social_links_found || []).length === 0,
+    _skip_google_details: skipGoogleDetails
+  };
+
+  results.push({ json: enriched });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Parse Google Details =====
+// runOnceForAllItems — index-paired with Has Google Place ID?
+const upstreamAll = $('Has Google Place ID?').all();
+const inputAll = $input.all();
+const results = [];
+
+for (let i = 0; i < inputAll.length; i++) {
+  const company = upstreamAll[i].json;
+  const details = inputAll[i].json;
+
+  // Extract incremental data from Google Places Details
+  let opening_hours = null;
+  let business_status = null;
+  let photo_count = 0;
+  let price_level = null;
+  let additional_types = [];
+
+  if (details && !details.error) {
+    if (details.regularOpeningHours && details.regularOpeningHours.periods) {
+      opening_hours = details.regularOpeningHours;
+    } else if (details.currentOpeningHours && details.currentOpeningHours.periods) {
+      opening_hours = details.currentOpeningHours;
+    }
+    business_status = details.businessStatus || null;
+    if (details.photos && Array.isArray(details.photos)) {
+      photo_count = details.photos.length;
+    }
+    price_level = details.priceLevel || null;
+    if (details.types && Array.isArray(details.types)) {
+      additional_types = details.types;
+    }
+  }
+
+  results.push({
+    json: {
+      ...company,
+      _google_details: {
+        opening_hours,
+        business_status,
+        photo_count,
+        price_level,
+        additional_types,
+        _fetch_status: details.error ? 'error' : 'success'
+      }
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Skip Google Details =====
+// Companies without Google Place ID skip details fetch
+const items = $input.all();
+const results = [];
+
+for (const entry of items) {
+  const company = entry.json;
+  results.push({
+    json: {
+      ...company,
+      _google_details: {
+        opening_hours: null,
+        business_status: null,
+        photo_count: 0,
+        price_level: null,
+        additional_types: [],
+        _fetch_status: 'skipped'
+      }
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Prepare Company Update =====
+const items = $input.all();
+const results = [];
+
+for (const entry of items) {
+  const item = entry.json;
+  const now = new Date().toISOString();
+
+  // Build the PATCH payload for Supabase
+  const updatePayload = {
+    has_online_booking: item.has_online_booking || false,
+    booking_platform: item.booking_platform || null,
+    has_paid_ads: item.has_paid_ads || false,
+    estimated_size: item.estimated_size || null,
+    enrichment_status: 'partially_enriched',
+    enriched_at: now
+  };
+
+  // Include backfill data ONLY from companies that went through the backfill path
+  // This prevents 409 conflicts when PATCHing domain on companies that already have one
+  const backfill = item._backfill_patch || {};
+  if (backfill.domain) updatePayload.domain = backfill.domain;
+  if (backfill.google_place_id) updatePayload.google_place_id = backfill.google_place_id;
+  if (backfill.google_rating) updatePayload.google_rating = backfill.google_rating;
+  if (backfill.google_review_count) updatePayload.google_review_count = backfill.google_review_count;
+
+  // has_website can change via website analysis (not just backfill)
+  if (item.has_website) updatePayload.has_website = item.has_website;
+
+  // Include website-scraped email if found (BUG-F012 fix: read from flat field)
+  const websiteEmail = item._best_email || null;
+  if (websiteEmail) {
+    updatePayload.email = websiteEmail;
+    // email_status stays NULL - will be verified in Step 4
+  }
+
+  results.push({
+    json: {
+      _company_id: item.id,
+      _update_payload: updatePayload,
+      // Pass through everything for social discovery
+      ...item
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Prepare Social Processing =====
+// runOnceForAllItems — index-paired with Prepare Company Update
+// Enrichment Config is a single-item node, hoisted outside loop
+const upstreamAll = $('Prepare Company Update').all();
+const inputAll = $input.all();
+const config = $('Enrichment Config').first().json;
+const skipSocial = config.skip_social_discovery === 'true' || config.skip_social_discovery === true;
+const results = [];
+
+for (let i = 0; i < inputAll.length; i++) {
+  const item = upstreamAll[i].json;
+
+  const socialLinks = item._social_links_found || [];
+  const needsDiscovery = item._needs_social_discovery && !skipSocial;
+
+  results.push({
+    json: {
+      company_id: item.id,
+      company_name: item.name,
+      city: item.city,
+      state: item.state,
+      domain: item.domain,
+      social_links_found: socialLinks,
+      needs_social_discovery: needsDiscovery,
+      _skip_social: skipSocial
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Prepare Social Profiles Insert =====
+// Insert social profiles found from website HTML into Supabase social_profiles table
+const items = $input.all();
+const results = [];
+
+for (const entry of items) {
+  const item = entry.json;
+  const links = item.social_links_found || [];
+
+  if (links.length === 0) {
+    results.push({ json: { _social_inserts: 0, company_id: item.company_id } });
+    continue;
+  }
+
+  // Build an array of social_profiles rows
+  const rows = links.map(link => ({
+    company_id: item.company_id,
+    platform: link.platform,
+    profile_url: link.url,
+    follower_count: null,
+    post_count: null,
+    last_post_date: null,
+    scraped_at: new Date().toISOString()
+  }));
+
+  results.push({
+    json: {
+      _social_rows: rows,
+      _social_inserts: rows.length,
+      company_id: item.company_id,
+      company_name: item.company_name,
+      city: item.city,
+      state: item.state,
+      needs_social_discovery: false
+    }
+  });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Extract & Patch Domain =====
+// runOnceForAllItems — index-paired with Needs Backfill?
+const upstreamAll = $('Needs Backfill?').all();
+const inputAll = $input.all();
+const results = [];
+
+// Hoisted constant
+const BLOCKED_DOMAINS = ['wixsite.com','wix.com','setmore.com','schedulista.com','glossgenius.com','square.site','genbook.com','jane.app','acuityscheduling.com','mindbodyonline.com','mindbody.io','vagaro.com','fresha.com','schedulicity.com','booksy.com','massagebook.com','noterro.com','clinicsense.com','calendly.com','squarespace.com'];
+
+for (let i = 0; i < inputAll.length; i++) {
+  const company = upstreamAll[i].json;
+  const response = inputAll[i].json;
+  const places = response.places || [];
+
+  if (places.length === 0) {
+    results.push({ json: { ...company } });
+    continue;
+  }
+
+  const companyName = (company.name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
+  const companyPhone = (company.phone || '').replace(/[^\d]/g, '');
+
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const place of places) {
+    const placeName = ((place.displayName && place.displayName.text) || '').toLowerCase().replace(/[^a-z0-9\s]/g, '');
+    let score = 0;
+
+    const companyWords = companyName.split(/\s+/).filter(w => w.length > 2);
+    const placeWords = placeName.split(/\s+/).filter(w => w.length > 2);
+    const matchingWords = companyWords.filter(w => placeWords.some(pw => pw.includes(w) || w.includes(pw)));
+    score = companyWords.length > 0 ? matchingWords.length / companyWords.length : 0;
+
+    const placePhone = (place.internationalPhoneNumber || place.nationalPhoneNumber || '').replace(/[^\d]/g, '');
+    if (companyPhone && placePhone && (placePhone.includes(companyPhone.slice(-10)) || companyPhone.includes(placePhone.slice(-10)))) {
+      score += 0.5;
+    }
+
+    if (score > bestScore && score >= 0.4) {
+      bestScore = score;
+      bestMatch = place;
+    }
+  }
+
+  if (!bestMatch) {
+    results.push({ json: { ...company } });
+    continue;
+  }
+
+  const website = bestMatch.websiteUri || '';
+  let domain = null;
+  if (website) {
+    const match = website.match(/^https?:\/\/(?:www\.)?([^\/]+)/i);
+    if (match) domain = match[1];
+  }
+
+  // Check domain against blocklist
+  let _domain_blocked = false;
+  let _domain_blocked_platform = '';
+  if (domain) {
+    const lowerDomain = domain.toLowerCase();
+    for (const blocked of BLOCKED_DOMAINS) {
+      if (lowerDomain === blocked || lowerDomain.endsWith('.' + blocked)) {
+        _domain_blocked = true;
+        _domain_blocked_platform = blocked;
+        domain = null;
+        break;
+      }
+    }
+  }
+
+  // Merge found data into the company item so downstream nodes see it
+  const updated = { ...company };
+  if (bestMatch.id && !company.google_place_id) updated.google_place_id = bestMatch.id;
+  if (domain) {
+    updated.domain = domain;
+    updated.has_website = true;
+  }
+  if (_domain_blocked) {
+    updated._domain_blocked = true;
+    updated._domain_blocked_platform = _domain_blocked_platform;
+  }
+  if (bestMatch.rating && !company.google_rating) updated.google_rating = bestMatch.rating;
+  if (bestMatch.userRatingCount && !company.google_review_count) updated.google_review_count = bestMatch.userRatingCount;
+
+  // Build Supabase patch payload - only include domain if not blocked
+  const patch = {};
+  if (updated.google_place_id !== company.google_place_id) patch.google_place_id = updated.google_place_id;
+  if (domain) {
+    patch.domain = domain;
+    if (updated.has_website !== company.has_website) patch.has_website = updated.has_website;
+  }
+  if (updated.google_rating !== company.google_rating) patch.google_rating = updated.google_rating;
+  if (updated.google_review_count !== company.google_review_count) patch.google_review_count = updated.google_review_count;
+
+  updated._backfill_patch = Object.keys(patch).length > 0 ? patch : null;
+  updated._backfill_matched = bestMatch.displayName?.text || '';
+  updated._backfill_score = bestScore;
+
+  results.push({ json: updated });
+}
+
+return results;
+===== END NODE =====
+
+===== NODE: Metro Config =====
+// Clear convergence-suppression flags from previous execution
+const staticData = $getWorkflowStaticData('global');
+delete staticData._collapse1_fired;
+delete staticData._collapse2_fired;
+delete staticData._enriched_contact_ids;
+
+// Dynamic Metro Config — reads metro_name from webhook query parameter
+const METROS = {
+  'Austin, TX':     { latitude: '30.2672',  longitude: '-97.7431',  yelp_location: 'Austin, TX', radius_meters: '15000' },
+  'Denver, CO':     { latitude: '39.7392',  longitude: '-104.9903', yelp_location: 'Denver, CO', radius_meters: '15000' },
+  'Phoenix, AZ':    { latitude: '33.4484',  longitude: '-112.0740', yelp_location: 'Phoenix, AZ', radius_meters: '15000' },
+  'Toronto, ON':    { latitude: '43.6532',  longitude: '-79.3832',  yelp_location: 'Toronto, ON', radius_meters: '15000' },
+  'San Diego, CA':  { latitude: '32.7157',  longitude: '-117.1611', yelp_location: 'San Diego, CA', radius_meters: '15000' },
+  'Boise, ID':      { latitude: '43.6150',  longitude: '-116.2023', yelp_location: 'Boise, ID', radius_meters: '25000' },
+};
+
+const webhookData = $('Webhook').first().json;
+const metroName = (webhookData.query && webhookData.query.metro_name) || '';
+
+if (!metroName) {
+  throw new Error('Missing required query parameter: metro_name. Use ?metro_name=City, ST');
+}
+
+const metro = METROS[metroName];
+if (!metro) {
+  const available = Object.keys(METROS).join(', ');
+  throw new Error(`Unknown metro: "${metroName}". Available: ${available}`);
+}
+
+return [{
+  json: {
+    metro_name: metroName,
+    latitude: metro.latitude,
+    longitude: metro.longitude,
+    radius_meters: metro.radius_meters,
+    search_queries: 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist',
+    yelp_location: metro.yelp_location
+  }
+}];
+===== END NODE =====
+
+===== NODE: Collapse to Single2 =====
+// Collapse 2 convergence paths (Insert + Insert Flagged) into single item
+// ADR-024: Fire once per execution (suppress secondary batches)
+// ADR-025: Wait for all Step 1 inserts to complete before triggering Step 2
+// Google results arrive in ~5s, Yelp/Apify takes 60-120s.
+// Poll discovered count until stable, then fire.
+const staticData = $getWorkflowStaticData('global');
+if (staticData._collapse2_fired) {
+  return [];
+}
+staticData._collapse2_fired = true;
+
+const metro = $('Metro Config').first().json.metro_name;
+const headers = {
+  'apikey': $env.SUPABASE_SERVICE_KEY,
+  'Authorization': 'Bearer ' + $env.SUPABASE_SERVICE_KEY
+};
+
+let prevCount = -1;
+let stableRounds = 0;
+
+for (let i = 0; i < 10; i++) {
+  // Wait 15 seconds between checks
+  await new Promise(r => setTimeout(r, 15000));
+
+  // Count discovered companies for this metro
+  const rows = await this.helpers.httpRequest({
+    method: 'GET',
+    url: $env.SUPABASE_URL + '/rest/v1/companies?enrichment_status=eq.discovered&discovery_metro=eq.' + encodeURIComponent(metro) + '&select=id',
+    headers,
+    json: true
+  });
+  const count = Array.isArray(rows) ? rows.length : 0;
+
+  if (count === prevCount) {
+    stableRounds++;
+    if (stableRounds >= 2) break; // Stable for 30s — all inserts done
+  } else {
+    stableRounds = 0;
+  }
+  prevCount = count;
+}
+
+return [{ json: { _trigger: 'step1_insert_complete', _discovered_count: prevCount } }];
+===== END NODE =====

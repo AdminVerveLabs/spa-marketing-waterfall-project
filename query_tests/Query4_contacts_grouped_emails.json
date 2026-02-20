@@ -1,0 +1,38 @@
+[
+  {
+    "email_status": null,
+    "count": 28,
+    "has_email": 0,
+    "has_name": 14
+  },
+  {
+    "email_status": "verified",
+    "count": 15,
+    "has_email": 15,
+    "has_name": 15
+  },
+  {
+    "email_status": "unverified",
+    "count": 6,
+    "has_email": 0,
+    "has_name": 5
+  },
+  {
+    "email_status": "accept_all",
+    "count": 4,
+    "has_email": 4,
+    "has_name": 4
+  },
+  {
+    "email_status": "invalid",
+    "count": 4,
+    "has_email": 0,
+    "has_name": 4
+  },
+  {
+    "email_status": "risky",
+    "count": 1,
+    "has_email": 1,
+    "has_name": 1
+  }
+]

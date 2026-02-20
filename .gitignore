@@ -1,0 +1,30 @@
+# Environment
+.env
+*.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+package-lock.json
+
+# Never commit secrets
+*secret*
+*credential*
+*api_key*
+
+# Temp files
+tmp/
+desktop.ini
+
+# Claude Code internal
+.claude/

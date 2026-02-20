@@ -1,0 +1,686 @@
+=== WORKFLOW: Step 4 (isolated) - with Layer 2 Verification ===
+Total nodes: 151
+
+=== TYPE COUNTS ===
+  code: 72
+  httpRequest: 36
+  if: 32
+  set: 5
+  wait: 3
+  merge: 2
+  manualTrigger: 1
+
+=== ALL NODES (sorted by X position) ===
+  1. [ -1184,   -16] manualTrigger        v1  | When clicking ‘Execute workflow’
+  2. [  -848,   -16] set                  v3.4  | Metro Config
+     notes=CONFIGURE: Change metro_name, lat/lng, radius, search queries, and yelp_location
+  3. [  -624,   -16] code                 v2  | Split Search Queries
+  4. [  -400,    80] httpRequest          v4.2  | Start Apify Run
+     notes=Starts the Apify task. Returns run object with data.id for polling.
+     onError=continueRegularOutput
+  5. [  -176,    80] code                 v2  | Extract Run ID
+  6. [    48,    80] wait                 v1.1  | Wait 30s
+  7. [   272,    16] httpRequest          v4.2  | Check Run Status
+     onError=continueRegularOutput
+  8. [   496,    16] code                 v2  | Parse Status
+  9. [   720,    80] if                   v2  | Run Succeeded?
+ 10. [   944,  -160] httpRequest          v4.2  | Google Places - Text Search
+     notes=Google Places API (v1). Needs HTTP Header Auth credential: name='X-Goog-Api-Key'
+ 11. [   944,    80] httpRequest          v4.2  | Fetch Apify Results
+ 12. [  1168,  -160] code                 v2  | Normalize Google Results
+ 13. [  1168,    80] code                 v2  | Normalize Yelp Results
+     notes=After testing, change $('Test Input (Remove After Testing)') to $('Metro Config'
+ 14. [  1392,   -16] merge                v3  | Merge All Sources
+ 15. [  1616,   -16] code                 v2  | Deduplicate Records
+ 16. [  1840,   -16] code                 v2  | Prepare for Supabase
+ 17. [  2064,   -16] if                   v2  | Fuzzy Match?
+ 18. [  2288,  -112] httpRequest          v4.2  | Insert Flagged (Needs Review)
+     notes=Fuzzy-matched records. Status = needs_review for manual dedup.
+ 19. [  2288,    80] httpRequest          v4.2  | Insert to Supabase
+     notes=Clean records. Uses service_role key (bypasses RLS).
+     onError=continueRegularOutput
+ 20. [  2512,   -16] code                 v2  | Run Summary
+ 21. [  2736,   -16] set                  v3.4  | Enrichment Config
+     notes=CONFIGURE: batch_size = how many companies to process per run. batch_offset = st
+ 22. [  2960,   -16] httpRequest          v4.2  | Fetch Batch from Supabase
+ 23. [  3184,   -16] code                 v2  | Parse Batch
+ 24. [  3408,   -16] if                   v2  | Batch Empty?
+ 25. [  3632,  -112] code                 v2  | No Records - Done
+ 26. [  3632,    80] if                   v2.3  | Needs Backfill?
+ 27. [  3856,     0] httpRequest          v4.3  | Google Places Lookup
+     onError=continueRegularOutput
+ 28. [  4080,    16] code                 v2  | Extract & Patch Domain
+     mode=runOnceForEachItem
+ 29. [  4304,    80] merge                v3.2  | Merge Backfill
+ 30. [  4528,    80] if                   v2  | Has Website?
+ 31. [  4752,   -16] httpRequest          v4.2  | Fetch Website HTML
+     notes=Fetches homepage HTML. On error (timeout, SSL, 403, etc.) continues with error d
+     onError=continueRegularOutput
+ 32. [  4976,   -16] code                 v2  | Analyze Website HTML
+     mode=runOnceForEachItem
+     notes=Detects booking platforms, paid ads scripts, social media links, and estimates t
+ 33. [  4976,   176] code                 v2  | Skip - No Website
+     mode=runOnceForEachItem
+ 34. [  5200,    80] code                 v2  | Merge Website Results
+     mode=runOnceForEachItem
+ 35. [  5424,    80] if                   v2  | Has Google Place ID?
+ 36. [  5648,   -16] httpRequest          v4.2  | Google Places Details
+     notes=Fetches ONLY incremental fields not captured in Step 1 Text Search: opening hour
+     onError=continueRegularOutput
+ 37. [  5760,   192] code                 v2  | Skip Google Details
+     mode=runOnceForEachItem
+ 38. [  5872,   -16] code                 v2  | Parse Google Details
+     mode=runOnceForEachItem
+ 39. [  6096,    80] code                 v2  | Prepare Company Update
+     mode=runOnceForEachItem
+ 40. [  6320,    80] httpRequest          v4.2  | Update Company in Supabase
+     notes=PATCH updates enrichment fields. Batched 10 at a time with 500ms delay to avoid 
+     onError=continueRegularOutput
+ 41. [  6544,    80] code                 v2  | Prepare Social Processing
+     mode=runOnceForEachItem
+ 42. [  6768,    80] if                   v2  | Has Social Links?
+ 43. [  6992,   160] if                   v2  | Needs Social Discovery?
+ 44. [  7216,   352] code                 v2  | Build Social Discovery Batch
+ 45. [  7440,   352] if                   v2  | Discovery Queries Exist?
+ 46. [  7664,   160] code                 v2  | Prepare FB Search Input
+ 47. [  7664,   560] code                 v2  | Prepare IG Search Input
+ 48. [  7888,   160] httpRequest          v4.2  | Start FB Search Run
+     notes=Starts the Apify Facebook Search Scraper actor to find Facebook pages for compan
+     onError=continueRegularOutput
+ 49. [  7888,   560] httpRequest          v4.2  | Start IG Search Run
+     notes=Starts the Apify Instagram Search Scraper actor to discover Instagram profiles.
+     onError=continueRegularOutput
+ 50. [  8112,   160] code                 v2  | Extract FB Run ID
+ 51. [  8112,   560] code                 v2  | Extract IG Run ID
+ 52. [  8336,   160] wait                 v1.1  | Wait FB 30s
+ 53. [  8336,   560] wait                 v1.1  | Wait IG 30s
+ 54. [  8560,    80] httpRequest          v4.2  | Check FB Run Status
+ 55. [  8560,   496] httpRequest          v4.2  | Check IG Run Status
+ 56. [  8784,    80] code                 v2  | Parse FB Status
+ 57. [  8784,   496] code                 v2  | Parse IG Status
+ 58. [  9008,   160] if                   v2  | FB Run Succeeded?
+ 59. [  9008,   560] if                   v2  | IG Run Succeeded?
+ 60. [  9232,   160] httpRequest          v4.2  | Fetch FB Search Results
+ 61. [  9232,   560] httpRequest          v4.2  | Fetch IG Search Results
+ 62. [  9456,   160] code                 v2  | Match FB Results to Companies
+ 63. [  9456,   560] code                 v2  | Match IG Results to Companies
+ 64. [  9680,  -208] code                 v2  | Prepare Social Profiles Insert
+     mode=runOnceForEachItem
+ 65. [  9680,   160] if                   v2  | FB Matches Found?
+ 66. [  9680,   560] if                   v2  | IG Matches Found?
+ 67. [  9904,  -208] httpRequest          v4.2  | Insert Social Profiles
+     notes=Inserts social profiles found from website HTML. Uses merge-duplicates to handle
+     onError=continueRegularOutput
+ 68. [  9904,    80] httpRequest          v4.2  | Insert FB Social Profiles
+     onError=continueRegularOutput
+ 69. [  9904,   640] httpRequest          v4.2  | Insert IG Social Profiles
+     onError=continueRegularOutput
+ 70. [ 10128,   224] code                 v2  | Run Summary1
+     notes=Final summary of the enrichment batch. Shows stats for websites analyzed, bookin
+ 71. [ 10336,   224] code                 v2  | Bridge to 3b
+ 72. [ 10560,   224] set                  v3.4  | Step 3b Config
+     notes=CONFIGURE: batch_size = how many social profiles to process. Set skip_<platform>
+ 73. [ 10784,   224] httpRequest          v4.2  | Fetch Unenriched Social Profiles
+     notes=Fetches social_profiles rows where follower_count is NULL (not yet enriched by S
+ 74. [ 11008,   224] code                 v2  | Parse Batch1
+ 75. [ 11232,   224] if                   v2  | Batch Empty?1
+ 76. [ 11456,   128] code                 v2  | No Records - Done1
+ 77. [ 11456,   320] code                 v2  | Build SociaVault Request
+     mode=runOnceForEachItem
+     notes=Extracts username/handle from profile_url, builds SociaVault API URL per platfor
+ 78. [ 11680,   320] if                   v2  | Should Enrich?
+ 79. [ 11904,   256] httpRequest          v4.2  | Call SociaVault API
+     notes=Calls SociaVault profile endpoint. Batched 5 at a time with 2s delay. On error, 
+     onError=continueRegularOutput
+ 80. [ 12128,   256] code                 v2  | Parse SociaVault Response
+     mode=runOnceForEachItem
+     notes=Extracts follower_count, post_count, last_post_date from SociaVault response per
+ 81. [ 12352,   256] httpRequest          v4.2  | Update Social Profile in Supabase
+     notes=PATCH updates social_profiles row. Batched 10 at a time with 500ms delay.
+     onError=continueRegularOutput
+ 82. [ 12576,   336] code                 v2  | Run Summary2
+     notes=Final summary with per-platform breakdown.
+ 83. [ 12784,   336] code                 v2  | Bridge to 3a
+ 84. [ 13104,   320] set                  v3.4  | Step 3a Config
+     notes=CONFIGURE: batch_size = companies per run. skip_apollo/skip_website_scrape to by
+ 85. [ 13328,   320] httpRequest          v4.2  | Fetch Companies
+ 86. [ 13552,   320] httpRequest          v4.2  | Fetch Existing Contacts
+     onError=continueRegularOutput
+ 87. [ 13776,   320] code                 v2  | Filter & Parse Batch
+ 88. [ 14000,   320] if                   v2  | Batch Empty?2
+ 89. [ 14224,   224] code                 v2  | No Records - Done2
+ 90. [ 14224,   416] code                 v2  | Solo Practitioner Check
+     mode=runOnceForEachItem
+     notes=Detects solo practitioners from estimated_size='solo' or business name patterns.
+ 91. [ 14528,   304] if                   v2  | Is Solo?
+ 92. [ 14752,   400] if                   v2  | Has Domain & Apollo?
+     notes=Routes to Apollo search if company has a domain AND apollo is not skipped. Other
+ 93. [ 14960,   288] httpRequest          v4.2  | Apollo People Search
+     notes=FREE - does not consume credits. Searches for people at the company's domain. Re
+     onError=continueRegularOutput
+ 94. [ 15152,   240] code                 v2  | Parse Apollo Search
+     mode=runOnceForEachItem
+ 95. [ 15376,   240] if                   v2  | Apollo Found People?
+ 96. [ 15536,   496] httpRequest          v4.2  | Fetch About Page
+     notes=Fetches /about page as fallback when Apollo found no results. Tries to extract o
+     onError=continueRegularOutput
+ 97. [ 15552,   128] if                   v2  | Enrich Enabled?
+     notes=Guards Apollo enrichment credits. Set apollo_enrich_enabled=false in config to s
+ 98. [ 15664,   688] code                 v2  | No Domain Fallback
+     mode=runOnceForEachItem
+     notes=Last resort: tries to extract a person name from the business name when there's 
+ 99. [ 15696,  -160] code                 v2  | Prepare Solo Contact
+     mode=runOnceForEachItem
+100. [ 15696,   496] code                 v2  | Parse About Page
+     mode=runOnceForEachItem
+101. [ 15744,    32] httpRequest          v4.2  | Apollo People Enrich
+     notes=COSTS 1 CREDIT per call. Enriches the selected person with full name, email, pho
+     onError=continueRegularOutput
+102. [ 15792,   240] code                 v2  | Apollo Search Only Contact
+     mode=runOnceForEachItem
+     notes=Fallback: uses Apollo search data (first name + obfuscated last name) when enric
+103. [ 15856,   496] if                   v2  | About Found Name?
+104. [ 15888,   736] if                   v2  | No Domain Found Name?
+105. [ 15920,    32] code                 v2  | Parse Apollo Enrich
+     mode=runOnceForEachItem
+106. [ 16000,   240] code                 v2  | Validate & Clean Contact3
+     mode=runOnceForEachItem
+107. [ 16048,   400] code                 v2  | Validate & Clean Contact4
+     mode=runOnceForEachItem
+108. [ 16080,   624] code                 v2  | Validate & Clean Contact2
+     mode=runOnceForEachItem
+109. [ 16112,    32] code                 v2  | Validate & Clean Contact1
+     mode=runOnceForEachItem
+110. [ 16128,  -160] code                 v2  | Validate & Clean Contact
+     mode=runOnceForEachItem
+111. [ 16352,   304] httpRequest          v4.2  | Insert Contact to Supabase
+     notes=Inserts contact into Supabase contacts table. All paths (solo, apollo, website) 
+     onError=continueRegularOutput
+112. [ 16640,   144] code                 v2  | Run Summary3
+     notes=Final summary: contacts created from each source (solo detection, Apollo, websit
+113. [ 16864,   144] code                 v2  | Bridge to 4
+114. [ 17088,   144] set                  v3.4  | Step 4 Config
+     notes=Config for Step 4: Enrich People.
+- skip_hunter/skip_snovio: set to 'true' to di
+115. [ 17312,   144] httpRequest          v4.2  | Fetch Contacts
+     notes=Fetches all contacts from Supabase for enrichment
+     onError=continueRegularOutput
+116. [ 17536,   144] code                 v2  | Collapse to Single
+117. [ 17760,   144] httpRequest          v4.2  | Fetch Companies1
+     notes=Fetches company data (domain, phone, city) to support enrichment lookups
+     onError=continueRegularOutput
+118. [ 17984,   144] code                 v2  | Filter & Merge Contacts
+     notes=Merges contact data with company data. Filters to contacts that still need enric
+119. [ 18208,   144] if                   v2  | Batch Empty?3
+120. [ 18432,    48] code                 v2  | No Records - Done3
+121. [ 18432,   240] if                   v2  | Needs Email?
+     notes=Routes contacts that are missing email_business to the email waterfall. Contacts
+122. [ 18656,   336] if                   v2  | Has Domain & Name?
+     notes=Email finder APIs require domain + first name at minimum. Contacts without these
+123. [ 18864,   176] if                   v2  | Hunter Enabled?
+     notes=Checks if Hunter is disabled in config. TRUE output = skip_hunter is 'true' (dis
+124. [ 19008,   400] httpRequest          v4.2  | Hunter Email Finder
+     notes=Hunter.io Email Finder: domain + first_name + last_name → email. 1 credit per ca
+     onError=continueRegularOutput
+125. [ 19232,    80] code                 v2  | Skip Hunter
+     mode=runOnceForEachItem
+126. [ 19232,   400] code                 v2  | Parse Hunter Response
+     mode=runOnceForEachItem
+127. [ 19536,   160] if                   v2  | Hunter Found Email?
+128. [ 19680,   304] if                   v2  | Snov.io Enabled?
+     notes=Checks if Snov.io is disabled. TRUE = skip, FALSE = call API.
+129. [ 19904,   400] httpRequest          v4.2  | Snov.io Email Finder
+     notes=Snov.io fallback email finder. Requires access token via SNOVIO_ACCESS_TOKEN env
+     onError=continueRegularOutput
+130. [ 20096,   -32] code                 v2  | Skip Email - Pass Through
+     mode=runOnceForEachItem
+     notes=Contacts that already have email_business or don't have domain+name skip email w
+131. [ 20128,   240] code                 v2  | Skip Snov.io
+     mode=runOnceForEachItem
+132. [ 20128,   400] code                 v2  | Parse Snov.io Response
+     mode=runOnceForEachItem
+133. [ 20320,   160] code                 v2  | Merge Email Results
+     mode=runOnceForEachItem
+     notes=Merges results from email waterfall (Hunter → Snov.io) and picks the best availa
+134. [ 20352,   544] code                 v2  | No Domain - Skip Email
+     mode=runOnceForEachItem
+     notes=Contacts without domain+name can't do email finder lookups. Still proceeds to Na
+135. [ 20560,   160] code                 v2  | Collect Email Results
+136. [ 20720,   224] if                   v2  | Has Email to Verify?
+     notes=Routes contacts with a best email to verification. Contacts without email skip a
+137. [ 20896,   112] if                   v2  | Hunter Verifier Enabled?
+     notes=Checks if Hunter Verifier is disabled in config. TRUE = skip_hunter_verifier is 
+138. [ 21120,   128] httpRequest          v4.2  | Hunter Email Verifier
+     notes=Hunter Email Verifier: 1 credit per call. Returns status (valid/invalid/accept_a
+     onError=continueRegularOutput
+139. [ 21120,   336] code                 v2  | Skip Verification
+     mode=runOnceForEachItem
+140. [ 21312,   128] code                 v2  | Parse Verifier Response
+     mode=runOnceForEachItem
+141. [ 21472,   240] code                 v2  | Collect Verified Results
+142. [ 21664,   224] if                   v2  | Needs NamSor?
+     notes=Routes to NamSor if: enabled in config AND contact has first_name AND cultural_a
+143. [ 21792,   144] httpRequest          v4.2  | NamSor Origin
+     notes=NamSor Origin API: first_name + last_name → country of origin, region, sub-regio
+     onError=continueRegularOutput
+144. [ 22016,   144] code                 v2  | Parse NamSor Response
+     mode=runOnceForEachItem
+145. [ 22016,   336] code                 v2  | Skip NamSor
+     mode=runOnceForEachItem
+146. [ 22336,   240] code                 v2  | Collect NamSor Results
+147. [ 22688,   224] code                 v2  | Prepare Contact Update
+     mode=runOnceForEachItem
+     notes=Builds the Supabase PATCH payload. Includes email_status, email_verified_at, and
+148. [ 22912,   224] if                   v2  | Has Updates?
+149. [ 23136,   112] httpRequest          v4.2  | Update Contact in Supabase
+     notes=PATCH updates the contact record with enriched fields. Only sends changed fields
+     onError=continueRegularOutput
+150. [ 23328,   224] code                 v2  | Collect Updates
+151. [ 23536,   224] code                 v2  | Run Summary4
+     notes=Final summary: contacts processed, emails found (by source), verification result
+
+=== X-POSITION RANGES ===
+   -1184  When clicking ‘Execute workflow’
+    -848  Metro Config
+    -624  Split Search Queries
+    -400  Start Apify Run
+    -176  Extract Run ID
+      48  Wait 30s
+     272  Check Run Status
+     496  Parse Status
+     720  Run Succeeded?
+     944  Google Places - Text Search
+     944  Fetch Apify Results
+    1168  Normalize Google Results
+    1168  Normalize Yelp Results
+    1392  Merge All Sources
+    1616  Deduplicate Records
+    1840  Prepare for Supabase
+    2064  Fuzzy Match?
+    2288  Insert Flagged (Needs Review)
+    2288  Insert to Supabase
+    2512  Run Summary
+    2736  Enrichment Config
+    2960  Fetch Batch from Supabase
+    3184  Parse Batch
+    3408  Batch Empty?
+    3632  No Records - Done
+    3632  Needs Backfill?
+    3856  Google Places Lookup
+    4080  Extract & Patch Domain
+    4304  Merge Backfill
+    4528  Has Website?
+    4752  Fetch Website HTML
+    4976  Analyze Website HTML
+    4976  Skip - No Website
+    5200  Merge Website Results
+    5424  Has Google Place ID?
+    5648  Google Places Details
+    5760  Skip Google Details
+    5872  Parse Google Details
+    6096  Prepare Company Update
+    6320  Update Company in Supabase
+    6544  Prepare Social Processing
+    6768  Has Social Links?
+    6992  Needs Social Discovery?
+    7216  Build Social Discovery Batch
+    7440  Discovery Queries Exist?
+    7664  Prepare FB Search Input
+    7664  Prepare IG Search Input
+    7888  Start FB Search Run
+    7888  Start IG Search Run
+    8112  Extract FB Run ID
+    8112  Extract IG Run ID
+    8336  Wait FB 30s
+    8336  Wait IG 30s
+    8560  Check FB Run Status
+    8560  Check IG Run Status
+    8784  Parse FB Status
+    8784  Parse IG Status
+    9008  FB Run Succeeded?
+    9008  IG Run Succeeded?
+    9232  Fetch FB Search Results
+    9232  Fetch IG Search Results
+    9456  Match FB Results to Companies
+    9456  Match IG Results to Companies
+    9680  Prepare Social Profiles Insert
+    9680  FB Matches Found?
+    9680  IG Matches Found?
+    9904  Insert Social Profiles
+    9904  Insert FB Social Profiles
+    9904  Insert IG Social Profiles
+   10128  Run Summary1
+   10336  Bridge to 3b
+   10560  Step 3b Config
+   10784  Fetch Unenriched Social Profiles
+   11008  Parse Batch1
+   11232  Batch Empty?1
+   11456  No Records - Done1
+   11456  Build SociaVault Request
+   11680  Should Enrich?
+   11904  Call SociaVault API
+   12128  Parse SociaVault Response
+   12352  Update Social Profile in Supabase
+   12576  Run Summary2
+   12784  Bridge to 3a
+   13104  Step 3a Config
+   13328  Fetch Companies
+   13552  Fetch Existing Contacts
+   13776  Filter & Parse Batch
+   14000  Batch Empty?2
+   14224  No Records - Done2
+   14224  Solo Practitioner Check
+   14528  Is Solo?
+   14752  Has Domain & Apollo?
+   14960  Apollo People Search
+   15152  Parse Apollo Search
+   15376  Apollo Found People?
+   15536  Fetch About Page
+   15552  Enrich Enabled?
+   15664  No Domain Fallback
+   15696  Prepare Solo Contact
+   15696  Parse About Page
+   15744  Apollo People Enrich
+   15792  Apollo Search Only Contact
+   15856  About Found Name?
+   15888  No Domain Found Name?
+   15920  Parse Apollo Enrich
+   16000  Validate & Clean Contact3
+   16048  Validate & Clean Contact4
+   16080  Validate & Clean Contact2
+   16112  Validate & Clean Contact1
+   16128  Validate & Clean Contact
+   16352  Insert Contact to Supabase
+   16640  Run Summary3
+   16864  Bridge to 4
+   17088  Step 4 Config
+   17312  Fetch Contacts
+   17536  Collapse to Single
+   17760  Fetch Companies1
+   17984  Filter & Merge Contacts
+   18208  Batch Empty?3
+   18432  No Records - Done3
+   18432  Needs Email?
+   18656  Has Domain & Name?
+   18864  Hunter Enabled?
+   19008  Hunter Email Finder
+   19232  Skip Hunter
+   19232  Parse Hunter Response
+   19536  Hunter Found Email?
+   19680  Snov.io Enabled?
+   19904  Snov.io Email Finder
+   20096  Skip Email - Pass Through
+   20128  Skip Snov.io
+   20128  Parse Snov.io Response
+   20320  Merge Email Results
+   20352  No Domain - Skip Email
+   20560  Collect Email Results
+   20720  Has Email to Verify?
+   20896  Hunter Verifier Enabled?
+   21120  Hunter Email Verifier
+   21120  Skip Verification
+   21312  Parse Verifier Response
+   21472  Collect Verified Results
+   21664  Needs NamSor?
+   21792  NamSor Origin
+   22016  Parse NamSor Response
+   22016  Skip NamSor
+   22336  Collect NamSor Results
+   22688  Prepare Contact Update
+   22912  Has Updates?
+   23136  Update Contact in Supabase
+   23328  Collect Updates
+   23536  Run Summary4
+
+=== CONNECTIONS ===
+  Metro Config --output[0]--> Split Search Queries (input[0])
+  Split Search Queries --output[0]--> Google Places - Text Search (input[0])
+  Split Search Queries --output[0]--> Start Apify Run (input[0])
+  Google Places - Text Search --output[0]--> Normalize Google Results (input[0])
+  Normalize Google Results --output[0]--> Merge All Sources (input[0])
+  Merge All Sources --output[0]--> Deduplicate Records (input[0])
+  Deduplicate Records --output[0]--> Prepare for Supabase (input[0])
+  Prepare for Supabase --output[0]--> Fuzzy Match? (input[0])
+  Fuzzy Match? --output[0]--> Insert Flagged (Needs Review) (input[0])
+  Fuzzy Match? --output[1]--> Insert to Supabase (input[0])
+  Insert to Supabase --output[0]--> Run Summary (input[0])
+  Insert Flagged (Needs Review) --output[0]--> Run Summary (input[0])
+  Extract Run ID --output[0]--> Wait 30s (input[0])
+  Wait 30s --output[0]--> Check Run Status (input[0])
+  Check Run Status --output[0]--> Parse Status (input[0])
+  Parse Status --output[0]--> Run Succeeded? (input[0])
+  Run Succeeded? --output[0]--> Fetch Apify Results (input[0])
+  Run Succeeded? --output[1]--> Wait 30s (input[0])
+  Start Apify Run --output[0]--> Extract Run ID (input[0])
+  Normalize Yelp Results --output[0]--> Merge All Sources (input[1])
+  Fetch Apify Results --output[0]--> Normalize Yelp Results (input[0])
+  Run Summary --output[0]--> Enrichment Config (input[0])
+  Enrichment Config --output[0]--> Fetch Batch from Supabase (input[0])
+  Fetch Batch from Supabase --output[0]--> Parse Batch (input[0])
+  Parse Batch --output[0]--> Batch Empty? (input[0])
+  Batch Empty? --output[0]--> No Records - Done (input[0])
+  Batch Empty? --output[1]--> Needs Backfill? (input[0])
+  Has Website? --output[0]--> Fetch Website HTML (input[0])
+  Has Website? --output[1]--> Skip - No Website (input[0])
+  Fetch Website HTML --output[0]--> Analyze Website HTML (input[0])
+  Analyze Website HTML --output[0]--> Merge Website Results (input[0])
+  Skip - No Website --output[0]--> Merge Website Results (input[0])
+  Merge Website Results --output[0]--> Has Google Place ID? (input[0])
+  Has Google Place ID? --output[0]--> Google Places Details (input[0])
+  Has Google Place ID? --output[1]--> Skip Google Details (input[0])
+  Google Places Details --output[0]--> Parse Google Details (input[0])
+  Parse Google Details --output[0]--> Prepare Company Update (input[0])
+  Skip Google Details --output[0]--> Prepare Company Update (input[0])
+  Prepare Company Update --output[0]--> Update Company in Supabase (input[0])
+  Update Company in Supabase --output[0]--> Prepare Social Processing (input[0])
+  Prepare Social Processing --output[0]--> Has Social Links? (input[0])
+  Has Social Links? --output[0]--> Prepare Social Profiles Insert (input[0])
+  Has Social Links? --output[1]--> Needs Social Discovery? (input[0])
+  Prepare Social Profiles Insert --output[0]--> Insert Social Profiles (input[0])
+  Insert Social Profiles --output[0]--> Run Summary1 (input[0])
+  Needs Social Discovery? --output[0]--> Build Social Discovery Batch (input[0])
+  Needs Social Discovery? --output[1]--> Run Summary1 (input[0])
+  Build Social Discovery Batch --output[0]--> Discovery Queries Exist? (input[0])
+  Discovery Queries Exist? --output[0]--> Prepare FB Search Input (input[0])
+  Discovery Queries Exist? --output[0]--> Prepare IG Search Input (input[0])
+  Discovery Queries Exist? --output[1]--> Run Summary1 (input[0])
+  Prepare FB Search Input --output[0]--> Start FB Search Run (input[0])
+  Start FB Search Run --output[0]--> Extract FB Run ID (input[0])
+  Extract FB Run ID --output[0]--> Wait FB 30s (input[0])
+  Wait FB 30s --output[0]--> Check FB Run Status (input[0])
+  Check FB Run Status --output[0]--> Parse FB Status (input[0])
+  Parse FB Status --output[0]--> FB Run Succeeded? (input[0])
+  FB Run Succeeded? --output[0]--> Fetch FB Search Results (input[0])
+  FB Run Succeeded? --output[1]--> Wait FB 30s (input[0])
+  Fetch FB Search Results --output[0]--> Match FB Results to Companies (input[0])
+  Match FB Results to Companies --output[0]--> FB Matches Found? (input[0])
+  FB Matches Found? --output[0]--> Insert FB Social Profiles (input[0])
+  FB Matches Found? --output[1]--> Run Summary1 (input[0])
+  Insert FB Social Profiles --output[0]--> Run Summary1 (input[0])
+  Prepare IG Search Input --output[0]--> Start IG Search Run (input[0])
+  Start IG Search Run --output[0]--> Extract IG Run ID (input[0])
+  Extract IG Run ID --output[0]--> Wait IG 30s (input[0])
+  Wait IG 30s --output[0]--> Check IG Run Status (input[0])
+  Check IG Run Status --output[0]--> Parse IG Status (input[0])
+  Parse IG Status --output[0]--> IG Run Succeeded? (input[0])
+  IG Run Succeeded? --output[0]--> Fetch IG Search Results (input[0])
+  IG Run Succeeded? --output[1]--> Wait IG 30s (input[0])
+  Fetch IG Search Results --output[0]--> Match IG Results to Companies (input[0])
+  Match IG Results to Companies --output[0]--> IG Matches Found? (input[0])
+  IG Matches Found? --output[0]--> Insert IG Social Profiles (input[0])
+  IG Matches Found? --output[1]--> Run Summary1 (input[0])
+  Insert IG Social Profiles --output[0]--> Run Summary1 (input[0])
+  Step 3b Config --output[0]--> Fetch Unenriched Social Profiles (input[0])
+  Fetch Unenriched Social Profiles --output[0]--> Parse Batch1 (input[0])
+  Build SociaVault Request --output[0]--> Should Enrich? (input[0])
+  Should Enrich? --output[0]--> Call SociaVault API (input[0])
+  Should Enrich? --output[1]--> Run Summary2 (input[0])
+  Call SociaVault API --output[0]--> Parse SociaVault Response (input[0])
+  Parse SociaVault Response --output[0]--> Update Social Profile in Supabase (input[0])
+  Update Social Profile in Supabase --output[0]--> Run Summary2 (input[0])
+  Parse Batch1 --output[0]--> Batch Empty?1 (input[0])
+  Batch Empty?1 --output[0]--> No Records - Done1 (input[0])
+  Batch Empty?1 --output[1]--> Build SociaVault Request (input[0])
+  Run Summary1 --output[0]--> Bridge to 3b (input[0])
+  Needs Backfill? --output[0]--> Google Places Lookup (input[0])
+  Needs Backfill? --output[1]--> Merge Backfill (input[1])
+  Google Places Lookup --output[0]--> Extract & Patch Domain (input[0])
+  Extract & Patch Domain --output[0]--> Merge Backfill (input[0])
+  Merge Backfill --output[0]--> Has Website? (input[0])
+  Step 3a Config --output[0]--> Fetch Companies (input[0])
+  Fetch Companies --output[0]--> Fetch Existing Contacts (input[0])
+  Fetch Existing Contacts --output[0]--> Filter & Parse Batch (input[0])
+  Filter & Parse Batch --output[0]--> Batch Empty?2 (input[0])
+  Solo Practitioner Check --output[0]--> Is Solo? (input[0])
+  Is Solo? --output[0]--> Prepare Solo Contact (input[0])
+  Is Solo? --output[1]--> Has Domain & Apollo? (input[0])
+  Prepare Solo Contact --output[0]--> Validate & Clean Contact (input[0])
+  Has Domain & Apollo? --output[0]--> Apollo People Search (input[0])
+  Has Domain & Apollo? --output[1]--> No Domain Fallback (input[0])
+  Apollo People Search --output[0]--> Parse Apollo Search (input[0])
+  Parse Apollo Search --output[0]--> Apollo Found People? (input[0])
+  Apollo Found People? --output[0]--> Enrich Enabled? (input[0])
+  Apollo Found People? --output[1]--> Fetch About Page (input[0])
+  Enrich Enabled? --output[0]--> Apollo People Enrich (input[0])
+  Enrich Enabled? --output[1]--> Apollo Search Only Contact (input[0])
+  Apollo People Enrich --output[0]--> Parse Apollo Enrich (input[0])
+  Parse Apollo Enrich --output[0]--> Validate & Clean Contact1 (input[0])
+  Apollo Search Only Contact --output[0]--> Validate & Clean Contact3 (input[0])
+  Fetch About Page --output[0]--> Parse About Page (input[0])
+  Parse About Page --output[0]--> About Found Name? (input[0])
+  About Found Name? --output[0]--> Validate & Clean Contact4 (input[0])
+  About Found Name? --output[1]--> Run Summary3 (input[0])
+  No Domain Fallback --output[0]--> No Domain Found Name? (input[0])
+  No Domain Found Name? --output[0]--> Validate & Clean Contact2 (input[0])
+  No Domain Found Name? --output[1]--> Run Summary3 (input[0])
+  Insert Contact to Supabase --output[0]--> Run Summary3 (input[0])
+  Batch Empty?2 --output[0]--> No Records - Done2 (input[0])
+  Batch Empty?2 --output[1]--> Solo Practitioner Check (input[0])
+  Run Summary2 --output[0]--> Bridge to 3a (input[0])
+  Bridge to 3b --output[0]--> Step 3b Config (input[0])
+  Bridge to 3a --output[0]--> Step 3a Config (input[0])
+  When clicking ‘Execute workflow’ --output[0]--> Metro Config (input[0])
+  Validate & Clean Contact --output[0]--> Insert Contact to Supabase (input[0])
+  Validate & Clean Contact1 --output[0]--> Insert Contact to Supabase (input[0])
+  Validate & Clean Contact3 --output[0]--> Insert Contact to Supabase (input[0])
+  Validate & Clean Contact4 --output[0]--> Insert Contact to Supabase (input[0])
+  Validate & Clean Contact2 --output[0]--> Insert Contact to Supabase (input[0])
+  Run Summary3 --output[0]--> Bridge to 4 (input[0])
+  Step 4 Config --output[0]--> Fetch Contacts (input[0])
+  Fetch Contacts --output[0]--> Collapse to Single (input[0])
+  Filter & Merge Contacts --output[0]--> Batch Empty?3 (input[0])
+  Needs Email? --output[0]--> Has Domain & Name? (input[0])
+  Needs Email? --output[1]--> Skip Email - Pass Through (input[0])
+  Has Domain & Name? --output[0]--> Hunter Enabled? (input[0])
+  Has Domain & Name? --output[1]--> No Domain - Skip Email (input[0])
+  Hunter Email Finder --output[0]--> Parse Hunter Response (input[0])
+  Parse Hunter Response --output[0]--> Hunter Found Email? (input[0])
+  Hunter Found Email? --output[0]--> Merge Email Results (input[0])
+  Hunter Found Email? --output[1]--> Snov.io Enabled? (input[0])
+  Snov.io Email Finder --output[0]--> Parse Snov.io Response (input[0])
+  Parse Snov.io Response --output[0]--> Merge Email Results (input[0])
+  Merge Email Results --output[0]--> Collect Email Results (input[0])
+  Skip Email - Pass Through --output[0]--> Collect Email Results (input[0])
+  No Domain - Skip Email --output[0]--> Collect Email Results (input[0])
+  Hunter Enabled? --output[0]--> Skip Hunter (input[0])
+  Hunter Enabled? --output[1]--> Hunter Email Finder (input[0])
+  Skip Hunter --output[0]--> Hunter Found Email? (input[0])
+  Snov.io Enabled? --output[0]--> Skip Snov.io (input[0])
+  Snov.io Enabled? --output[1]--> Snov.io Email Finder (input[0])
+  Skip Snov.io --output[0]--> Merge Email Results (input[0])
+  Needs NamSor? --output[0]--> NamSor Origin (input[0])
+  Needs NamSor? --output[1]--> Skip NamSor (input[0])
+  NamSor Origin --output[0]--> Parse NamSor Response (input[0])
+  Parse NamSor Response --output[0]--> Collect NamSor Results (input[0])
+  Skip NamSor --output[0]--> Collect NamSor Results (input[0])
+  Prepare Contact Update --output[0]--> Has Updates? (input[0])
+  Has Updates? --output[0]--> Update Contact in Supabase (input[0])
+  Has Updates? --output[1]--> Collect Updates (input[0])
+  Update Contact in Supabase --output[0]--> Collect Updates (input[0])
+  Fetch Companies1 --output[0]--> Filter & Merge Contacts (input[0])
+  Batch Empty?3 --output[0]--> No Records - Done3 (input[0])
+  Batch Empty?3 --output[1]--> Needs Email? (input[0])
+  Bridge to 4 --output[0]--> Step 4 Config (input[0])
+  Collapse to Single --output[0]--> Fetch Companies1 (input[0])
+  Has Email to Verify? --output[0]--> Hunter Verifier Enabled? (input[0])
+  Has Email to Verify? --output[1]--> Skip Verification (input[0])
+  Hunter Verifier Enabled? --output[0]--> Skip Verification (input[0])
+  Hunter Verifier Enabled? --output[1]--> Hunter Email Verifier (input[0])
+  Hunter Email Verifier --output[0]--> Parse Verifier Response (input[0])
+  Parse Verifier Response --output[0]--> Collect Verified Results (input[0])
+  Skip Verification --output[0]--> Collect Verified Results (input[0])
+  Collect Verified Results --output[0]--> Needs NamSor? (input[0])
+  Collect NamSor Results --output[0]--> Prepare Contact Update (input[0])
+  Collect Updates --output[0]--> Run Summary4 (input[0])
+  Collect Email Results --output[0]--> Has Email to Verify? (input[0])
+
+=== CONVERGENCE POINTS (multiple incoming connections) ===
+  CONVERGENCE: Collect Email Results
+    <- Merge Email Results (output[0])
+    <- Skip Email - Pass Through (output[0])
+    <- No Domain - Skip Email (output[0])
+  CONVERGENCE: Collect NamSor Results
+    <- Parse NamSor Response (output[0])
+    <- Skip NamSor (output[0])
+  CONVERGENCE: Collect Updates
+    <- Has Updates? (output[1])
+    <- Update Contact in Supabase (output[0])
+  CONVERGENCE: Collect Verified Results
+    <- Parse Verifier Response (output[0])
+    <- Skip Verification (output[0])
+  CONVERGENCE: Hunter Found Email?
+    <- Parse Hunter Response (output[0])
+    <- Skip Hunter (output[0])
+  CONVERGENCE: Insert Contact to Supabase
+    <- Validate & Clean Contact (output[0])
+    <- Validate & Clean Contact1 (output[0])
+    <- Validate & Clean Contact3 (output[0])
+    <- Validate & Clean Contact4 (output[0])
+    <- Validate & Clean Contact2 (output[0])
+  CONVERGENCE: Merge All Sources
+    <- Normalize Google Results (output[0])
+    <- Normalize Yelp Results (output[0])
+  CONVERGENCE: Merge Backfill
+    <- Needs Backfill? (output[1])
+    <- Extract & Patch Domain (output[0])
+  CONVERGENCE: Merge Email Results
+    <- Hunter Found Email? (output[0])
+    <- Parse Snov.io Response (output[0])
+    <- Skip Snov.io (output[0])
+  CONVERGENCE: Merge Website Results
+    <- Analyze Website HTML (output[0])
+    <- Skip - No Website (output[0])
+  CONVERGENCE: Prepare Company Update
+    <- Parse Google Details (output[0])
+    <- Skip Google Details (output[0])
+  CONVERGENCE: Run Summary
+    <- Insert to Supabase (output[0])
+    <- Insert Flagged (Needs Review) (output[0])
+  CONVERGENCE: Run Summary1
+    <- Insert Social Profiles (output[0])
+    <- Needs Social Discovery? (output[1])
+    <- Discovery Queries Exist? (output[1])
+    <- FB Matches Found? (output[1])
+    <- Insert FB Social Profiles (output[0])
+    <- IG Matches Found? (output[1])
+    <- Insert IG Social Profiles (output[0])
+  CONVERGENCE: Run Summary2
+    <- Should Enrich? (output[1])
+    <- Update Social Profile in Supabase (output[0])
+  CONVERGENCE: Run Summary3
+    <- About Found Name? (output[1])
+    <- No Domain Found Name? (output[1])
+    <- Insert Contact to Supabase (output[0])
+  CONVERGENCE: Skip Verification
+    <- Has Email to Verify? (output[1])
+    <- Hunter Verifier Enabled? (output[0])
+  CONVERGENCE: Wait 30s
+    <- Extract Run ID (output[0])
+    <- Run Succeeded? (output[1])
+  CONVERGENCE: Wait FB 30s
+    <- Extract FB Run ID (output[0])
+    <- FB Run Succeeded? (output[1])
+  CONVERGENCE: Wait IG 30s
+    <- Extract IG Run ID (output[0])
+    <- IG Run Succeeded? (output[1])
+
