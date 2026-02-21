@@ -27,23 +27,24 @@
 - **Discovery:** 12 search queries per metro, Apify/Yelp `searchLimit=100`, per-metro radius (15-25km)
 
 ### Next Steps
-- [x] ~~Set `BATCH_ENRICHMENT_WEBHOOK_URL` env var in Coolify~~ — Done (2026-02-20)
-- [x] ~~Test parallelized pipeline~~ — Sedona AZ exec #170 full success (2026-02-20, Session 38)
-- [x] ~~Pipeline recovery fixes~~ — 5 issues fixed (Session 42): Insert field drops, nonexistent PATCH columns, early-exit propagation
+- [x] ~~Production baseline snapshot~~ — Fresh workflow JSON pulled, committed to `master` (commit `a2ec77c`), improvement branch created (2026-02-21, Session 49)
+- [ ] **Integrate pipeline with dashboard** — Trigger runs, view results, manage metros from the React dashboard UI. Prerequisite: user cleans up `dashboard/` folder and uploads new guide.
 - [ ] Backfill `on_yelp` for existing companies (SQL provided in Session 42)
-- [x] ~~Re-run a metro to populate newly-saved fields~~ — Sedona AZ exec #180: 125 companies, 7 batches, digital signals populated (2026-02-20, Session 43)
-- [x] ~~Re-run San Diego to populate digital signals~~ — Exec #213: 177 companies, 9 batches dispatched, digital signals confirmed (2026-02-20, Session 45)
-- [x] ~~Fix NamSor guard to allow first_name-only contacts (IMP-014)~~ — Code fix deployed to sub-workflow (Session 46). Guard relaxed to only require `first_name`.
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
 - [ ] Re-run Portland, OR after SQL cleanup
 - [ ] Set up Snov.io account and API key
 - [ ] Add email-domain mismatch detection (ISSUE-012)
-- [ ] Step 6: Dashboard (next major milestone)
-- [x] ~~Re-run Boise, ID after SQL reset~~ — Exec #242: 165 companies, 7 batches, all SUCCESS (2026-02-20, Session 48)
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
 
 ## Session Log
+
+### Session 49 — 2026-02-21 (Production Baseline + Dashboard Handoff)
+- **Production baseline committed:** Pulled fresh workflow JSON from n8n for both main workflow (`yxvQst30sWlNIeZq`) and sub-workflow (`fGm4IP0rWxgHptN8`). Snapshots saved to `workflows/current/`. All changes committed to `master` as commit `a2ec77c`.
+- **Improvement branch created:** `attempt-improve-enrichment` branched from `master` for next phase of work.
+- **Dashboard integration handoff doc created:** `docs/HANDOFF-dashboard-integration.md` — documents pipeline integration points, constraints, and prerequisites for connecting the React dashboard to the n8n pipeline.
+- **Tracking updates:** Session 49 entries added to PROGRESS.md, TODO.md, CHANGELOG.md.
+- **No code changes this session** — git housekeeping and documentation only.
 
 ### Session 48 — 2026-02-20 (Boise, ID Pipeline Re-Run)
 - **Boise, ID re-run after SQL reset of partially_enriched companies from failed execs #143/#146.**

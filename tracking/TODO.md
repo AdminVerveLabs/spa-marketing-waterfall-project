@@ -16,6 +16,7 @@
 - [x] **Fix metro-scoped pipeline execution (BUG-017)** — Added `discovery_metro` filter to Fetch Companies, Fetch Companies1, and Filter & Merge Contacts. Denver run now processes only Denver data. (2026-02-19, Session 17, BUG-F017)
 - [x] **Improve about page scraping (BUG-018)** — Parse About Page now tries 6 URL paths instead of just /about. (2026-02-19, Session 17, BUG-F018)
 - [x] **Enable Google Details** — Flipped `skip_google_details` from "true" to "false". (2026-02-19, Session 17)
+- [ ] **Integrate pipeline with dashboard** — Trigger runs, view enrichment results, and manage metros from the React dashboard UI. Prerequisite: user must clean up `dashboard/` folder and upload new guide document first. See `docs/HANDOFF-dashboard-integration.md`.
 - [ ] **Add email-domain mismatch detection (ISSUE-012)** — 4 contacts have emails not matching company domain (college email, scheduling platform, different brand). Need cross-check in Enrich Contacts.
 - [x] **Add business type filtering** — 10-keyword blocklist added to Normalize Google + Yelp Results. Filters schools, associations, etc. before Supabase insert. (2026-02-19, Session 16)
 - [x] **Phone length validation** — validatePhone() now rejects NA numbers > 11 digits, allows international up to 15 (ITU max). (2026-02-19, Session 16, BUG-006 CLOSED)

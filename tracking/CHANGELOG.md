@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-21 (Session 49 — Production Baseline + Dashboard Handoff)
+
+### Git Housekeeping
+- **Production baseline snapshot:** Pulled fresh workflow JSON from n8n (main workflow `yxvQst30sWlNIeZq` + sub-workflow `fGm4IP0rWxgHptN8`). Committed all changes to `master` as commit `a2ec77c`.
+- **Created `attempt-improve-enrichment` branch** from `master` for next phase of work.
+
+### New Files
+- `docs/HANDOFF-dashboard-integration.md` — Handoff document for the next major task: connecting the React dashboard to the n8n pipeline. Documents integration points, constraints, and prerequisites.
+
+### Tracking Updates
+- Updated PROGRESS.md, TODO.md, CHANGELOG.md with Session 49 entries.
+- No new bugs found. No new ADRs needed.
+
+---
+
 ## 2026-02-20 (Session 48 — Boise, ID Pipeline Re-Run)
 
 ### Pipeline Trigger
