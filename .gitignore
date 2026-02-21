@@ -2,6 +2,8 @@
 .env
 *.env
 .env.*
+# Keep .env.production for Vite build (contains only public keys)
+!dashboard/.env.production
 
 # OS
 .DS_Store

@@ -40,6 +40,13 @@
 
 ## Session Log
 
+### Session 52 — 2026-02-21 (Fix Dashboard "Invalid API Key" Error)
+- **Root cause investigation:** Dashboard deployed to Coolify at `http://egskggk4occc4k8sc0ocks88.5.161.95.57.sslip.io`. Login fails with "invalid API key". Investigated: anon key is correct (208 chars, JWT decodes to role=anon), RLS policies are correct, bundle contains the right values. Probable cause: Coolify build args may introduce whitespace/newline corruption during Docker rebuild.
+- **Fix: Committed `.env.production`** — Vite reads `.env.production` during `npm run build`, baking values directly into the JS bundle. Eliminates dependency on Coolify build args entirely. Contains only public keys (anon key + webhook URL) — safe for private repo.
+- **Updated `.gitignore`** — Added exception `!dashboard/.env.production` so the file is tracked despite `*.env` pattern.
+- **Updated local `dashboard/.env`** — Added missing `VITE_N8N_WEBHOOK_URL` value.
+- **Still pending:** User must run `scripts/dashboard-schema.sql` in Supabase SQL Editor before dashboard pages will work after login (pipeline_runs, search_query_templates tables don't exist yet).
+
 ### Session 51 — 2026-02-21 (Deployment Verification + Snapshot Sync)
 - **Verification session** — no new code deployed. Confirmed all 3 n8n workflows match local source files.
 - **n8n health check:** OK, version 2.35.4. All 3 workflows active.

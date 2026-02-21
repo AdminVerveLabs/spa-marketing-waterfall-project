@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-02-21 (Session 52 — Fix Dashboard "Invalid API Key" Error)
+
+### Dashboard Fix
+- **Root cause:** Coolify build args may corrupt env var values (whitespace, newlines) during Docker rebuild. The JS bundle had the correct anon key character-for-character, but Coolify's build arg mechanism is unreliable for long JWT strings.
+- **Fix:** Committed `dashboard/.env.production` with all three public env vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_N8N_WEBHOOK_URL`). Vite reads `.env.production` during `npm run build` with higher priority than build args — eliminates the Coolify dependency entirely.
+- **`.gitignore` updated:** Added `!dashboard/.env.production` exception so the file is tracked. The anon key is public by design (appears in every browser request to Supabase).
+
+### Modified Files
+- `dashboard/.env.production` (NEW) — Public env vars for Vite production build
+- `.gitignore` — Exception for `dashboard/.env.production`
+- `dashboard/.env` — Added missing `VITE_N8N_WEBHOOK_URL` value for local dev
+
+### Pending
+- User must run `scripts/dashboard-schema.sql` in Supabase SQL Editor (creates `pipeline_runs`, `search_query_templates`, `run_coverage_stats` view, RLS policies, `increment_completed_batches()` RPC)
+- After Coolify redeploy: verify new JS bundle hash, test login, navigate dashboard pages
+
+---
+
 ## 2026-02-21 (Session 51 — Deployment Verification + Snapshot Sync)
 
 ### Verification
