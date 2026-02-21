@@ -1,5 +1,54 @@
 # Changelog
 
+## 2026-02-21 (Session 51 — Deployment Verification + Snapshot Sync)
+
+### Verification
+- Confirmed all 3 n8n workflows (main, sub, error handler) are deployed and active with correct node counts and code.
+- Compared deployed jsCode against local `scripts/nodes/` source files — all match.
+
+### Bug Fix
+- `scripts/nodes/track-batch-completion.js` — Synced to deployed version. Local file had inefficient contact counting (fetched ALL contacts, filtered in JS). Now uses Supabase server-side `company_id=in.(...)` filter.
+
+### Snapshot Updates
+- Pulled fresh workflow JSON for all 3 workflows into `workflows/current/`.
+- Added new file: `workflows/current/error-handler-deployed.json` (Pipeline Error Handler).
+
+---
+
+## 2026-02-21 (Session 50 — Dashboard-Pipeline Integration)
+
+### Workflow Changes (Main Workflow `yxvQst30sWlNIeZq` — 22→23 nodes)
+- **Webhook node:** Changed from GET-only to GET+POST (multipleMethods). Dashboard sends POST with JSON body; legacy curl GET still works.
+- **Metro Config rewrite:** Now reads POST body first (run_id, metro_name, lat/lng, radius, search_queries, yelp_location), falls back to GET query param + hardcoded 11-metro lookup for legacy triggers. Always outputs `run_id` (null for legacy).
+- **Mark Running node (NEW):** Code node between Metro Config and Split Search Queries. PATCHes `pipeline_runs` to status='running' with started_at and n8n_execution_id. Skips if no run_id. Non-blocking error handling.
+- **Batch Dispatcher:** Added run_id extraction from Metro Config, total_batches PATCH to pipeline_runs, and run_id in sub-workflow POST body. All additions guarded with `if (runId)`.
+- **Error workflow:** Set `settings.errorWorkflow` to point at new Pipeline Error Handler workflow.
+
+### Workflow Changes (Sub-Workflow `fGm4IP0rWxgHptN8` — 6→7 nodes)
+- **Track Batch Completion node (NEW):** Terminal Code node after Mark Fully Enriched. Calls `increment_completed_batches()` RPC atomically. If last batch, queries metro totals and PATCHes pipeline_runs to status='completed'. Skips if no run_id.
+
+### New Workflow: Pipeline Error Handler (`ovArmKkj1bs5Af3G`)
+- Error Trigger → Mark Failed Code node. Looks up pipeline_runs by n8n_execution_id, PATCHes status to 'failed'.
+- Set as errorWorkflow on main pipeline.
+
+### Database Schema (SQL ready, not yet run)
+- `scripts/dashboard-schema.sql` — Creates pipeline_runs table (with total_batches/completed_batches), search_query_templates table, run_coverage_stats view, RLS policies, `increment_completed_batches()` RPC function, and safety-net cron SQL.
+
+### Dashboard Changes
+- `src/types/index.ts` — Added `total_batches`, `completed_batches` to PipelineRun interface.
+- `src/pages/DashboardPage.tsx` — Added 30s polling when active/queued run exists.
+- `src/pages/NewRunPage.tsx` — Single-run enforcement: checks for running pipelines before triggering webhook. Creates queued run either way.
+- `src/components/dashboard/ActiveRunBanner.tsx` — Shows batch progress bar ("Enrichment: 3/8 batches (38%)") during enrichment phase, "Discovery phase" before batches are set.
+
+### New Files
+- `scripts/nodes/mark-running.js` — Source for Mark Running node
+- `scripts/nodes/track-batch-completion.js` — Source for Track Batch Completion node
+- `scripts/dashboard-schema.sql` — Combined schema SQL for Supabase
+- `workflows/backups/pre-dashboard-main-20260221.json` — Pre-change main workflow backup
+- `workflows/backups/pre-dashboard-sub-20260221.json` — Pre-change sub-workflow backup
+
+---
+
 ## 2026-02-21 (Session 49 — Production Baseline + Dashboard Handoff)
 
 ### Git Housekeeping

@@ -341,6 +341,25 @@
   2. Automated backfill script → Over-engineering: re-running the metro is the simplest approach since the pipeline is idempotent.
 - **Status:** Active — deployed Session 42
 
+## ADR-032: Dashboard-Pipeline Integration (run_id lifecycle)
+- **Date:** 2026-02-21
+- **Decision:** Connect the React dashboard to the n8n pipeline via a run_id lifecycle:
+  1. Dashboard creates `pipeline_runs` row (status='queued') and POSTs to webhook with run_id
+  2. Metro Config reads POST body (run_id, metro config), falls back to GET query for legacy
+  3. Mark Running node PATCHes pipeline_runs to 'running' with n8n_execution_id
+  4. Batch Dispatcher PATCHes total_batches count, includes run_id in sub-workflow POST
+  5. Track Batch Completion (sub-workflow) atomically increments completed_batches via RPC. Last batch marks 'completed'.
+  6. Error handler workflow marks 'failed' on pipeline errors
+- **Reason:** Dashboard and workflow were independent — dashboard could create runs but had no way to track status or know when enrichment finished.
+- **Key design decisions:**
+  - All run_id code guarded with `if (!runId)` — legacy curl triggers work exactly as before
+  - Atomic batch increment via Supabase RPC prevents race conditions between parallel sub-workflows
+  - Non-blocking callbacks — a Supabase PATCH failure never stops the pipeline
+  - Single-run enforcement in dashboard (don't trigger webhook if pipeline already running)
+  - Webhook accepts both GET and POST (multipleMethods) for backward compatibility
+- **Impact:** Main workflow 22→23 nodes, sub-workflow 6→7 nodes, new error handler workflow created
+- **Status:** Active — deployed Session 50
+
 ## ADR-030: Remove Insert Flagged → Batch Dispatcher connection + Phase 4 removal
 - **Date:** 2026-02-20
 - **Decision:** (1) Remove the `Insert Flagged (Needs Review)` → `Batch Dispatcher` connection. Batch Dispatcher now receives input only from `Insert to Supabase`. (2) Remove Phase 4 completion polling from Batch Dispatcher. (3) Reduce Phase 1 discovery polling from 30 to 20 max iterations.

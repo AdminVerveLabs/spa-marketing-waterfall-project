@@ -11,6 +11,7 @@
 **Phase 7: Generate Fixed Workflow** ✅ Complete
 **Pipeline Simplification** ✅ Deployed (127 → 27 nodes)
 **Parallelized Batch Enrichment** ✅ Deployed (ADR-029 — main 22 nodes + sub-workflow 6 nodes)
+**Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
 
 ## API STATUS: 5 of 6 APIs Enabled
 - **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)
@@ -28,7 +29,7 @@
 
 ### Next Steps
 - [x] ~~Production baseline snapshot~~ — Fresh workflow JSON pulled, committed to `master` (commit `a2ec77c`), improvement branch created (2026-02-21, Session 49)
-- [ ] **Integrate pipeline with dashboard** — Trigger runs, view results, manage metros from the React dashboard UI. Prerequisite: user cleans up `dashboard/` folder and uploads new guide.
+- [x] ~~Integrate pipeline with dashboard~~ — Dashboard-pipeline integration deployed (ADR-032, Session 50). Webhook accepts POST, run_id flows through pipeline, batch progress tracked. **Pending: user must run `scripts/dashboard-schema.sql` in Supabase and set `VITE_N8N_WEBHOOK_URL` + Supabase env vars in dashboard.**
 - [ ] Backfill `on_yelp` for existing companies (SQL provided in Session 42)
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
@@ -38,6 +39,51 @@
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
 
 ## Session Log
+
+### Session 51 — 2026-02-21 (Deployment Verification + Snapshot Sync)
+- **Verification session** — no new code deployed. Confirmed all 3 n8n workflows match local source files.
+- **n8n health check:** OK, version 2.35.4. All 3 workflows active.
+- **Code verification:** Compared deployed jsCode against local `scripts/nodes/` for all critical nodes (Metro Config, Mark Running, Batch Dispatcher, Track Batch Completion, Mark Failed). All match.
+- **Fix: `track-batch-completion.js`** — Local source file used inefficient approach (fetched ALL 19K+ contacts, filtered in JS). Deployed version correctly uses server-side `company_id=in.(...)` filter. Synced local file to match deployed version.
+- **Workflow snapshots refreshed:** Pulled fresh JSON from n8n for all 3 workflows:
+  - `workflows/current/deployed-fixed.json` (93KB, 23 nodes)
+  - `workflows/current/sub-workflow-deployed.json` (180KB, 7 nodes)
+  - `workflows/current/error-handler-deployed.json` (3.4KB, 2 nodes — NEW file)
+- **Dashboard code verified:** DashboardPage (30s polling), NewRunPage (single-run enforcement), ActiveRunBanner (batch progress bar), types (total_batches/completed_batches).
+- **Still pending user actions:**
+  1. Run `scripts/dashboard-schema.sql` in Supabase SQL Editor
+  2. Set dashboard env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_N8N_WEBHOOK_URL`
+  3. End-to-end test from dashboard
+
+### Session 50 — 2026-02-21 (Dashboard-Pipeline Integration — ADR-032)
+- **MAJOR FEATURE: Dashboard-pipeline integration deployed.** Implements the full run_id lifecycle from dashboard trigger to completion tracking.
+- **Phase 1 (Schema):** Created `scripts/dashboard-schema.sql` with pipeline_runs table (incl. total_batches/completed_batches), search_query_templates, coverage stats view, RLS policies, and `increment_completed_batches()` RPC function. **User must run in Supabase SQL Editor.**
+- **Phase 2 (Webhook + Metro Config):**
+  - Webhook node changed to accept both GET and POST (`multipleMethods: true`).
+  - Metro Config rewritten to read POST body first (run_id, lat/lng, radius, queries), fall back to GET query param + hardcoded 11-metro lookup.
+  - Always outputs `run_id` (null for legacy triggers).
+- **Phase 3A (Mark Running):** New Code node added between Metro Config and Split Search Queries. PATCHes `pipeline_runs` → status='running', started_at, n8n_execution_id. Skips if no run_id. Non-blocking.
+- **Phase 3B (Batch Dispatcher):** Updated with 3 additions:
+  1. Extract `run_id` from Metro Config output
+  2. PATCH `pipeline_runs` with `total_batches` after batch splitting
+  3. Include `run_id` in sub-workflow POST body: `{ company_ids, metro, run_id }`
+- **Phase 3C (Track Batch Completion):** New terminal Code node in sub-workflow (after Mark Fully Enriched). Calls `increment_completed_batches()` RPC atomically. If last batch, queries metro totals and PATCHes pipeline_runs to 'completed'. Skips if no run_id.
+- **Phase 3D (Error Handler):** New workflow `ovArmKkj1bs5Af3G` (Error Trigger → Mark Failed). Looks up pipeline_runs by n8n_execution_id, PATCHes to 'failed'. Set as `errorWorkflow` on main pipeline.
+- **Phase 4 (Dashboard Polish):**
+  - PipelineRun type: added total_batches, completed_batches
+  - DashboardPage: 30s polling when active/queued run exists
+  - NewRunPage: single-run enforcement (skip webhook trigger if pipeline already running)
+  - ActiveRunBanner: batch progress bar with percentage
+- **Workflow state after Session 50:**
+  - Main workflow: 23 nodes (was 22) — Mark Running added
+  - Sub-workflow: 7 nodes (was 6) — Track Batch Completion added
+  - Error handler: 2 nodes (new workflow)
+- **Backups saved:** `workflows/backups/pre-dashboard-main-20260221.json`, `workflows/backups/pre-dashboard-sub-20260221.json`
+- **Dashboard builds cleanly** — 711KB JS, zero type errors
+- **Prerequisites for end-to-end test:**
+  1. Run `scripts/dashboard-schema.sql` in Supabase SQL Editor
+  2. Set dashboard env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_N8N_WEBHOOK_URL`
+  3. Trigger from dashboard → watch pipeline_runs row progress through lifecycle
 
 ### Session 49 — 2026-02-21 (Production Baseline + Dashboard Handoff)
 - **Production baseline committed:** Pulled fresh workflow JSON from n8n for both main workflow (`yxvQst30sWlNIeZq`) and sub-workflow (`fGm4IP0rWxgHptN8`). Snapshots saved to `workflows/current/`. All changes committed to `master` as commit `a2ec77c`.

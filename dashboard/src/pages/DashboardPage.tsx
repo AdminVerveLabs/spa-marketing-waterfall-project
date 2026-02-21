@@ -26,6 +26,14 @@ export function DashboardPage() {
 
   useEffect(() => { fetchRuns(); }, []);
 
+  // Poll every 30s when there's an active run
+  useEffect(() => {
+    const hasActiveRun = runs.some(r => r.status === 'running' || r.status === 'queued');
+    if (!hasActiveRun) return;
+    const interval = setInterval(fetchRuns, 30000);
+    return () => clearInterval(interval);
+  }, [runs]);
+
   const completed = runs.filter(r => r.status === "completed");
   const metrosRun = new Set(completed.map(r => r.metro_name)).size;
   const totalDiscovered = completed.reduce((s, r) => s + (r.total_discovered || 0), 0);
@@ -36,7 +44,7 @@ export function DashboardPage() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
   const monthLabel = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const activeRun = runs.find(r => r.status === "running");
+  const activeRun = runs.find(r => r.status === "running" || r.status === "queued");
 
   const handleRerun = (run: PipelineRun) => {
     navigate(`/runs/new?rerun=${run.id}`);

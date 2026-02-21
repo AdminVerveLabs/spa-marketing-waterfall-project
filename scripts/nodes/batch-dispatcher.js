@@ -44,7 +44,15 @@ if (!metro) {
   }
 }
 
-console.log(`Batch Dispatcher: starting for metro "${metro}"`);
+// ═══ GET RUN_ID FROM METRO CONFIG ═══
+let runId = null;
+try {
+  runId = $('Metro Config').first().json.run_id || null;
+} catch(e) {
+  // No run_id — legacy trigger
+}
+
+console.log(`Batch Dispatcher: starting for metro "${metro}" (run_id: ${runId || 'none'})`);
 
 // ═══ PHASE 1: POLL FOR DISCOVERY INSERTS TO STABILIZE ═══
 // Upstream Merge convergence means Insert to Supabase may execute in multiple batches.
@@ -109,13 +117,30 @@ for (let i = 0; i < companyIds.length; i += BATCH_SIZE) {
 
 console.log(`Batch Dispatcher: dispatching ${batches.length} batches of up to ${BATCH_SIZE} companies each`);
 
+// ═══ WRITE TOTAL_BATCHES TO PIPELINE_RUNS (if run_id exists) ═══
+if (runId) {
+  try {
+    await this.helpers.httpRequest({
+      method: 'PATCH',
+      url: `${supabaseUrl}/rest/v1/pipeline_runs?id=eq.${runId}`,
+      headers: { ...sbHeaders, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: { total_batches: batches.length, total_discovered: discoveredCount },
+      json: true
+    });
+    console.log(`  Updated pipeline_runs: total_batches=${batches.length}, total_discovered=${discoveredCount}`);
+  } catch(e) {
+    console.log(`  WARNING: Failed to update pipeline_runs total_batches: ${e.message}`);
+    // Non-blocking — pipeline continues
+  }
+}
+
 // Fire all webhooks simultaneously — Respond to Webhook returns 200 immediately
 const promises = batches.map((batch, i) =>
   this.helpers.httpRequest({
     method: 'POST',
     url: BATCH_WEBHOOK_URL,
     headers: { 'Content-Type': 'application/json' },
-    body: { company_ids: batch, metro },
+    body: { company_ids: batch, metro, run_id: runId },
     json: true,
     timeout: 30000
   }).then(() => {
@@ -135,6 +160,7 @@ console.log(`Batch Dispatcher: ${successfullyDispatched}/${batches.length} batch
 const summary = {
   step: 'batch_dispatcher',
   metro,
+  run_id: runId,
   discovered_count: discoveredCount,
   total_companies_dispatched: totalCompanies,
   batches_dispatched: successfullyDispatched,

@@ -1,10 +1,12 @@
-// Clear convergence-suppression flag from previous execution
-// Batch Dispatcher replaces Collapse to Single2 in the parallelized architecture
+// Metro Config — reads from POST body (dashboard) or GET query param (legacy curl)
+// Outputs: metro_name, latitude, longitude, radius_meters, search_queries, yelp_location, run_id
+
+// Clear convergence-suppression flags from previous execution
 const staticData = $getWorkflowStaticData('global');
 delete staticData._collapse2_fired;
 delete staticData._batch_dispatcher_fired;
 
-// Dynamic Metro Config — reads metro_name from webhook query parameter
+// Hardcoded metro lookup — fallback for legacy GET triggers
 const METROS = {
   'Austin, TX':     { latitude: '30.2672',  longitude: '-97.7431',  yelp_location: 'Austin, TX', radius_meters: '15000' },
   'Denver, CO':     { latitude: '39.7392',  longitude: '-104.9903', yelp_location: 'Denver, CO', radius_meters: '15000' },
@@ -19,18 +21,54 @@ const METROS = {
   'Scottsdale, AZ': { latitude: '33.4942',  longitude: '-111.9261', yelp_location: 'Scottsdale, AZ', radius_meters: '15000' },
 };
 
+const DEFAULT_QUERIES = 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist';
+
 const webhookData = $('Webhook').first().json;
-const metroName = (webhookData.query && webhookData.query.metro_name) || '';
+
+// Try POST body first (dashboard sends JSON body)
+const postBody = webhookData.body || {};
+const queryParams = webhookData.query || {};
+
+let metroName = postBody.metro_name || queryParams.metro_name || '';
+let runId = postBody.run_id || null;
+let latitude = postBody.latitude || null;
+let longitude = postBody.longitude || null;
+let radiusMeters = postBody.radius_meters || null;
+let searchQueries = postBody.search_queries || null;
+let yelpLocation = postBody.yelp_location || null;
 
 if (!metroName) {
-  throw new Error('Missing required query parameter: metro_name. Use ?metro_name=City, ST');
+  throw new Error('Missing metro_name. POST JSON body with metro_name, or use GET ?metro_name=City, ST');
 }
 
+// If dashboard provided full config, use it directly
+if (latitude && longitude) {
+  console.log(`Metro Config: using dashboard-provided config for "${metroName}" (run_id: ${runId || 'none'})`);
+
+  // search_queries may be a comma-separated string or already correct
+  const queries = typeof searchQueries === 'string' ? searchQueries : DEFAULT_QUERIES;
+
+  return [{
+    json: {
+      metro_name: metroName,
+      latitude: String(latitude),
+      longitude: String(longitude),
+      radius_meters: String(radiusMeters || '15000'),
+      search_queries: queries,
+      yelp_location: yelpLocation || metroName,
+      run_id: runId
+    }
+  }];
+}
+
+// Fallback: legacy GET trigger with hardcoded lookup
 const metro = METROS[metroName];
 if (!metro) {
   const available = Object.keys(METROS).join(', ');
   throw new Error(`Unknown metro: "${metroName}". Available: ${available}`);
 }
+
+console.log(`Metro Config: using hardcoded lookup for "${metroName}" (legacy GET, no run_id)`);
 
 return [{
   json: {
@@ -38,7 +76,8 @@ return [{
     latitude: metro.latitude,
     longitude: metro.longitude,
     radius_meters: metro.radius_meters,
-    search_queries: 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist',
-    yelp_location: metro.yelp_location
+    search_queries: DEFAULT_QUERIES,
+    yelp_location: metro.yelp_location,
+    run_id: null
   }
 }];

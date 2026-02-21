@@ -1,0 +1,62 @@
+{
+  "updatedAt": "2026-02-21T18:15:30.528Z",
+  "createdAt": "2026-02-21T18:15:26.187Z",
+  "id": "ovArmKkj1bs5Af3G",
+  "name": "Pipeline Error Handler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "err-trigger-0001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "err-mark-failed-0001",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        192
+      ],
+      "parameters": {
+        "jsCode": "// Mark Failed — looks up pipeline_runs by n8n_execution_id and marks as failed\n// Receives error context from Error Trigger node\n\nconst errorData = $input.first().json;\nconst executionId = errorData.execution && errorData.execution.id;\nconst errorMessage = errorData.execution && errorData.execution.error && errorData.execution.error.message;\n\nif (!executionId) {\n  console.log('Mark Failed: no execution ID in error context');\n  return [{ json: { step: 'mark_failed', status: 'skipped', reason: 'no_execution_id' } }];\n}\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst sbHeaders = {\n  'apikey': supabaseKey,\n  'Authorization': 'Bearer ' + supabaseKey,\n  'Content-Type': 'application/json'\n};\n\ntry {\n  // Look up pipeline_runs by n8n_execution_id\n  const runs = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${supabaseUrl}/rest/v1/pipeline_runs?n8n_execution_id=eq.${executionId}&status=eq.running&select=id`,\n    headers: { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey },\n    json: true\n  });\n\n  if (!Array.isArray(runs) || runs.length === 0) {\n    console.log(`Mark Failed: no running pipeline_runs found for execution ${executionId}`);\n    return [{ json: { step: 'mark_failed', status: 'skipped', reason: 'no_matching_run', executionId } }];\n  }\n\n  const runId = runs[0].id;\n  \n  // PATCH to failed\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `${supabaseUrl}/rest/v1/pipeline_runs?id=eq.${runId}`,\n    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },\n    body: {\n      status: 'failed',\n      completed_at: new Date().toISOString(),\n      errors: [errorMessage || 'Unknown error']\n    },\n    json: true\n  });\n\n  console.log(`Mark Failed: pipeline_runs ${runId} -> failed (execution: ${executionId})`);\n  return [{ json: { step: 'mark_failed', status: 'done', runId, executionId, error: errorMessage } }];\n\n} catch(e) {\n  console.log(`Mark Failed: ERROR - ${e.message}`);\n  return [{ json: { step: 'mark_failed', status: 'error', executionId, error: e.message } }];\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "bb1d0e9c-86b3-43be-8e99-51db33450880",
+  "tags": []
+}

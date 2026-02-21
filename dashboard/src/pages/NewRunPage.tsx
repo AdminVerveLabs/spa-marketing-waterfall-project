@@ -54,6 +54,14 @@ export function NewRunPage() {
     search_queries: string[];
     yelp_location: string;
   }) => {
+    // Check for already-running pipelines before triggering
+    const { data: activeRuns } = await supabase
+      .from('pipeline_runs')
+      .select('id, metro_name, status')
+      .in('status', ['running', 'queued']);
+
+    const hasRunning = activeRuns?.some(r => r.status === 'running');
+
     const { data: run, error } = await supabase
       .from('pipeline_runs')
       .insert({
@@ -77,6 +85,11 @@ export function NewRunPage() {
       throw error;
     }
 
+    if (hasRunning) {
+      toast.info(`Run queued for ${data.metro_name} — will start after the current pipeline finishes.`);
+      return;
+    }
+
     await triggerPipelineRun({
       run_id: run.id,
       metro_name: data.metro_name,
@@ -90,7 +103,7 @@ export function NewRunPage() {
       city: data.city,
     });
 
-    toast.success(`Pipeline run queued for ${data.metro_name}`);
+    toast.success(`Pipeline triggered for ${data.metro_name}`);
   };
 
   return <NewRunForm templates={templates} onSubmit={handleSubmit} initialData={rerunData} />;

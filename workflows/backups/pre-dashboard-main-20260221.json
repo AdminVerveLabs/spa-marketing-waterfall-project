@@ -1,0 +1,1548 @@
+{
+  "success": true,
+  "data": {
+    "updatedAt": "2026-02-20T22:58:31.969Z",
+    "createdAt": "2026-02-18T03:19:26.158Z",
+    "id": "yxvQst30sWlNIeZq",
+    "name": "Spa Marketing Waterfall \u00e2\u20ac\u201d Parallelized Pipeline",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "jsCode": "const config = $input.first().json;\nconst queries = config.search_queries.split(',').map(q => q.trim());\nreturn queries.map(query => ({\n  json: {\n    query,\n    latitude: config.latitude,\n    longitude: config.longitude,\n    radius_meters: config.radius_meters,\n    metro_name: config.metro_name,\n    yelp_location: config.yelp_location\n  }\n}));"
+        },
+        "id": "3bbcf320-b713-415a-aca4-1f8fd1e54409",
+        "name": "Split Search Queries",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -10736,
+          192
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "succeeded",
+                "leftValue": "={{ $json.status }}",
+                "rightValue": "SUCCEEDED",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "deb02ddd-d3e5-4f68-a564-a4380714224d",
+        "name": "Run Succeeded?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -9392,
+          288
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://places.googleapis.com/v1/places:searchText",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Goog-FieldMask",
+                "value": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri,places.rating,places.userRatingCount,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,nextPageToken"
+              },
+              {
+                "name": "X-Goog-Api-Key",
+                "value": "={{ $env.GOOGLE_PLACES_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"textQuery\": \"{{ $json.query }}\",\n  \"locationBias\": {\n    \"circle\": {\n      \"center\": {\n        \"latitude\": {{ $json.latitude }},\n        \"longitude\": {{ $json.longitude }}\n      },\n      \"radius\": {{ $json.radius_meters }}\n    }\n  },\n  \"maxResultCount\": 20\n}",
+          "options": {}
+        },
+        "id": "ecf3e8c2-15ac-4259-8944-94009fae0e13",
+        "name": "Google Places - Text Search",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -9168,
+          48
+        ],
+        "notes": "Google Places API (v1). Needs HTTP Header Auth credential: name='X-Goog-Api-Key', value=your API key."
+      },
+      {
+        "id": "a1b2c3d4-lead-score-http-0001",
+        "name": "Calculate Lead Scores",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -7100,
+          192
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/calculate_lead_scores",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{}",
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
+        },
+        "notes": "Step 5: Call Supabase RPC to recalculate all lead scores based on scoring_rules table."
+      },
+      {
+        "parameters": {
+          "path": "001b878c-b5af-4c3c-8b78-d41e526049f4",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -11184,
+          304
+        ],
+        "id": "1425be88-641d-4abd-a094-acab6b05acd7",
+        "name": "Webhook",
+        "webhookId": "001b878c-b5af-4c3c-8b78-d41e526049f4"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?on_conflict=google_place_id",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "resolution=merge-duplicates"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ name: $json.name, phone: $json.phone, domain: $json.domain, address: $json.address, city: $json.city, state: $json.state, country: $json.country, google_place_id: $json.google_place_id, category: $json.category, has_website: $json.has_website, source_urls: $json.source_urls, discovery_metro: $json.discovery_metro, google_rating: $json.google_rating || null, google_review_count: $json.google_review_count || null, on_yelp: $json.on_yelp || false, on_groupon: $json.on_groupon || false, has_online_booking: $json.has_online_booking || false, booking_platform: $json.booking_platform || null, has_paid_ads: $json.has_paid_ads || false, estimated_size: $json.estimated_size || null, enrichment_status: 'discovered', discovered_at: new Date().toISOString() }) }}",
+          "options": {
+            "batching": {
+              "batch": {}
+            }
+          }
+        },
+        "id": "f4cdac90-eda5-4c9c-8e3e-aa2f04cf45ab",
+        "name": "Insert to Supabase",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -7824,
+          288
+        ],
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput",
+        "notes": "Clean records. Uses service_role key (bypasses RLS)."
+      },
+      {
+        "parameters": {
+          "amount": 20
+        },
+        "id": "13385ec3-d78d-4bbd-8579-d67fd6d52395",
+        "name": "Wait 30s",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -10064,
+          288
+        ],
+        "webhookId": "58f36f86-6055-45a5-84d5-f71b858202b8"
+      },
+      {
+        "id": "a1b2c3d4-lead-score-summary-02",
+        "name": "Run Summary5",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -6600,
+          192
+        ],
+        "parameters": {
+          "jsCode": "// Step 5: Lead Scoring Summary\nconst input = $input.first().json;\n\n// Check if the RPC call succeeded\n// Supabase RPC for void functions returns empty string or null on success\nconst rpcFailed = input.error || input.message || (typeof input === 'object' && input.code);\n\nconst summary = {\n  run_completed_at: new Date().toISOString(),\n  step: 'Step 5: Lead Scoring',\n  scoring_status: rpcFailed ? 'FAILED' : 'SUCCESS',\n  rpc_response: rpcFailed ? JSON.stringify(input) : 'calculate_lead_scores() executed successfully',\n  message: rpcFailed\n    ? `Lead scoring FAILED: ${JSON.stringify(input)}. Scores not updated \u00e2\u20ac\u201d pipeline still completed.`\n    : 'Lead scoring complete. All company lead_score values recalculated from scoring_rules table.'\n};\n\nconsole.log('=== STEP 5: LEAD SCORING SUMMARY ===');\nconsole.log(JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
+        },
+        "notes": "Logs whether the lead scoring RPC call succeeded or failed."
+      },
+      {
+        "id": "66759275-0ca5-4b3c-ab6d-b3e52db64922",
+        "name": "Metro Config",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -10960,
+          192
+        ],
+        "parameters": {
+          "jsCode": "// Clear convergence-suppression flag from previous execution\n// Batch Dispatcher replaces Collapse to Single2 in the parallelized architecture\nconst staticData = $getWorkflowStaticData('global');\ndelete staticData._collapse2_fired;\ndelete staticData._batch_dispatcher_fired;\n\n// Dynamic Metro Config \u00e2\u20ac\u201d reads metro_name from webhook query parameter\nconst METROS = {\n  'Austin, TX':     { latitude: '30.2672',  longitude: '-97.7431',  yelp_location: 'Austin, TX', radius_meters: '15000' },\n  'Denver, CO':     { latitude: '39.7392',  longitude: '-104.9903', yelp_location: 'Denver, CO', radius_meters: '15000' },\n  'Phoenix, AZ':    { latitude: '33.4484',  longitude: '-112.0740', yelp_location: 'Phoenix, AZ', radius_meters: '15000' },\n  'Toronto, ON':    { latitude: '43.6532',  longitude: '-79.3832',  yelp_location: 'Toronto, ON', radius_meters: '15000' },\n  'San Diego, CA':  { latitude: '32.7157',  longitude: '-117.1611', yelp_location: 'San Diego, CA', radius_meters: '15000' },\n  'Boise, ID':      { latitude: '43.6150',  longitude: '-116.2023', yelp_location: 'Boise, ID', radius_meters: '25000' },\n  'Portland, OR':   { latitude: '45.5152',  longitude: '-122.6784', yelp_location: 'Portland, OR', radius_meters: '15000' },\n  'Nashville, TN':  { latitude: '36.1627',  longitude: '-86.7816',  yelp_location: 'Nashville, TN', radius_meters: '15000' },\n  'Asheville, NC':  { latitude: '35.5951',  longitude: '-82.5515',  yelp_location: 'Asheville, NC', radius_meters: '15000' },\n  'Sedona, AZ':     { latitude: '34.8697',  longitude: '-111.7610', yelp_location: 'Sedona, AZ', radius_meters: '15000' },\n  'Scottsdale, AZ': { latitude: '33.4942',  longitude: '-111.9261', yelp_location: 'Scottsdale, AZ', radius_meters: '15000' },\n};\n\nconst webhookData = $('Webhook').first().json;\nconst metroName = (webhookData.query && webhookData.query.metro_name) || '';\n\nif (!metroName) {\n  throw new Error('Missing required query parameter: metro_name. Use ?metro_name=City, ST');\n}\n\nconst metro = METROS[metroName];\nif (!metro) {\n  const available = Object.keys(METROS).join(', ');\n  throw new Error(`Unknown metro: \"${metroName}\". Available: ${available}`);\n}\n\nreturn [{\n  json: {\n    metro_name: metroName,\n    latitude: metro.latitude,\n    longitude: metro.longitude,\n    radius_meters: metro.radius_meters,\n    search_queries: 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist',\n    yelp_location: metro.yelp_location\n  }\n}];\n"
+        },
+        "notes": "Dynamic metro lookup \u00e2\u20ac\u201d reads metro_name from webhook ?metro_name=City, ST query parameter. Add new metros to the METROS object."
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?on_conflict=google_place_id",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Prefer",
+                "value": "resolution=merge-duplicates"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ name: $json.name, phone: $json.phone, domain: $json.domain, address: $json.address, city: $json.city, state: $json.state, country: $json.country, google_place_id: $json.google_place_id, category: $json.category, has_website: $json.has_website, source_urls: $json.source_urls, discovery_metro: $json.discovery_metro, google_rating: $json.google_rating || null, google_review_count: $json.google_review_count || null, on_yelp: $json.on_yelp || false, on_groupon: $json.on_groupon || false, has_online_booking: $json.has_online_booking || false, booking_platform: $json.booking_platform || null, has_paid_ads: $json.has_paid_ads || false, estimated_size: $json.estimated_size || null, enrichment_status: 'needs_review', discovered_at: new Date().toISOString() }) }}",
+          "options": {}
+        },
+        "id": "6014b12d-87d3-45bc-9a6c-678a3c1031a2",
+        "name": "Insert Flagged (Needs Review)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -7824,
+          96
+        ],
+        "notes": "Fuzzy-matched records. Status = needs_review for manual dedup.",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.apify.com/v2/actor-runs/{{ $('Extract Run ID').first().json.runId }}?token={{ $env.APIFY_API_TOKEN }}",
+          "options": {
+            "timeout": 15000
+          }
+        },
+        "id": "6ce308da-fda1-430e-a1ed-ef0605941bcd",
+        "name": "Check Run Status",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -9840,
+          224
+        ],
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all().map(i => i.json);\nconst canonical = [];\nconst phoneIndex = {};\nconst domainIndex = {};\n\nfunction normalizePhone(p) { return (p || '').replace(/[^\\d+]/g, ''); }\nfunction normalizeDomain(d) { return (d || '').toLowerCase().replace(/^www\\./, '').trim(); }\nfunction normalizeName(n) { return (n || '').toLowerCase().replace(/[^a-z0-9\\s]/g, '').trim(); }\nfunction nameSimilarity(a, b) {\n  const setA = new Set(normalizeName(a).split(/\\s+/));\n  const setB = new Set(normalizeName(b).split(/\\s+/));\n  const intersection = new Set([...setA].filter(x => setB.has(x)));\n  const union = new Set([...setA, ...setB]);\n  return union.size === 0 ? 0 : intersection.size / union.size;\n}\n\nfor (const item of items) {\n  const phone = normalizePhone(item.phone);\n  const domain = normalizeDomain(item.domain);\n  const city = (item.city || '').toLowerCase();\n  let matched = false;\n\n  if (phone && phone.length >= 10 && phoneIndex[phone] !== undefined) {\n    const existing = canonical[phoneIndex[phone]];\n    existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n    if (!existing.domain && item.domain) existing.domain = item.domain;\n    if (!existing.google_place_id && item.google_place_id) existing.google_place_id = item.google_place_id;\n    if (!existing.has_website && item.has_website) existing.has_website = item.has_website;\n    if (item.google_rating) existing.google_rating = item.google_rating;\n    if (item.google_review_count) existing.google_review_count = item.google_review_count;\n    if (item.yelp_rating) existing.yelp_rating = item.yelp_rating;\n    if (item.yelp_review_count) existing.yelp_review_count = item.yelp_review_count;\n    if (item.yelp_url) existing.yelp_url = item.yelp_url;\n    matched = true;\n  }\n\n  if (!matched && domain && domainIndex[domain] !== undefined) {\n    const existing = canonical[domainIndex[domain]];\n    existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n    if (!existing.phone && item.phone) existing.phone = item.phone;\n    if (!existing.google_place_id && item.google_place_id) existing.google_place_id = item.google_place_id;\n    if (item.google_rating) existing.google_rating = item.google_rating;\n    if (item.google_review_count) existing.google_review_count = item.google_review_count;\n    if (item.yelp_rating) existing.yelp_rating = item.yelp_rating;\n    if (item.yelp_review_count) existing.yelp_review_count = item.yelp_review_count;\n    if (item.yelp_url) existing.yelp_url = item.yelp_url;\n    matched = true;\n  }\n\n  if (!matched) {\n    let fuzzyMatch = false;\n    for (let i = 0; i < canonical.length; i++) {\n      const existing = canonical[i];\n      if ((existing.city || '').toLowerCase() === city && city !== '') {\n        if (nameSimilarity(existing.name, item.name) >= 0.85) {\n          existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n          existing._fuzzy_match_flag = true;\n          existing._fuzzy_match_names = [...(existing._fuzzy_match_names || [existing.name]), item.name];\n          fuzzyMatch = true;\n          break;\n        }\n      }\n    }\n    if (!fuzzyMatch) {\n      const idx = canonical.length;\n      canonical.push({...item});\n      if (phone && phone.length >= 10) phoneIndex[phone] = idx;\n      if (domain) domainIndex[domain] = idx;\n    }\n  }\n}\n\nconsole.log('Dedup:', items.length, 'raw ->', canonical.length, 'unique,', canonical.filter(c => c._fuzzy_match_flag).length, 'fuzzy flagged');\nreturn canonical.map(item => ({ json: item }));"
+        },
+        "id": "50caf015-dd4e-4183-8124-b35fddffa354",
+        "name": "Deduplicate Records",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -8496,
+          192
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nlet runId = '';\nlet datasetId = '';\n\nif (response.data) {\n  runId = response.data.id || '';\n  datasetId = response.data.defaultDatasetId || '';\n}\n\nif (!runId) {\n  throw new Error('Failed to start Apify run. Response: ' + JSON.stringify(response).substring(0, 500));\n}\n\nreturn [{ json: { runId, datasetId, pollCount: 0 } }];"
+        },
+        "id": "ca8aee6f-7b5b-40b6-8d16-3902dceea5c6",
+        "name": "Extract Run ID",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -10288,
+          288
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const metro = $('Metro Config').first().json.metro_name;\nconst query = $('Split Search Queries').first().json.query || '';\nconst results = [];\n\n// Booking platform domain blocklist\nconst BLOCKED_DOMAINS = ['wixsite.com','wix.com','setmore.com','schedulista.com','glossgenius.com','square.site','genbook.com','jane.app','acuityscheduling.com','mindbodyonline.com','mindbody.io','vagaro.com','fresha.com','schedulicity.com','booksy.com','massagebook.com','noterro.com','clinicsense.com','calendly.com','squarespace.com'];\n// Business type blocklist - filter non-target businesses before Supabase insert\nconst BUSINESS_TYPE_BLOCKLIST = ['school','college','university','association','federation','union','board of','institute','academy','program'];\n\n\nfor (const item of items) {\n  const biz = item.json;\n  if (!biz.name) continue;\n\n  // Business type filter - skip non-target businesses\n  const _bizNameLower = biz.name.toLowerCase();\n  const _bizCatLower = ((biz.categories || []).join(', ')).toLowerCase();\n  if (BUSINESS_TYPE_BLOCKLIST.some(kw => _bizNameLower.includes(kw) || _bizCatLower.includes(kw))) continue;\n\n  let phone = (biz.phone || '').replace(/[^\\d+]/g, '');\n  if (phone && !phone.startsWith('+')) {\n    phone = '+1' + phone.replace(/^1/, '');\n  }\n\n  let domain = '';\n  if (biz.website) {\n    try {\n      domain = new URL(biz.website.startsWith('http') ? biz.website : 'https://' + biz.website)\n        .hostname.replace(/^www\\./, '');\n    } catch(e) {}\n  }\n\n  // Check domain against blocklist\n  let _domain_blocked = false;\n  let _domain_blocked_platform = '';\n  if (domain) {\n    const lowerDomain = domain.toLowerCase();\n    for (const blocked of BLOCKED_DOMAINS) {\n      if (lowerDomain === blocked || lowerDomain.endsWith('.' + blocked)) {\n        _domain_blocked = true;\n        _domain_blocked_platform = blocked;\n        domain = '';\n        break;\n      }\n    }\n  }\n\n  const addr = biz.address || {};\n  const fullAddress = [addr.addressLine1, addr.addressLine2, addr.addressLine3]\n    .filter(Boolean).join(', ');\n\n  results.push({\n    json: {\n      name: biz.name,\n      phone: phone,\n      domain: domain,\n      address: fullAddress,\n      city: addr.city || '',\n      state: addr.regionCode || '',\n      country: addr.country || 'US',\n      google_place_id: '',\n      category: (biz.categories || []).join(', '),\n      google_rating: null,\n      google_review_count: 0,\n      yelp_rating: biz.aggregatedRating || null,\n      yelp_review_count: biz.reviewCount || 0,\n      has_website: _domain_blocked ? false : !!biz.website,\n      yelp_url: biz.directUrl || '',\n      yelp_is_claimed: biz.claimed || false,\n      yelp_is_advertiser: biz.advertiser || false,\n      source_urls: [{source: 'yelp_apify', url: biz.directUrl || '', query_used: query}],\n      discovery_metro: metro,\n      discovery_source: 'yelp_apify',\n      _domain_blocked,\n      _domain_blocked_platform\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { _empty: true } }];"
+        },
+        "id": "ca715d3a-ef73-4e5b-82cc-2f181555ee2a",
+        "name": "Normalize Yelp Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -8944,
+          288
+        ],
+        "notes": "After testing, change $('Test Input (Remove After Testing)') to $('Metro Config') and $('Split Search Queries')."
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://api.apify.com/v2/actor-tasks/uplifted_veranda~yelp-scraper-task/runs?token={{ $env.APIFY_API_TOKEN }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"searchTerms\": [\"{{ $json.query }}\"],\n  \"locations\": [\"{{ $json.yelp_location }}\"],\n  \"searchLimit\": 100,\n  \"maxImages\": 0,\n  \"reviewLimit\": 0\n}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "b0bba0ff-f1a6-4e25-bdea-6002b7ed869c",
+        "name": "Start Apify Run",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -10512,
+          288
+        ],
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput",
+        "notes": "Starts the Apify task. Returns run object with data.id for polling."
+      },
+      {
+        "parameters": {
+          "jsCode": "const now = new Date().toISOString();\nreturn $input.all().map(item => {\n  const r = item.json;\n  return { json: {\n    name: r.name, phone: r.phone || null, domain: r.domain || null,\n    address: r.address || null, city: r.city || null, state: r.state || null,\n    country: r.country || 'US', google_place_id: r.google_place_id || null,\n    category: r.category || null, has_website: r.has_website || false,\n    has_online_booking: false, booking_platform: null, has_paid_ads: false,\n    on_groupon: false,\n    on_yelp: (r.source_urls || []).some(s => s.source === 'yelp_apify'),\n    google_review_count: r.google_review_count || 0,\n    google_rating: r.google_rating || null,\n    estimated_size: null, source_urls: r.source_urls || [],\n    enrichment_status: r._fuzzy_match_flag ? 'needs_review' : 'discovered',\n    lead_score: 0, discovered_at: now, enriched_at: null,\n    discovery_metro: r.discovery_metro || null,\n    _fuzzy_match_flag: r._fuzzy_match_flag || false\n  }};\n});"
+        },
+        "id": "59bd4554-e739-4428-bd72-53b502f85f61",
+        "name": "Prepare for Supabase",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -8272,
+          192
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const allInputs = JSON.parse(JSON.stringify($input.all().map(i => i.json)));\nconst allPlaces = [];\n\nfor (const input of allInputs) {\n  const places = input.places || [];\n  const q = input.query || '';\n  places.forEach(p => { p._query = q; });\n  allPlaces.push(...places);\n}\n\nconst metro = JSON.parse(JSON.stringify($('Metro Config').first().json)).metro_name;\n\n// Booking platform domain blocklist\nconst BLOCKED_DOMAINS = ['wixsite.com','wix.com','setmore.com','schedulista.com','glossgenius.com','square.site','genbook.com','jane.app','acuityscheduling.com','mindbodyonline.com','mindbody.io','vagaro.com','fresha.com','schedulicity.com','booksy.com','massagebook.com','noterro.com','clinicsense.com','calendly.com','squarespace.com'];\n// Business type blocklist - filter non-target businesses before Supabase insert\nconst BUSINESS_TYPE_BLOCKLIST = ['school','college','university','association','federation','union','board of','institute','academy','program'];\n\n\nreturn allPlaces.map(place => {\n  // Business type filter - skip non-target businesses\n  const _bizName = (place.displayName && place.displayName.text) || '';\n  const _bizCategory = (place.primaryTypeDisplayName && place.primaryTypeDisplayName.text) || place.primaryType || '';\n  const _bizNameLower = _bizName.toLowerCase();\n  const _bizCatLower = _bizCategory.toLowerCase();\n  if (BUSINESS_TYPE_BLOCKLIST.some(kw => _bizNameLower.includes(kw) || _bizCatLower.includes(kw))) return null;\n\n  let city = '', state = '', country = '';\n  if (place.addressComponents) {\n    for (const comp of place.addressComponents) {\n      if (comp.types && comp.types.includes('locality')) city = comp.longText || '';\n      if (comp.types && comp.types.includes('administrative_area_level_1')) state = comp.shortText || '';\n      if (comp.types && comp.types.includes('country')) country = comp.shortText || '';\n    }\n  }\n\n  let phone = place.internationalPhoneNumber || place.nationalPhoneNumber || '';\n  let phoneNormalized = phone.replace(/[^\\d+]/g, '');\n  if (phoneNormalized && !phoneNormalized.startsWith('+')) {\n    phoneNormalized = '+1' + phoneNormalized.replace(/^1/, '');\n  }\n\n  const website = place.websiteUri || '';\n  let domain = '';\n  if (website) {\n    const match = website.match(/^https?:\\/\\/(?:www\\.)?([^\\/]+)/i);\n    if (match) domain = match[1];\n  }\n\n  // Check domain against blocklist\n  let _domain_blocked = false;\n  let _domain_blocked_platform = '';\n  if (domain) {\n    const lowerDomain = domain.toLowerCase();\n    for (const blocked of BLOCKED_DOMAINS) {\n      if (lowerDomain === blocked || lowerDomain.endsWith('.' + blocked)) {\n        _domain_blocked = true;\n        _domain_blocked_platform = blocked;\n        domain = '';\n        break;\n      }\n    }\n  }\n\n  return {\n    json: {\n      name: (place.displayName && place.displayName.text) || '',\n      phone: phoneNormalized,\n      domain: domain,\n      address: place.formattedAddress || '',\n      city, state, country: country || 'US',\n      google_place_id: place.id || '',\n      category: (place.primaryTypeDisplayName && place.primaryTypeDisplayName.text) || place.primaryType || '',\n      google_rating: place.rating || null,\n      google_review_count: place.userRatingCount || 0,\n      has_website: _domain_blocked ? false : !!website,\n      google_maps_url: place.googleMapsUri || '',\n      source_urls: [{source: 'google_places', url: place.googleMapsUri || '', query_used: place._query || ''}],\n      discovery_metro: metro,\n      discovery_source: 'google_places',\n      _domain_blocked,\n      _domain_blocked_platform\n    }\n  };\n}).filter(Boolean);"
+        },
+        "id": "a9c14e44-5d37-4994-8a7a-b9283a47f5fe",
+        "name": "Normalize Google Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -8944,
+          48
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "8fcec5c5-45b7-4b87-b2cb-a32c6d692aab",
+        "name": "Merge All Sources",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3,
+        "position": [
+          -8720,
+          192
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=https://api.apify.com/v2/datasets/{{ $json.datasetId }}/items?token={{ $env.APIFY_API_TOKEN }}",
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "78eece76-1e81-4ce4-aef2-637dfd3815be",
+        "name": "Fetch Apify Results",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -9168,
+          288
+        ],
+        "alwaysOutputData": true
+      },
+      {
+        "parameters": {
+          "jsCode": "const response = $input.first().json;\nconst prevData = $('Extract Run ID').first().json;\n\nlet status = 'UNKNOWN';\nlet datasetId = prevData.datasetId || '';\n\n// Single run response\nif (response.data && response.data.status && !response.data.items) {\n  status = response.data.status;\n  if (response.data.defaultDatasetId) datasetId = response.data.defaultDatasetId;\n}\n// List response\nelse if (response.data && response.data.items && response.data.items.length > 0) {\n  status = response.data.items[0].status;\n  if (response.data.items[0].defaultDatasetId) datasetId = response.data.items[0].defaultDatasetId;\n}\n\n// Increment poll count from previous Parse Status if looping, otherwise from Extract Run ID\nlet pollCount = 0;\ntry {\n  pollCount = $('Parse Status').first().json.pollCount || 0;\n} catch(e) {\n  pollCount = prevData.pollCount || 0;\n}\npollCount++;\n\nreturn [{ json: { runId: prevData.runId, datasetId, pollCount, status } }];"
+        },
+        "id": "d7861f94-bfc5-4f69-9f11-b82f2815ba8c",
+        "name": "Parse Status",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -9616,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "id": "fuzzy-check",
+                "leftValue": "={{ $json._fuzzy_match_flag }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "21269bb4-ab43-49df-94ec-17640d94777d",
+        "name": "Fuzzy Match?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -8048,
+          192
+        ]
+      },
+      {
+        "id": "a2-batch-dispatcher-0001",
+        "name": "Batch Dispatcher",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -7600,
+          192
+        ],
+        "parameters": {
+          "jsCode": "// Batch Dispatcher \u00e2\u20ac\u201d Dispatches enrichment batches to sub-workflow\n// Mode: runOnceForAllItems\n// Input: items from Insert to Supabase (single input, no convergence from Insert Flagged)\n// Output: summary for Calculate Lead Scores\n//\n// Phase 1: Poll for discovery inserts to stabilize (upstream Merge convergence may cause batches)\n// Phase 2: Fetch all company IDs needing enrichment\n// Phase 3: Split into batches of BATCH_SIZE and dispatch to sub-workflow\n// (Phase 4 removed \u00e2\u20ac\u201d sub-workflows are fire-and-forget, lead scoring recalculates from Supabase)\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst sbHeaders = { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey };\n\nconst BATCH_SIZE = 25;\nconst BATCH_WEBHOOK_URL = $env.BATCH_ENRICHMENT_WEBHOOK_URL;\n\nconst delay = (ms) => new Promise(r => setTimeout(r, ms));\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 CONVERGENCE GUARD \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Upstream Merge All Sources convergence can cause multiple batches to reach this node.\n// Only fire on the first batch.\nconst staticData = $getWorkflowStaticData('global');\nif (staticData._batch_dispatcher_fired) {\n  console.log('Batch Dispatcher: already fired this execution, skipping duplicate batch');\n  return [];\n}\nstaticData._batch_dispatcher_fired = true;\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 GET METRO FROM INPUT \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst inputItems = $input.all();\nlet metro = null;\nfor (const item of inputItems) {\n  const d = item.json;\n  if (d.discovery_metro) { metro = d.discovery_metro; break; }\n  if (d.metro_name) { metro = d.metro_name; break; }\n}\n\nif (!metro) {\n  try {\n    metro = $('Metro Config').first().json.metro_name;\n  } catch(e) {\n    throw new Error('Batch Dispatcher: cannot determine metro from input or Metro Config');\n  }\n}\n\nconsole.log(`Batch Dispatcher: starting for metro \"${metro}\"`);\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 1: POLL FOR DISCOVERY INSERTS TO STABILIZE \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Upstream Merge convergence means Insert to Supabase may execute in multiple batches.\n// Poll until the discovered count stabilizes (all batches committed).\nlet prevCount = -1;\nlet stableRounds = 0;\nlet discoveredCount = 0;\n\nfor (let i = 0; i < 20; i++) {\n  const discovered = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${supabaseUrl}/rest/v1/companies?discovery_metro=eq.${encodeURIComponent(metro)}&enrichment_status=eq.discovered&select=id`,\n    headers: sbHeaders,\n    json: true\n  });\n\n  const count = Array.isArray(discovered) ? discovered.length : 0;\n  console.log(`  Discovery poll ${i + 1}: ${count} discovered companies`);\n\n  if (count === prevCount && count > 0) {\n    stableRounds++;\n    if (stableRounds >= 2) {\n      discoveredCount = count;\n      console.log(`  Stable at ${count} discovered companies after ${(i + 1) * 15}s`);\n      break;\n    }\n  } else {\n    stableRounds = 0;\n  }\n  prevCount = count;\n\n  if (i < 19) await delay(15000);\n}\n\nif (discoveredCount === 0) {\n  console.log('Batch Dispatcher: no discovered companies found after polling (20 iterations)');\n  return [{ json: { step: 'batch_dispatcher', metro, status: 'no_companies', batches_dispatched: 0, message: 'No discovered companies found after 300s of polling' } }];\n}\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 2: FETCH ALL COMPANIES NEEDING ENRICHMENT \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Include both discovered AND partially_enriched (ADR-020)\nconst allCompanies = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${supabaseUrl}/rest/v1/companies?discovery_metro=eq.${encodeURIComponent(metro)}&enrichment_status=in.(discovered,partially_enriched)&select=id&limit=2000`,\n  headers: sbHeaders,\n  json: true\n});\n\nconst companyIds = (Array.isArray(allCompanies) ? allCompanies : []).map(c => c.id);\nconst totalCompanies = companyIds.length;\nconsole.log(`Batch Dispatcher: ${totalCompanies} companies need enrichment (${discoveredCount} discovered + ${totalCompanies - discoveredCount} partially_enriched)`);\n\nif (totalCompanies === 0) {\n  return [{ json: { step: 'batch_dispatcher', metro, status: 'no_companies_to_enrich', batches_dispatched: 0 } }];\n}\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 3: SPLIT INTO BATCHES AND DISPATCH \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst batches = [];\nfor (let i = 0; i < companyIds.length; i += BATCH_SIZE) {\n  batches.push(companyIds.slice(i, i + BATCH_SIZE));\n}\n\nconsole.log(`Batch Dispatcher: dispatching ${batches.length} batches of up to ${BATCH_SIZE} companies each`);\n\n// Fire all webhooks simultaneously \u00e2\u20ac\u201d Respond to Webhook returns 200 immediately\nconst promises = batches.map((batch, i) =>\n  this.helpers.httpRequest({\n    method: 'POST',\n    url: BATCH_WEBHOOK_URL,\n    headers: { 'Content-Type': 'application/json' },\n    body: { company_ids: batch, metro },\n    json: true,\n    timeout: 30000\n  }).then(() => {\n    console.log(`  Batch ${i + 1}/${batches.length}: ${batch.length} companies dispatched`);\n    return { batch: i, size: batch.length, status: 'dispatched' };\n  }).catch(e => {\n    console.log(`  Batch ${i + 1}/${batches.length}: dispatch ERROR: ${e.message}`);\n    return { batch: i, size: batch.length, status: 'error', error: e.message };\n  })\n);\n\nconst dispatchResults = await Promise.all(promises);\nconst successfullyDispatched = dispatchResults.filter(r => r.status === 'dispatched').length;\nconsole.log(`Batch Dispatcher: ${successfullyDispatched}/${batches.length} batches dispatched successfully`);\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 SUMMARY (no completion polling \u00e2\u20ac\u201d sub-workflows are fire-and-forget) \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst summary = {\n  step: 'batch_dispatcher',\n  metro,\n  discovered_count: discoveredCount,\n  total_companies_dispatched: totalCompanies,\n  batches_dispatched: successfullyDispatched,\n  batches_total: batches.length,\n  batch_size: BATCH_SIZE,\n  status: successfullyDispatched === batches.length ? 'all_dispatched' : 'partial_dispatch',\n  message: `Dispatched ${successfullyDispatched}/${batches.length} batches (${totalCompanies} companies in batches of ${BATCH_SIZE}). Enrichment running asynchronously.`\n};\n\nconsole.log('=== BATCH DISPATCHER SUMMARY ===');\nconsole.log(JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
+        }
+      }
+    ],
+    "connections": {
+      "Split Search Queries": {
+        "main": [
+          [
+            {
+              "node": "Google Places - Text Search",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Start Apify Run",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Google Places - Text Search": {
+        "main": [
+          [
+            {
+              "node": "Normalize Google Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Google Results": {
+        "main": [
+          [
+            {
+              "node": "Merge All Sources",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge All Sources": {
+        "main": [
+          [
+            {
+              "node": "Deduplicate Records",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Deduplicate Records": {
+        "main": [
+          [
+            {
+              "node": "Prepare for Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare for Supabase": {
+        "main": [
+          [
+            {
+              "node": "Fuzzy Match?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fuzzy Match?": {
+        "main": [
+          [
+            {
+              "node": "Insert Flagged (Needs Review)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Insert to Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Run ID": {
+        "main": [
+          [
+            {
+              "node": "Wait 30s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait 30s": {
+        "main": [
+          [
+            {
+              "node": "Check Run Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Run Status": {
+        "main": [
+          [
+            {
+              "node": "Parse Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Status": {
+        "main": [
+          [
+            {
+              "node": "Run Succeeded?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Succeeded?": {
+        "main": [
+          [
+            {
+              "node": "Fetch Apify Results",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Wait 30s",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Start Apify Run": {
+        "main": [
+          [
+            {
+              "node": "Extract Run ID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Yelp Results": {
+        "main": [
+          [
+            {
+              "node": "Merge All Sources",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "Fetch Apify Results": {
+        "main": [
+          [
+            {
+              "node": "Normalize Yelp Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Calculate Lead Scores": {
+        "main": [
+          [
+            {
+              "node": "Run Summary5",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Metro Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Metro Config": {
+        "main": [
+          [
+            {
+              "node": "Split Search Queries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert to Supabase": {
+        "main": [
+          [
+            {
+              "node": "Batch Dispatcher",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Batch Dispatcher": {
+        "main": [
+          [
+            {
+              "node": "Calculate Lead Scores",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": false,
+      "timeSavedMode": "fixed",
+      "callerPolicy": "workflowsFromSameOwner",
+      "saveExecutionProgress": true
+    },
+    "staticData": {
+      "global": {
+        "_enrichedContactIds": [
+          "e12e1c8c-229f-4a31-942a-640d39307742",
+          "9d55aa62-f0d1-4dfe-b72d-94f0c3c94403",
+          "9529e172-53a9-47ad-9a63-cfd6a8d36ce5",
+          "6d28afc3-b027-4a16-87fd-96793bdb458f",
+          "f6b4b240-f7bb-4a59-9ea2-7ac994b470c1",
+          "14140444-30cc-4381-abac-feb23b5094b6",
+          "a8025314-784c-42be-9041-bcd741263327",
+          "4a2679b1-60e9-474b-af07-e213173fab8f",
+          "4801c886-956c-4bba-b730-b378a6f51d6d",
+          "4d1f71d9-1dec-4d78-8a32-cbed015fcdec"
+        ],
+        "_companyEmailsSet": {
+          "ab8ea290-62cd-4f9b-b65b-5a11f0b5edf5_phone_verified": true,
+          "fd8ae628-2f20-4728-8bcc-7cc84dbdfbdc_phone_verified": true,
+          "a5f4b5f5-a28d-444e-a345-c83b8b918b1c_phone_verified": true,
+          "83b308ea-1ffb-43eb-bd5e-2423229db227_phone_verified": true
+        },
+        "_batch_dispatcher_fired": true
+      }
+    },
+    "meta": null,
+    "pinData": {},
+    "versionId": "d30a74d0-9c52-4a89-bf35-85708e110e00",
+    "activeVersionId": "d30a74d0-9c52-4a89-bf35-85708e110e00",
+    "versionCounter": 343,
+    "triggerCount": 1,
+    "shared": [
+      {
+        "updatedAt": "2026-02-18T03:19:26.158Z",
+        "createdAt": "2026-02-18T03:19:26.158Z",
+        "role": "workflow:owner",
+        "workflowId": "yxvQst30sWlNIeZq",
+        "projectId": "333cvByoNUNJEvRJ",
+        "project": {
+          "updatedAt": "2026-02-14T18:27:04.985Z",
+          "createdAt": "2026-02-14T18:04:34.656Z",
+          "id": "333cvByoNUNJEvRJ",
+          "name": "Phillip Schuman <2fa@spamarketing.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+          "projectRelations": [
+            {
+              "updatedAt": "2026-02-14T18:04:34.656Z",
+              "createdAt": "2026-02-14T18:04:34.656Z",
+              "userId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+              "projectId": "333cvByoNUNJEvRJ",
+              "user": {
+                "updatedAt": "2026-02-21T00:00:02.597Z",
+                "createdAt": "2026-02-14T18:04:33.805Z",
+                "id": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+                "email": "2fa@spamarketing.com",
+                "firstName": "Phillip",
+                "lastName": "Schuman",
+                "personalizationAnswers": {
+                  "version": "v4",
+                  "personalization_survey_submitted_at": "2026-02-14T18:27:56.226Z",
+                  "personalization_survey_n8n_version": "2.1.5",
+                  "companyIndustryExtended": [
+                    "other"
+                  ],
+                  "otherCompanyIndustryExtended": "Agency - Massage Clinics",
+                  "companySize": "<20",
+                  "companyType": "other",
+                  "role": "business-owner",
+                  "reportedSource": "friend"
+                },
+                "settings": {
+                  "userActivated": true,
+                  "firstSuccessfulWorkflowId": "fGm4IP0rWxgHptN8",
+                  "userActivatedAt": 1771614367777
+                },
+                "disabled": false,
+                "mfaEnabled": false,
+                "lastActiveAt": "2026-02-21",
+                "isPending": false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "tags": [],
+    "activeVersion": {
+      "updatedAt": "2026-02-20T22:58:31.972Z",
+      "createdAt": "2026-02-20T22:58:31.972Z",
+      "versionId": "d30a74d0-9c52-4a89-bf35-85708e110e00",
+      "workflowId": "yxvQst30sWlNIeZq",
+      "nodes": [
+        {
+          "parameters": {
+            "jsCode": "const config = $input.first().json;\nconst queries = config.search_queries.split(',').map(q => q.trim());\nreturn queries.map(query => ({\n  json: {\n    query,\n    latitude: config.latitude,\n    longitude: config.longitude,\n    radius_meters: config.radius_meters,\n    metro_name: config.metro_name,\n    yelp_location: config.yelp_location\n  }\n}));"
+          },
+          "id": "3bbcf320-b713-415a-aca4-1f8fd1e54409",
+          "name": "Split Search Queries",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -10736,
+            192
+          ]
+        },
+        {
+          "parameters": {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict"
+              },
+              "conditions": [
+                {
+                  "id": "succeeded",
+                  "leftValue": "={{ $json.status }}",
+                  "rightValue": "SUCCEEDED",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  }
+                }
+              ],
+              "combinator": "and"
+            },
+            "options": {}
+          },
+          "id": "deb02ddd-d3e5-4f68-a564-a4380714224d",
+          "name": "Run Succeeded?",
+          "type": "n8n-nodes-base.if",
+          "typeVersion": 2,
+          "position": [
+            -9392,
+            288
+          ]
+        },
+        {
+          "parameters": {
+            "method": "POST",
+            "url": "https://places.googleapis.com/v1/places:searchText",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Goog-FieldMask",
+                  "value": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.internationalPhoneNumber,places.websiteUri,places.googleMapsUri,places.rating,places.userRatingCount,places.primaryType,places.primaryTypeDisplayName,places.addressComponents,nextPageToken"
+                },
+                {
+                  "name": "X-Goog-Api-Key",
+                  "value": "={{ $env.GOOGLE_PLACES_API_KEY }}"
+                }
+              ]
+            },
+            "sendBody": true,
+            "specifyBody": "json",
+            "jsonBody": "={\n  \"textQuery\": \"{{ $json.query }}\",\n  \"locationBias\": {\n    \"circle\": {\n      \"center\": {\n        \"latitude\": {{ $json.latitude }},\n        \"longitude\": {{ $json.longitude }}\n      },\n      \"radius\": {{ $json.radius_meters }}\n    }\n  },\n  \"maxResultCount\": 20\n}",
+            "options": {}
+          },
+          "id": "ecf3e8c2-15ac-4259-8944-94009fae0e13",
+          "name": "Google Places - Text Search",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -9168,
+            48
+          ],
+          "notes": "Google Places API (v1). Needs HTTP Header Auth credential: name='X-Goog-Api-Key', value=your API key."
+        },
+        {
+          "id": "a1b2c3d4-lead-score-http-0001",
+          "name": "Calculate Lead Scores",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -7100,
+            192
+          ],
+          "parameters": {
+            "method": "POST",
+            "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/calculate_lead_scores",
+            "authentication": "none",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "sendBody": true,
+            "specifyBody": "json",
+            "jsonBody": "{}",
+            "options": {
+              "response": {
+                "response": {
+                  "neverError": true
+                }
+              }
+            }
+          },
+          "notes": "Step 5: Call Supabase RPC to recalculate all lead scores based on scoring_rules table."
+        },
+        {
+          "parameters": {
+            "path": "001b878c-b5af-4c3c-8b78-d41e526049f4",
+            "options": {}
+          },
+          "type": "n8n-nodes-base.webhook",
+          "typeVersion": 2.1,
+          "position": [
+            -11184,
+            304
+          ],
+          "id": "1425be88-641d-4abd-a094-acab6b05acd7",
+          "name": "Webhook",
+          "webhookId": "001b878c-b5af-4c3c-8b78-d41e526049f4"
+        },
+        {
+          "parameters": {
+            "method": "POST",
+            "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?on_conflict=google_place_id",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Prefer",
+                  "value": "resolution=merge-duplicates"
+                }
+              ]
+            },
+            "sendBody": true,
+            "specifyBody": "json",
+            "jsonBody": "={{ JSON.stringify({ name: $json.name, phone: $json.phone, domain: $json.domain, address: $json.address, city: $json.city, state: $json.state, country: $json.country, google_place_id: $json.google_place_id, category: $json.category, has_website: $json.has_website, source_urls: $json.source_urls, discovery_metro: $json.discovery_metro, google_rating: $json.google_rating || null, google_review_count: $json.google_review_count || null, on_yelp: $json.on_yelp || false, on_groupon: $json.on_groupon || false, has_online_booking: $json.has_online_booking || false, booking_platform: $json.booking_platform || null, has_paid_ads: $json.has_paid_ads || false, estimated_size: $json.estimated_size || null, enrichment_status: 'discovered', discovered_at: new Date().toISOString() }) }}",
+            "options": {
+              "batching": {
+                "batch": {}
+              }
+            }
+          },
+          "id": "f4cdac90-eda5-4c9c-8e3e-aa2f04cf45ab",
+          "name": "Insert to Supabase",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -7824,
+            288
+          ],
+          "alwaysOutputData": true,
+          "onError": "continueRegularOutput",
+          "notes": "Clean records. Uses service_role key (bypasses RLS)."
+        },
+        {
+          "parameters": {
+            "amount": 20
+          },
+          "id": "13385ec3-d78d-4bbd-8579-d67fd6d52395",
+          "name": "Wait 30s",
+          "type": "n8n-nodes-base.wait",
+          "typeVersion": 1.1,
+          "position": [
+            -10064,
+            288
+          ],
+          "webhookId": "58f36f86-6055-45a5-84d5-f71b858202b8"
+        },
+        {
+          "id": "a1b2c3d4-lead-score-summary-02",
+          "name": "Run Summary5",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -6600,
+            192
+          ],
+          "parameters": {
+            "jsCode": "// Step 5: Lead Scoring Summary\nconst input = $input.first().json;\n\n// Check if the RPC call succeeded\n// Supabase RPC for void functions returns empty string or null on success\nconst rpcFailed = input.error || input.message || (typeof input === 'object' && input.code);\n\nconst summary = {\n  run_completed_at: new Date().toISOString(),\n  step: 'Step 5: Lead Scoring',\n  scoring_status: rpcFailed ? 'FAILED' : 'SUCCESS',\n  rpc_response: rpcFailed ? JSON.stringify(input) : 'calculate_lead_scores() executed successfully',\n  message: rpcFailed\n    ? `Lead scoring FAILED: ${JSON.stringify(input)}. Scores not updated \u00e2\u20ac\u201d pipeline still completed.`\n    : 'Lead scoring complete. All company lead_score values recalculated from scoring_rules table.'\n};\n\nconsole.log('=== STEP 5: LEAD SCORING SUMMARY ===');\nconsole.log(JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
+          },
+          "notes": "Logs whether the lead scoring RPC call succeeded or failed."
+        },
+        {
+          "id": "66759275-0ca5-4b3c-ab6d-b3e52db64922",
+          "name": "Metro Config",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -10960,
+            192
+          ],
+          "parameters": {
+            "jsCode": "// Clear convergence-suppression flag from previous execution\n// Batch Dispatcher replaces Collapse to Single2 in the parallelized architecture\nconst staticData = $getWorkflowStaticData('global');\ndelete staticData._collapse2_fired;\ndelete staticData._batch_dispatcher_fired;\n\n// Dynamic Metro Config \u00e2\u20ac\u201d reads metro_name from webhook query parameter\nconst METROS = {\n  'Austin, TX':     { latitude: '30.2672',  longitude: '-97.7431',  yelp_location: 'Austin, TX', radius_meters: '15000' },\n  'Denver, CO':     { latitude: '39.7392',  longitude: '-104.9903', yelp_location: 'Denver, CO', radius_meters: '15000' },\n  'Phoenix, AZ':    { latitude: '33.4484',  longitude: '-112.0740', yelp_location: 'Phoenix, AZ', radius_meters: '15000' },\n  'Toronto, ON':    { latitude: '43.6532',  longitude: '-79.3832',  yelp_location: 'Toronto, ON', radius_meters: '15000' },\n  'San Diego, CA':  { latitude: '32.7157',  longitude: '-117.1611', yelp_location: 'San Diego, CA', radius_meters: '15000' },\n  'Boise, ID':      { latitude: '43.6150',  longitude: '-116.2023', yelp_location: 'Boise, ID', radius_meters: '25000' },\n  'Portland, OR':   { latitude: '45.5152',  longitude: '-122.6784', yelp_location: 'Portland, OR', radius_meters: '15000' },\n  'Nashville, TN':  { latitude: '36.1627',  longitude: '-86.7816',  yelp_location: 'Nashville, TN', radius_meters: '15000' },\n  'Asheville, NC':  { latitude: '35.5951',  longitude: '-82.5515',  yelp_location: 'Asheville, NC', radius_meters: '15000' },\n  'Sedona, AZ':     { latitude: '34.8697',  longitude: '-111.7610', yelp_location: 'Sedona, AZ', radius_meters: '15000' },\n  'Scottsdale, AZ': { latitude: '33.4942',  longitude: '-111.9261', yelp_location: 'Scottsdale, AZ', radius_meters: '15000' },\n};\n\nconst webhookData = $('Webhook').first().json;\nconst metroName = (webhookData.query && webhookData.query.metro_name) || '';\n\nif (!metroName) {\n  throw new Error('Missing required query parameter: metro_name. Use ?metro_name=City, ST');\n}\n\nconst metro = METROS[metroName];\nif (!metro) {\n  const available = Object.keys(METROS).join(', ');\n  throw new Error(`Unknown metro: \"${metroName}\". Available: ${available}`);\n}\n\nreturn [{\n  json: {\n    metro_name: metroName,\n    latitude: metro.latitude,\n    longitude: metro.longitude,\n    radius_meters: metro.radius_meters,\n    search_queries: 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist',\n    yelp_location: metro.yelp_location\n  }\n}];\n"
+          },
+          "notes": "Dynamic metro lookup \u00e2\u20ac\u201d reads metro_name from webhook ?metro_name=City, ST query parameter. Add new metros to the METROS object."
+        },
+        {
+          "parameters": {
+            "method": "POST",
+            "url": "={{ $env.SUPABASE_URL }}/rest/v1/companies?on_conflict=google_place_id",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "apikey",
+                  "value": "={{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Prefer",
+                  "value": "resolution=merge-duplicates"
+                }
+              ]
+            },
+            "sendBody": true,
+            "specifyBody": "json",
+            "jsonBody": "={{ JSON.stringify({ name: $json.name, phone: $json.phone, domain: $json.domain, address: $json.address, city: $json.city, state: $json.state, country: $json.country, google_place_id: $json.google_place_id, category: $json.category, has_website: $json.has_website, source_urls: $json.source_urls, discovery_metro: $json.discovery_metro, google_rating: $json.google_rating || null, google_review_count: $json.google_review_count || null, on_yelp: $json.on_yelp || false, on_groupon: $json.on_groupon || false, has_online_booking: $json.has_online_booking || false, booking_platform: $json.booking_platform || null, has_paid_ads: $json.has_paid_ads || false, estimated_size: $json.estimated_size || null, enrichment_status: 'needs_review', discovered_at: new Date().toISOString() }) }}",
+            "options": {}
+          },
+          "id": "6014b12d-87d3-45bc-9a6c-678a3c1031a2",
+          "name": "Insert Flagged (Needs Review)",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -7824,
+            96
+          ],
+          "notes": "Fuzzy-matched records. Status = needs_review for manual dedup.",
+          "onError": "continueRegularOutput"
+        },
+        {
+          "parameters": {
+            "url": "=https://api.apify.com/v2/actor-runs/{{ $('Extract Run ID').first().json.runId }}?token={{ $env.APIFY_API_TOKEN }}",
+            "options": {
+              "timeout": 15000
+            }
+          },
+          "id": "6ce308da-fda1-430e-a1ed-ef0605941bcd",
+          "name": "Check Run Status",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -9840,
+            224
+          ],
+          "alwaysOutputData": true,
+          "onError": "continueRegularOutput"
+        },
+        {
+          "parameters": {
+            "jsCode": "const items = $input.all().map(i => i.json);\nconst canonical = [];\nconst phoneIndex = {};\nconst domainIndex = {};\n\nfunction normalizePhone(p) { return (p || '').replace(/[^\\d+]/g, ''); }\nfunction normalizeDomain(d) { return (d || '').toLowerCase().replace(/^www\\./, '').trim(); }\nfunction normalizeName(n) { return (n || '').toLowerCase().replace(/[^a-z0-9\\s]/g, '').trim(); }\nfunction nameSimilarity(a, b) {\n  const setA = new Set(normalizeName(a).split(/\\s+/));\n  const setB = new Set(normalizeName(b).split(/\\s+/));\n  const intersection = new Set([...setA].filter(x => setB.has(x)));\n  const union = new Set([...setA, ...setB]);\n  return union.size === 0 ? 0 : intersection.size / union.size;\n}\n\nfor (const item of items) {\n  const phone = normalizePhone(item.phone);\n  const domain = normalizeDomain(item.domain);\n  const city = (item.city || '').toLowerCase();\n  let matched = false;\n\n  if (phone && phone.length >= 10 && phoneIndex[phone] !== undefined) {\n    const existing = canonical[phoneIndex[phone]];\n    existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n    if (!existing.domain && item.domain) existing.domain = item.domain;\n    if (!existing.google_place_id && item.google_place_id) existing.google_place_id = item.google_place_id;\n    if (!existing.has_website && item.has_website) existing.has_website = item.has_website;\n    if (item.google_rating) existing.google_rating = item.google_rating;\n    if (item.google_review_count) existing.google_review_count = item.google_review_count;\n    if (item.yelp_rating) existing.yelp_rating = item.yelp_rating;\n    if (item.yelp_review_count) existing.yelp_review_count = item.yelp_review_count;\n    if (item.yelp_url) existing.yelp_url = item.yelp_url;\n    matched = true;\n  }\n\n  if (!matched && domain && domainIndex[domain] !== undefined) {\n    const existing = canonical[domainIndex[domain]];\n    existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n    if (!existing.phone && item.phone) existing.phone = item.phone;\n    if (!existing.google_place_id && item.google_place_id) existing.google_place_id = item.google_place_id;\n    if (item.google_rating) existing.google_rating = item.google_rating;\n    if (item.google_review_count) existing.google_review_count = item.google_review_count;\n    if (item.yelp_rating) existing.yelp_rating = item.yelp_rating;\n    if (item.yelp_review_count) existing.yelp_review_count = item.yelp_review_count;\n    if (item.yelp_url) existing.yelp_url = item.yelp_url;\n    matched = true;\n  }\n\n  if (!matched) {\n    let fuzzyMatch = false;\n    for (let i = 0; i < canonical.length; i++) {\n      const existing = canonical[i];\n      if ((existing.city || '').toLowerCase() === city && city !== '') {\n        if (nameSimilarity(existing.name, item.name) >= 0.85) {\n          existing.source_urls = [...(existing.source_urls || []), ...(item.source_urls || [])];\n          existing._fuzzy_match_flag = true;\n          existing._fuzzy_match_names = [...(existing._fuzzy_match_names || [existing.name]), item.name];\n          fuzzyMatch = true;\n          break;\n        }\n      }\n    }\n    if (!fuzzyMatch) {\n      const idx = canonical.length;\n      canonical.push({...item});\n      if (phone && phone.length >= 10) phoneIndex[phone] = idx;\n      if (domain) domainIndex[domain] = idx;\n    }\n  }\n}\n\nconsole.log('Dedup:', items.length, 'raw ->', canonical.length, 'unique,', canonical.filter(c => c._fuzzy_match_flag).length, 'fuzzy flagged');\nreturn canonical.map(item => ({ json: item }));"
+          },
+          "id": "50caf015-dd4e-4183-8124-b35fddffa354",
+          "name": "Deduplicate Records",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -8496,
+            192
+          ]
+        },
+        {
+          "parameters": {
+            "jsCode": "const response = $input.first().json;\nlet runId = '';\nlet datasetId = '';\n\nif (response.data) {\n  runId = response.data.id || '';\n  datasetId = response.data.defaultDatasetId || '';\n}\n\nif (!runId) {\n  throw new Error('Failed to start Apify run. Response: ' + JSON.stringify(response).substring(0, 500));\n}\n\nreturn [{ json: { runId, datasetId, pollCount: 0 } }];"
+          },
+          "id": "ca8aee6f-7b5b-40b6-8d16-3902dceea5c6",
+          "name": "Extract Run ID",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -10288,
+            288
+          ]
+        },
+        {
+          "parameters": {
+            "jsCode": "const metro = $('Metro Config').first().json.metro_name;\nconst query = $('Split Search Queries').first().json.query || '';\nconst results = [];\n\n// Booking platform domain blocklist\nconst BLOCKED_DOMAINS = ['wixsite.com','wix.com','setmore.com','schedulista.com','glossgenius.com','square.site','genbook.com','jane.app','acuityscheduling.com','mindbodyonline.com','mindbody.io','vagaro.com','fresha.com','schedulicity.com','booksy.com','massagebook.com','noterro.com','clinicsense.com','calendly.com','squarespace.com'];\n// Business type blocklist - filter non-target businesses before Supabase insert\nconst BUSINESS_TYPE_BLOCKLIST = ['school','college','university','association','federation','union','board of','institute','academy','program'];\n\n\nfor (const item of items) {\n  const biz = item.json;\n  if (!biz.name) continue;\n\n  // Business type filter - skip non-target businesses\n  const _bizNameLower = biz.name.toLowerCase();\n  const _bizCatLower = ((biz.categories || []).join(', ')).toLowerCase();\n  if (BUSINESS_TYPE_BLOCKLIST.some(kw => _bizNameLower.includes(kw) || _bizCatLower.includes(kw))) continue;\n\n  let phone = (biz.phone || '').replace(/[^\\d+]/g, '');\n  if (phone && !phone.startsWith('+')) {\n    phone = '+1' + phone.replace(/^1/, '');\n  }\n\n  let domain = '';\n  if (biz.website) {\n    try {\n      domain = new URL(biz.website.startsWith('http') ? biz.website : 'https://' + biz.website)\n        .hostname.replace(/^www\\./, '');\n    } catch(e) {}\n  }\n\n  // Check domain against blocklist\n  let _domain_blocked = false;\n  let _domain_blocked_platform = '';\n  if (domain) {\n    const lowerDomain = domain.toLowerCase();\n    for (const blocked of BLOCKED_DOMAINS) {\n      if (lowerDomain === blocked || lowerDomain.endsWith('.' + blocked)) {\n        _domain_blocked = true;\n        _domain_blocked_platform = blocked;\n        domain = '';\n        break;\n      }\n    }\n  }\n\n  const addr = biz.address || {};\n  const fullAddress = [addr.addressLine1, addr.addressLine2, addr.addressLine3]\n    .filter(Boolean).join(', ');\n\n  results.push({\n    json: {\n      name: biz.name,\n      phone: phone,\n      domain: domain,\n      address: fullAddress,\n      city: addr.city || '',\n      state: addr.regionCode || '',\n      country: addr.country || 'US',\n      google_place_id: '',\n      category: (biz.categories || []).join(', '),\n      google_rating: null,\n      google_review_count: 0,\n      yelp_rating: biz.aggregatedRating || null,\n      yelp_review_count: biz.reviewCount || 0,\n      has_website: _domain_blocked ? false : !!biz.website,\n      yelp_url: biz.directUrl || '',\n      yelp_is_claimed: biz.claimed || false,\n      yelp_is_advertiser: biz.advertiser || false,\n      source_urls: [{source: 'yelp_apify', url: biz.directUrl || '', query_used: query}],\n      discovery_metro: metro,\n      discovery_source: 'yelp_apify',\n      _domain_blocked,\n      _domain_blocked_platform\n    }\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { _empty: true } }];"
+          },
+          "id": "ca715d3a-ef73-4e5b-82cc-2f181555ee2a",
+          "name": "Normalize Yelp Results",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -8944,
+            288
+          ],
+          "notes": "After testing, change $('Test Input (Remove After Testing)') to $('Metro Config') and $('Split Search Queries')."
+        },
+        {
+          "parameters": {
+            "method": "POST",
+            "url": "=https://api.apify.com/v2/actor-tasks/uplifted_veranda~yelp-scraper-task/runs?token={{ $env.APIFY_API_TOKEN }}",
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "sendBody": true,
+            "specifyBody": "json",
+            "jsonBody": "={\n  \"searchTerms\": [\"{{ $json.query }}\"],\n  \"locations\": [\"{{ $json.yelp_location }}\"],\n  \"searchLimit\": 100,\n  \"maxImages\": 0,\n  \"reviewLimit\": 0\n}",
+            "options": {
+              "timeout": 30000
+            }
+          },
+          "id": "b0bba0ff-f1a6-4e25-bdea-6002b7ed869c",
+          "name": "Start Apify Run",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -10512,
+            288
+          ],
+          "alwaysOutputData": true,
+          "onError": "continueRegularOutput",
+          "notes": "Starts the Apify task. Returns run object with data.id for polling."
+        },
+        {
+          "parameters": {
+            "jsCode": "const now = new Date().toISOString();\nreturn $input.all().map(item => {\n  const r = item.json;\n  return { json: {\n    name: r.name, phone: r.phone || null, domain: r.domain || null,\n    address: r.address || null, city: r.city || null, state: r.state || null,\n    country: r.country || 'US', google_place_id: r.google_place_id || null,\n    category: r.category || null, has_website: r.has_website || false,\n    has_online_booking: false, booking_platform: null, has_paid_ads: false,\n    on_groupon: false,\n    on_yelp: (r.source_urls || []).some(s => s.source === 'yelp_apify'),\n    google_review_count: r.google_review_count || 0,\n    google_rating: r.google_rating || null,\n    estimated_size: null, source_urls: r.source_urls || [],\n    enrichment_status: r._fuzzy_match_flag ? 'needs_review' : 'discovered',\n    lead_score: 0, discovered_at: now, enriched_at: null,\n    discovery_metro: r.discovery_metro || null,\n    _fuzzy_match_flag: r._fuzzy_match_flag || false\n  }};\n});"
+          },
+          "id": "59bd4554-e739-4428-bd72-53b502f85f61",
+          "name": "Prepare for Supabase",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -8272,
+            192
+          ]
+        },
+        {
+          "parameters": {
+            "jsCode": "const allInputs = JSON.parse(JSON.stringify($input.all().map(i => i.json)));\nconst allPlaces = [];\n\nfor (const input of allInputs) {\n  const places = input.places || [];\n  const q = input.query || '';\n  places.forEach(p => { p._query = q; });\n  allPlaces.push(...places);\n}\n\nconst metro = JSON.parse(JSON.stringify($('Metro Config').first().json)).metro_name;\n\n// Booking platform domain blocklist\nconst BLOCKED_DOMAINS = ['wixsite.com','wix.com','setmore.com','schedulista.com','glossgenius.com','square.site','genbook.com','jane.app','acuityscheduling.com','mindbodyonline.com','mindbody.io','vagaro.com','fresha.com','schedulicity.com','booksy.com','massagebook.com','noterro.com','clinicsense.com','calendly.com','squarespace.com'];\n// Business type blocklist - filter non-target businesses before Supabase insert\nconst BUSINESS_TYPE_BLOCKLIST = ['school','college','university','association','federation','union','board of','institute','academy','program'];\n\n\nreturn allPlaces.map(place => {\n  // Business type filter - skip non-target businesses\n  const _bizName = (place.displayName && place.displayName.text) || '';\n  const _bizCategory = (place.primaryTypeDisplayName && place.primaryTypeDisplayName.text) || place.primaryType || '';\n  const _bizNameLower = _bizName.toLowerCase();\n  const _bizCatLower = _bizCategory.toLowerCase();\n  if (BUSINESS_TYPE_BLOCKLIST.some(kw => _bizNameLower.includes(kw) || _bizCatLower.includes(kw))) return null;\n\n  let city = '', state = '', country = '';\n  if (place.addressComponents) {\n    for (const comp of place.addressComponents) {\n      if (comp.types && comp.types.includes('locality')) city = comp.longText || '';\n      if (comp.types && comp.types.includes('administrative_area_level_1')) state = comp.shortText || '';\n      if (comp.types && comp.types.includes('country')) country = comp.shortText || '';\n    }\n  }\n\n  let phone = place.internationalPhoneNumber || place.nationalPhoneNumber || '';\n  let phoneNormalized = phone.replace(/[^\\d+]/g, '');\n  if (phoneNormalized && !phoneNormalized.startsWith('+')) {\n    phoneNormalized = '+1' + phoneNormalized.replace(/^1/, '');\n  }\n\n  const website = place.websiteUri || '';\n  let domain = '';\n  if (website) {\n    const match = website.match(/^https?:\\/\\/(?:www\\.)?([^\\/]+)/i);\n    if (match) domain = match[1];\n  }\n\n  // Check domain against blocklist\n  let _domain_blocked = false;\n  let _domain_blocked_platform = '';\n  if (domain) {\n    const lowerDomain = domain.toLowerCase();\n    for (const blocked of BLOCKED_DOMAINS) {\n      if (lowerDomain === blocked || lowerDomain.endsWith('.' + blocked)) {\n        _domain_blocked = true;\n        _domain_blocked_platform = blocked;\n        domain = '';\n        break;\n      }\n    }\n  }\n\n  return {\n    json: {\n      name: (place.displayName && place.displayName.text) || '',\n      phone: phoneNormalized,\n      domain: domain,\n      address: place.formattedAddress || '',\n      city, state, country: country || 'US',\n      google_place_id: place.id || '',\n      category: (place.primaryTypeDisplayName && place.primaryTypeDisplayName.text) || place.primaryType || '',\n      google_rating: place.rating || null,\n      google_review_count: place.userRatingCount || 0,\n      has_website: _domain_blocked ? false : !!website,\n      google_maps_url: place.googleMapsUri || '',\n      source_urls: [{source: 'google_places', url: place.googleMapsUri || '', query_used: place._query || ''}],\n      discovery_metro: metro,\n      discovery_source: 'google_places',\n      _domain_blocked,\n      _domain_blocked_platform\n    }\n  };\n}).filter(Boolean);"
+          },
+          "id": "a9c14e44-5d37-4994-8a7a-b9283a47f5fe",
+          "name": "Normalize Google Results",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -8944,
+            48
+          ]
+        },
+        {
+          "parameters": {},
+          "id": "8fcec5c5-45b7-4b87-b2cb-a32c6d692aab",
+          "name": "Merge All Sources",
+          "type": "n8n-nodes-base.merge",
+          "typeVersion": 3,
+          "position": [
+            -8720,
+            192
+          ]
+        },
+        {
+          "parameters": {
+            "url": "=https://api.apify.com/v2/datasets/{{ $json.datasetId }}/items?token={{ $env.APIFY_API_TOKEN }}",
+            "options": {
+              "timeout": 60000
+            }
+          },
+          "id": "78eece76-1e81-4ce4-aef2-637dfd3815be",
+          "name": "Fetch Apify Results",
+          "type": "n8n-nodes-base.httpRequest",
+          "typeVersion": 4.2,
+          "position": [
+            -9168,
+            288
+          ],
+          "alwaysOutputData": true
+        },
+        {
+          "parameters": {
+            "jsCode": "const response = $input.first().json;\nconst prevData = $('Extract Run ID').first().json;\n\nlet status = 'UNKNOWN';\nlet datasetId = prevData.datasetId || '';\n\n// Single run response\nif (response.data && response.data.status && !response.data.items) {\n  status = response.data.status;\n  if (response.data.defaultDatasetId) datasetId = response.data.defaultDatasetId;\n}\n// List response\nelse if (response.data && response.data.items && response.data.items.length > 0) {\n  status = response.data.items[0].status;\n  if (response.data.items[0].defaultDatasetId) datasetId = response.data.items[0].defaultDatasetId;\n}\n\n// Increment poll count from previous Parse Status if looping, otherwise from Extract Run ID\nlet pollCount = 0;\ntry {\n  pollCount = $('Parse Status').first().json.pollCount || 0;\n} catch(e) {\n  pollCount = prevData.pollCount || 0;\n}\npollCount++;\n\nreturn [{ json: { runId: prevData.runId, datasetId, pollCount, status } }];"
+          },
+          "id": "d7861f94-bfc5-4f69-9f11-b82f2815ba8c",
+          "name": "Parse Status",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -9616,
+            224
+          ]
+        },
+        {
+          "parameters": {
+            "conditions": {
+              "options": {
+                "caseSensitive": true,
+                "leftValue": "",
+                "typeValidation": "strict",
+                "version": 1
+              },
+              "conditions": [
+                {
+                  "id": "fuzzy-check",
+                  "leftValue": "={{ $json._fuzzy_match_flag }}",
+                  "rightValue": true,
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "equals",
+                    "singleValue": true
+                  }
+                }
+              ],
+              "combinator": "and"
+            },
+            "options": {}
+          },
+          "id": "21269bb4-ab43-49df-94ec-17640d94777d",
+          "name": "Fuzzy Match?",
+          "type": "n8n-nodes-base.if",
+          "typeVersion": 2,
+          "position": [
+            -8048,
+            192
+          ]
+        },
+        {
+          "id": "a2-batch-dispatcher-0001",
+          "name": "Batch Dispatcher",
+          "type": "n8n-nodes-base.code",
+          "typeVersion": 2,
+          "position": [
+            -7600,
+            192
+          ],
+          "parameters": {
+            "jsCode": "// Batch Dispatcher \u00e2\u20ac\u201d Dispatches enrichment batches to sub-workflow\n// Mode: runOnceForAllItems\n// Input: items from Insert to Supabase (single input, no convergence from Insert Flagged)\n// Output: summary for Calculate Lead Scores\n//\n// Phase 1: Poll for discovery inserts to stabilize (upstream Merge convergence may cause batches)\n// Phase 2: Fetch all company IDs needing enrichment\n// Phase 3: Split into batches of BATCH_SIZE and dispatch to sub-workflow\n// (Phase 4 removed \u00e2\u20ac\u201d sub-workflows are fire-and-forget, lead scoring recalculates from Supabase)\n\nconst supabaseUrl = $env.SUPABASE_URL;\nconst supabaseKey = $env.SUPABASE_SERVICE_KEY;\nconst sbHeaders = { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey };\n\nconst BATCH_SIZE = 25;\nconst BATCH_WEBHOOK_URL = $env.BATCH_ENRICHMENT_WEBHOOK_URL;\n\nconst delay = (ms) => new Promise(r => setTimeout(r, ms));\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 CONVERGENCE GUARD \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Upstream Merge All Sources convergence can cause multiple batches to reach this node.\n// Only fire on the first batch.\nconst staticData = $getWorkflowStaticData('global');\nif (staticData._batch_dispatcher_fired) {\n  console.log('Batch Dispatcher: already fired this execution, skipping duplicate batch');\n  return [];\n}\nstaticData._batch_dispatcher_fired = true;\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 GET METRO FROM INPUT \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst inputItems = $input.all();\nlet metro = null;\nfor (const item of inputItems) {\n  const d = item.json;\n  if (d.discovery_metro) { metro = d.discovery_metro; break; }\n  if (d.metro_name) { metro = d.metro_name; break; }\n}\n\nif (!metro) {\n  try {\n    metro = $('Metro Config').first().json.metro_name;\n  } catch(e) {\n    throw new Error('Batch Dispatcher: cannot determine metro from input or Metro Config');\n  }\n}\n\nconsole.log(`Batch Dispatcher: starting for metro \"${metro}\"`);\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 1: POLL FOR DISCOVERY INSERTS TO STABILIZE \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Upstream Merge convergence means Insert to Supabase may execute in multiple batches.\n// Poll until the discovered count stabilizes (all batches committed).\nlet prevCount = -1;\nlet stableRounds = 0;\nlet discoveredCount = 0;\n\nfor (let i = 0; i < 20; i++) {\n  const discovered = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${supabaseUrl}/rest/v1/companies?discovery_metro=eq.${encodeURIComponent(metro)}&enrichment_status=eq.discovered&select=id`,\n    headers: sbHeaders,\n    json: true\n  });\n\n  const count = Array.isArray(discovered) ? discovered.length : 0;\n  console.log(`  Discovery poll ${i + 1}: ${count} discovered companies`);\n\n  if (count === prevCount && count > 0) {\n    stableRounds++;\n    if (stableRounds >= 2) {\n      discoveredCount = count;\n      console.log(`  Stable at ${count} discovered companies after ${(i + 1) * 15}s`);\n      break;\n    }\n  } else {\n    stableRounds = 0;\n  }\n  prevCount = count;\n\n  if (i < 19) await delay(15000);\n}\n\nif (discoveredCount === 0) {\n  console.log('Batch Dispatcher: no discovered companies found after polling (20 iterations)');\n  return [{ json: { step: 'batch_dispatcher', metro, status: 'no_companies', batches_dispatched: 0, message: 'No discovered companies found after 300s of polling' } }];\n}\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 2: FETCH ALL COMPANIES NEEDING ENRICHMENT \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\n// Include both discovered AND partially_enriched (ADR-020)\nconst allCompanies = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${supabaseUrl}/rest/v1/companies?discovery_metro=eq.${encodeURIComponent(metro)}&enrichment_status=in.(discovered,partially_enriched)&select=id&limit=2000`,\n  headers: sbHeaders,\n  json: true\n});\n\nconst companyIds = (Array.isArray(allCompanies) ? allCompanies : []).map(c => c.id);\nconst totalCompanies = companyIds.length;\nconsole.log(`Batch Dispatcher: ${totalCompanies} companies need enrichment (${discoveredCount} discovered + ${totalCompanies - discoveredCount} partially_enriched)`);\n\nif (totalCompanies === 0) {\n  return [{ json: { step: 'batch_dispatcher', metro, status: 'no_companies_to_enrich', batches_dispatched: 0 } }];\n}\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 PHASE 3: SPLIT INTO BATCHES AND DISPATCH \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst batches = [];\nfor (let i = 0; i < companyIds.length; i += BATCH_SIZE) {\n  batches.push(companyIds.slice(i, i + BATCH_SIZE));\n}\n\nconsole.log(`Batch Dispatcher: dispatching ${batches.length} batches of up to ${BATCH_SIZE} companies each`);\n\n// Fire all webhooks simultaneously \u00e2\u20ac\u201d Respond to Webhook returns 200 immediately\nconst promises = batches.map((batch, i) =>\n  this.helpers.httpRequest({\n    method: 'POST',\n    url: BATCH_WEBHOOK_URL,\n    headers: { 'Content-Type': 'application/json' },\n    body: { company_ids: batch, metro },\n    json: true,\n    timeout: 30000\n  }).then(() => {\n    console.log(`  Batch ${i + 1}/${batches.length}: ${batch.length} companies dispatched`);\n    return { batch: i, size: batch.length, status: 'dispatched' };\n  }).catch(e => {\n    console.log(`  Batch ${i + 1}/${batches.length}: dispatch ERROR: ${e.message}`);\n    return { batch: i, size: batch.length, status: 'error', error: e.message };\n  })\n);\n\nconst dispatchResults = await Promise.all(promises);\nconst successfullyDispatched = dispatchResults.filter(r => r.status === 'dispatched').length;\nconsole.log(`Batch Dispatcher: ${successfullyDispatched}/${batches.length} batches dispatched successfully`);\n\n// \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90 SUMMARY (no completion polling \u00e2\u20ac\u201d sub-workflows are fire-and-forget) \u00e2\u2022\udc90\u00e2\u2022\udc90\u00e2\u2022\udc90\nconst summary = {\n  step: 'batch_dispatcher',\n  metro,\n  discovered_count: discoveredCount,\n  total_companies_dispatched: totalCompanies,\n  batches_dispatched: successfullyDispatched,\n  batches_total: batches.length,\n  batch_size: BATCH_SIZE,\n  status: successfullyDispatched === batches.length ? 'all_dispatched' : 'partial_dispatch',\n  message: `Dispatched ${successfullyDispatched}/${batches.length} batches (${totalCompanies} companies in batches of ${BATCH_SIZE}). Enrichment running asynchronously.`\n};\n\nconsole.log('=== BATCH DISPATCHER SUMMARY ===');\nconsole.log(JSON.stringify(summary, null, 2));\n\nreturn [{ json: summary }];"
+          }
+        }
+      ],
+      "connections": {
+        "Split Search Queries": {
+          "main": [
+            [
+              {
+                "node": "Google Places - Text Search",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Start Apify Run",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Places - Text Search": {
+          "main": [
+            [
+              {
+                "node": "Normalize Google Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Normalize Google Results": {
+          "main": [
+            [
+              {
+                "node": "Merge All Sources",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge All Sources": {
+          "main": [
+            [
+              {
+                "node": "Deduplicate Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deduplicate Records": {
+          "main": [
+            [
+              {
+                "node": "Prepare for Supabase",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare for Supabase": {
+          "main": [
+            [
+              {
+                "node": "Fuzzy Match?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fuzzy Match?": {
+          "main": [
+            [
+              {
+                "node": "Insert Flagged (Needs Review)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Insert to Supabase",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Run ID": {
+          "main": [
+            [
+              {
+                "node": "Wait 30s",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait 30s": {
+          "main": [
+            [
+              {
+                "node": "Check Run Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Run Status": {
+          "main": [
+            [
+              {
+                "node": "Parse Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse Status": {
+          "main": [
+            [
+              {
+                "node": "Run Succeeded?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Run Succeeded?": {
+          "main": [
+            [
+              {
+                "node": "Fetch Apify Results",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait 30s",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start Apify Run": {
+          "main": [
+            [
+              {
+                "node": "Extract Run ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Normalize Yelp Results": {
+          "main": [
+            [
+              {
+                "node": "Merge All Sources",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Fetch Apify Results": {
+          "main": [
+            [
+              {
+                "node": "Normalize Yelp Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate Lead Scores": {
+          "main": [
+            [
+              {
+                "node": "Run Summary5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Metro Config",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Metro Config": {
+          "main": [
+            [
+              {
+                "node": "Split Search Queries",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Insert to Supabase": {
+          "main": [
+            [
+              {
+                "node": "Batch Dispatcher",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Batch Dispatcher": {
+          "main": [
+            [
+              {
+                "node": "Calculate Lead Scores",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      },
+      "authors": "Phillip Schuman",
+      "name": null,
+      "description": null,
+      "autosaved": false,
+      "workflowPublishHistory": [
+        {
+          "createdAt": "2026-02-20T22:58:32.060Z",
+          "id": 110,
+          "workflowId": "yxvQst30sWlNIeZq",
+          "versionId": "d30a74d0-9c52-4a89-bf35-85708e110e00",
+          "event": "activated",
+          "userId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06"
+        }
+      ]
+    }
+  }
+}

@@ -31,6 +31,8 @@ export interface PipelineRun {
   duplicates_merged: number | null;
   errors: string[] | null;
   triggered_by: string | null;
+  total_batches: number | null;
+  completed_batches: number | null;
   n8n_execution_id: string | null;
   started_at: string | null;
   completed_at: string | null;
