@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-02-21 (Session 53 — Backfill Historical Pipeline Runs)
+
+### New Files
+- `scripts/backfill-pipeline-runs.sql` — SQL INSERT to populate `pipeline_runs` table with historical run data for 7 metros.
+
+### Data
+- 7 metros backfilled: Austin TX, Boise ID, Nashville TN, San Diego CA, Scottsdale AZ, Sedona AZ, Asheville NC
+- Asheville marked `'failed'` (2 companies, 0 enriched)
+- All others marked `'completed'` with accurate company/contact counts and timestamps
+- `triggered_by = 'backfill'` for all rows
+- 4 metros deferred (Denver, Phoenix, Toronto, Portland) — ran before `discovery_metro` column existed
+
+### Pending
+- User runs `scripts/backfill-pipeline-runs.sql` in Supabase SQL Editor
+- Verify dashboard History page shows 7 runs and stat cards show aggregate totals
+
+---
+
 ## 2026-02-21 (Session 52 — Fix Dashboard "Invalid API Key" Error)
 
 ### Dashboard Fix

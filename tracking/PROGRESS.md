@@ -40,6 +40,13 @@
 
 ## Session Log
 
+### Session 53 — 2026-02-21 (Backfill Historical Pipeline Runs)
+- **Created `scripts/backfill-pipeline-runs.sql`** — INSERT statement to populate `pipeline_runs` table with historical data for 7 metros that have `discovery_metro` data.
+- **7 metros backfilled:** Austin TX (318 companies, 156 contacts), Boise ID (168/34), Nashville TN (327/37), San Diego CA (305/68), Scottsdale AZ (196/41), Sedona AZ (268/40), Asheville NC (2/0, marked 'failed').
+- **`triggered_by = 'backfill'`** distinguishes these from dashboard-triggered runs.
+- **4 metros NOT included:** Denver, Phoenix, Toronto, Portland — ran before `discovery_metro` column existed. Can backfill later with targeted Supabase queries.
+- **Pending:** User runs `scripts/backfill-pipeline-runs.sql` in Supabase SQL Editor. Dashboard History page should then show 7 runs with aggregate stats.
+
 ### Session 52 — 2026-02-21 (Fix Dashboard "Invalid API Key" Error)
 - **Root cause investigation:** Dashboard deployed to Coolify at `http://egskggk4occc4k8sc0ocks88.5.161.95.57.sslip.io`. Login fails with "invalid API key". Investigated: anon key is correct (208 chars, JWT decodes to role=anon), RLS policies are correct, bundle contains the right values. Probable cause: Coolify build args may introduce whitespace/newline corruption during Docker rebuild.
 - **Fix: Committed `.env.production`** — Vite reads `.env.production` during `npm run build`, baking values directly into the JS bundle. Eliminates dependency on Coolify build args entirely. Contains only public keys (anon key + webhook URL) — safe for private repo.
