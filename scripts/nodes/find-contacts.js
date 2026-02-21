@@ -327,7 +327,7 @@ const companies = await this.helpers.httpRequest({
 
 if (!Array.isArray(companies) || companies.length === 0) {
   console.log('No enriched companies found for metro: ' + metro);
-  return [{ json: { step: 'find_contacts', processed: 0, message: 'No companies to find contacts for' } }];
+  return [{ json: { step: 'find_contacts', processed: 0, message: 'No companies to find contacts for', metro, company_ids: companyIds } }];
 }
 
 // 2. Fetch existing contacts (for dedup) — only company_id needed
@@ -351,7 +351,7 @@ const needsContacts = companies.filter(c => c.id && !existingSet.has(c.id));
 console.log(`Find Contacts: ${companies.length} companies total, ${existingSet.size} already have contacts, ${needsContacts.length} need people discovery for ${metro}`);
 
 if (needsContacts.length === 0) {
-  return [{ json: { step: 'find_contacts', processed: 0, message: 'All companies already have contacts' } }];
+  return [{ json: { step: 'find_contacts', processed: 0, message: 'All companies already have contacts', metro, company_ids: companyIds } }];
 }
 
 // ═══ STATS ═══

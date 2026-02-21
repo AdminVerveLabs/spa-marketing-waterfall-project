@@ -328,6 +328,19 @@
   3. Sequential sub-workflows (no parallelism) — fixes timeout but no speed improvement
 - **Status:** Active — deployed Session 36
 
+## ADR-031: Pipeline Recovery — Fix Zero Digital Signals
+- **Date:** 2026-02-20
+- **Decision:** Fix 5 issues causing zero digital signal data in Supabase for all metros:
+  1. Add 8 missing fields to Insert to Supabase and Insert Flagged HTTP Request node bodies
+  2. Remove 4 nonexistent columns from Enrich Companies PATCH payload
+  3. Fix 4 early-exit paths to propagate metro/company_ids to downstream nodes
+- **Reason:** Session 41 diagnostic on Sedona data revealed ALL digital signals (google_rating, has_online_booking, booking_platform, on_yelp, on_groupon, has_paid_ads, estimated_size) were zero across all companies. Root cause: Insert nodes had an explicit field whitelist that was never updated when new fields were added to the discovery pipeline. Additionally, the enrichment PATCH included 4 Google Details fields (`opening_hours`, `business_status`, `photo_count`, `price_level`) that were never added as schema columns, causing ~50-70% update errors.
+- **Impact:** All 10 operational metros have zero digital signal data in the database. Existing data requires either (a) re-running the metro (upsert on google_place_id fills in new fields) or (b) SQL backfill for `on_yelp`/`on_groupon` from `source_urls`.
+- **Alternatives considered:**
+  1. Add the 4 Google Details columns to Supabase → Deferred: these fields are informational, not used in scoring or outreach. Can add later if needed.
+  2. Automated backfill script → Over-engineering: re-running the metro is the simplest approach since the pipeline is idempotent.
+- **Status:** Active — deployed Session 42
+
 ## ADR-030: Remove Insert Flagged → Batch Dispatcher connection + Phase 4 removal
 - **Date:** 2026-02-20
 - **Decision:** (1) Remove the `Insert Flagged (Needs Review)` → `Batch Dispatcher` connection. Batch Dispatcher now receives input only from `Insert to Supabase`. (2) Remove Phase 4 completion polling from Batch Dispatcher. (3) Reduce Phase 1 discovery polling from 30 to 20 max iterations.

@@ -298,7 +298,7 @@ const companies = await this.helpers.httpRequest({
 
 if (!Array.isArray(companies) || companies.length === 0) {
   console.log('No companies to enrich for metro: ' + metro);
-  return [{ json: { step: 'enrich_companies', processed: 0, message: 'No companies to enrich' } }];
+  return [{ json: { step: 'enrich_companies', processed: 0, message: 'No companies to enrich', metro, company_ids: companyIds } }];
 }
 
 console.log(`Enrich Companies: ${companies.length} companies to process for ${metro}`);
@@ -466,15 +466,6 @@ for (const company of companies) {
 
     // Website-scraped email
     if (websiteData.best_email) updatePayload.email = websiteData.best_email;
-
-    // Google Details — store opening hours as JSON
-    // (opening_hours, business_status, photo_count, price_level stored in company row)
-    if (googleDetails._fetch_status === 'success') {
-      if (googleDetails.opening_hours) updatePayload.opening_hours = googleDetails.opening_hours;
-      if (googleDetails.business_status) updatePayload.business_status = googleDetails.business_status;
-      if (googleDetails.photo_count) updatePayload.photo_count = googleDetails.photo_count;
-      if (googleDetails.price_level) updatePayload.price_level = googleDetails.price_level;
-    }
 
     // ── 5. PATCH company in Supabase ──
     try {

@@ -152,3 +152,12 @@ curl -s -X POST https://ping-zack.vercel.app/api/notify \
 #### Environment
 
 The notification secret is available as `PING_ZACK_SECRET` in the environment.
+
+### 12. Pre-Flight Check Before Pipeline Triggers
+- **Before ANY webhook trigger**, check for running executions:
+  1. List recent main workflow executions: look for `status: running` or recently-started executions (within last 15 minutes)
+  2. List recent sub-workflow executions: new activity means a pipeline is still processing
+  3. The n8n execution list API may not show running executions immediately — if a trigger was sent within the last 10 minutes, assume it's still running
+- **NEVER re-trigger if unsure** — wait 5 minutes and check again
+- **Double-trigger incidents** waste API credits, create duplicate Apify runs that hit memory limits, and produce confusing partial_dispatch results
+- This rule exists because of repeated double-trigger incidents (Sedona exec #181, Austin exec #212) where the execution list hadn't updated yet and the trigger appeared to have failed

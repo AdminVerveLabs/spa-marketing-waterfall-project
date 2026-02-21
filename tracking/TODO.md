@@ -34,6 +34,12 @@
 - [x] **Set `BATCH_ENRICHMENT_WEBHOOK_URL` in Coolify** — Set by user. Value: `http://n8n-xw00wok0wk4gg0kc8000gwwg.5.161.95.57.sslip.io/webhook/batch-enrichment-v1` (2026-02-20)
 - [x] **Fix webhook body unwrapping (BUG-033)** — Added `payload = inputData.body || inputData` unwrap to all 3 sub-workflow Code nodes. Pre-flight fix before first test. (2026-02-20, Session 37)
 - [x] **Test parallelized pipeline** — Sedona AZ exec #170: 128 companies, 8 batches dispatched in 32s, all sub-workflows succeeded, lead scoring SUCCESS. (2026-02-20, Session 38)
+- [x] **Pipeline recovery: Fix zero digital signals (ADR-031)** — Fixed 5 issues: Insert node field drops, nonexistent PATCH columns, early-exit propagation. Verified in exec #179: 0 update errors, booking platforms detected, metro propagation working. (2026-02-20, Session 42)
+- [ ] **Backfill `on_yelp` for existing companies** — SQL provided: `UPDATE companies SET on_yelp = true WHERE source_urls::text LIKE '%yelp_apify%' AND (on_yelp IS NULL OR on_yelp = false);`
+- [x] **Re-run a metro to populate newly-saved fields** — Sedona AZ exec #180: 125 companies re-discovered, 153 re-enriched across 7 batches, digital signals now populated (booking platforms, paid ads, Google ratings). (2026-02-20, Session 43)
+- [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name). Check API key validity, test direct API call, check NamSor account dashboard. Code fix (IMP-014) is correct — this is an API-level issue.
+- [ ] **Investigate 27.5% Enrich Companies update_errors** — 89 errors in 324 companies across Nashville #227 (up from ~13% in Sedona #180). Down from ~50-70% pre-fix but worsening again. Need to check Supabase error responses.
+- [x] **Add Scottsdale, AZ metro** — 11th metro. Exec #189: 196 unique companies, 8 batches, 7/7 sub-workflows SUCCESS. (2026-02-20, Session 44)
 - [ ] **Re-run Portland, OR** — After successful test with new architecture.
 - [ ] **Re-run Asheville, NC** — Exec #165 timed out at 300s pre-fix. Should work now with 1800s timeout + convergence fix.
 - [ ] **Clean Portland stale data** — Delete companies, contacts, and social_profiles for `discovery_metro = 'Portland, OR'` from failed execs #158/#159. Run in Supabase SQL Editor.
@@ -54,7 +60,7 @@
 - [x] **Apollo rate limit handling** — Fixed: Apollo People Search now batches 3 contacts at a time with 2s delay. Verified in San Diego (#141) and Boise (#146). (2026-02-19, Session 26)
 - [ ] **Choose search size** — There currently isn't a way for the user to decide the search size; need to add ability to decide in config/dashboard
 - [x] **Dynamic Metro Config** — Replaced static Set node with Code node that reads metro_name from webhook query parameter. No more manual config changes. (2026-02-19, Session 25, ADR-017)
-- [ ] **Re-run Boise after SQL reset** — Run `UPDATE companies SET enrichment_status = 'discovered' WHERE discovery_metro = 'Boise, ID' AND enrichment_status = 'partially_enriched'` then re-trigger pipeline
+- [x] **Re-run Boise after SQL reset** — SQL reset done, exec #242 SUCCESS: 165 companies, 7 batches, 7/7 sub-workflows succeeded. (2026-02-20, Session 48)
 - [ ] **Investigate Apify memory limits** — Boise exec #143 failed due to Yelp actor memory. May need to reduce searchLimit for larger metros or split into sub-batches
 
 ## Completed (Session 19)

@@ -113,6 +113,46 @@
 - **Root cause:** Both `Insert to Supabase` (127 items) and `Insert Flagged` (2 items) connected to Batch Dispatcher. Insert Flagged processes fewer items and completes first, triggering Batch Dispatcher. The ADR-024 convergence guard (`_batch_dispatcher_fired`) blocks the second trigger from Insert to Supabase. Since n8n serializes execution, Insert to Supabase doesn't run until AFTER Batch Dispatcher completes — so the companies are not yet in Supabase when Batch Dispatcher polls.
 - **Status:** FIXED — see BUG-F035 below
 
+### BUG-036: Insert to Supabase drops 8 fields — zero digital signals
+- **Severity:** CRITICAL
+- **Location:** Main workflow → Insert to Supabase, Insert Flagged (Needs Review)
+- **Symptom:** Sedona diagnostic revealed ALL digital signals are zero: 0 booking, 0 ratings, 0 on_yelp/groupon, 0 paid ads. Fields computed by Normalize/Prepare nodes but dropped by Insert HTTP body.
+- **Root cause:** Insert to Supabase HTTP body only included 14 of 22+ fields from Prepare for Supabase. Missing: `google_rating`, `google_review_count`, `has_online_booking`, `booking_platform`, `has_paid_ads`, `estimated_size`, `on_yelp`, `on_groupon`.
+- **Status:** FIXED — see BUG-F036 below
+
+### BUG-037: Enrich Companies PATCH includes nonexistent Supabase columns
+- **Severity:** HIGH
+- **Location:** Sub-workflow → Enrich Companies Code node
+- **Symptom:** ~50-70% update_errors in sub-workflow executions. Companies left at `partially_enriched` instead of progressing.
+- **Root cause:** PATCH payload included `opening_hours`, `business_status`, `photo_count`, `price_level` — columns that were never added to the companies table in Supabase. Google Details API returns these values but the schema doesn't have them.
+- **Status:** FIXED — see BUG-F037 below
+
+### BUG-038: Early-exit paths in enrichment Code nodes drop metro/company_ids
+- **Severity:** HIGH
+- **Location:** Sub-workflow → Enrich Companies, Find Contacts, Enrich Contacts (early-exit paths)
+- **Symptom:** When Enrich Companies exits early (e.g., 0 companies found in Supabase), downstream Find Contacts fails with "missing metro in input" because the early-exit return was a bare `[]` without `metro` and `company_ids`.
+- **Root cause:** 4 early-exit paths returned empty items without propagating the `metro` and `company_ids` fields needed by downstream nodes.
+- **Status:** FIXED — see BUG-F038 below
+
+### BUG-039: Double-trigger incidents — no pre-flight execution check
+- **Severity:** MEDIUM (procedural)
+- **Location:** Pipeline trigger process (human/AI operator error)
+- **Symptom:** Pipeline triggered twice for the same metro because the first execution wasn't visible in the execution list yet. Sedona exec #181 (Apify memory exceeded from collision with #180's Apify runs) and Austin exec #212 (cancelled by user, but sub-workflow batches may have already dispatched).
+- **Root cause:** After triggering via webhook, the n8n execution list API doesn't immediately show the new execution. Operator assumed the trigger failed and re-triggered. In both cases the first execution was still running.
+- **Impact:** Wasted API credits, Apify memory collisions, confusing `partial_dispatch` results, cancelled executions
+- **Prevention:** Added CLAUDE.md Rule 12: mandatory pre-flight check before any pipeline trigger. List recent executions, check for running/recent starts, never re-trigger if unsure.
+- **Status:** PROCEDURAL FIX — Rule 12 added to CLAUDE.md
+
+### BUG-040: NamSor API returning null for all contacts
+- **Severity:** HIGH
+- **Location:** Sub-workflow → Enrich Contacts → NamSor `/origin` API call
+- **Symptom:** Nashville TN exec #227 — ALL contacts across ALL 13 sub-workflow batches have `_namsor_country: null` and `cultural_affinity: null`. This includes contacts with BOTH first AND last name (e.g., Melanie Joye, Laura Stendel), which should have high-confidence NamSor results.
+- **Root cause:** NamSor API itself is failing silently. The try/catch on line 466 of `enrich-contacts.js` catches errors and logs to console, but the output only shows `_namsor_country: null`. Likely causes: (1) NamSor API key expired, (2) NamSor service outage, (3) rate limiting.
+- **Evidence:** San Diego exec #213 also had 0 cultural_affinity across all batches (originally attributed to IMP-014, but same issue for full-name contacts). In early sessions (6-8), NamSor worked correctly (e.g., Jenny Rice → "Europe / Northern Europe / GB").
+- **Distinction from IMP-014:** IMP-014 (guard too strict) is a separate code issue that was FIXED in Session 46. BUG-040 is an API-level failure affecting ALL contacts regardless of name completeness.
+- **Investigation needed:** Check NamSor API key validity, test a direct API call, check NamSor account dashboard.
+- **Status:** OPEN
+
 ### BUG-022: Apify Yelp actor memory limit exceeded
 - **Severity:** MEDIUM
 - **Location:** Step 1 → Start Apify Run (Yelp)
@@ -373,6 +413,25 @@
 - **Fix (ADR-030):** Removed `Insert Flagged (Needs Review)` → `Batch Dispatcher` connection via MCP `removeConnection`. Batch Dispatcher now receives input only from Insert to Supabase, which always has the bulk of the data.
 - **Verification:** Exec #170 (Sedona, AZ) — Batch Dispatcher found 199 discovered companies in 32s (was 0 in #167), dispatched 8/8 batches successfully.
 
+### BUG-F036: Insert to Supabase drops 8 fields — zero digital signals (BUG-036)
+- **Fixed:** 2026-02-20 (Session 42)
+- **Severity:** CRITICAL
+- **Root cause:** Insert to Supabase and Insert Flagged HTTP Request node bodies explicitly listed fields. 8 fields computed by Prepare for Supabase were silently dropped: `google_rating`, `google_review_count`, `has_online_booking`, `booking_platform`, `has_paid_ads`, `estimated_size`, `on_yelp`, `on_groupon`.
+- **Fix:** Added all 8 fields to both Insert node JSON bodies via MCP `n8n_update_partial_workflow`. Both nodes now pass through the full field set.
+- **Note:** `on_yelp` and `on_groupon` are set during discovery normalization but were NEVER written to the DB before this fix. Existing data needs SQL backfill.
+
+### BUG-F037: Enrich Companies PATCH includes nonexistent columns (BUG-037)
+- **Fixed:** 2026-02-20 (Session 42)
+- **Severity:** HIGH
+- **Root cause:** `enrich-companies.js` PATCH payload included `opening_hours`, `business_status`, `photo_count`, `price_level` — columns that don't exist in the Supabase companies table. Google Details API returns these values, but the columns were never created in the schema. Supabase returns 400 errors for unknown columns.
+- **Fix:** Removed all 4 nonexistent columns from the PATCH payload in `enrich-companies.js`. Deployed via MCP updateNode on sub-workflow.
+
+### BUG-F038: Early-exit paths drop metro/company_ids (BUG-038)
+- **Fixed:** 2026-02-20 (Session 42)
+- **Severity:** HIGH
+- **Root cause:** 4 early-exit paths in enrichment Code nodes (Enrich Companies, Find Contacts, Enrich Contacts) returned bare `[]` without `metro` and `company_ids` fields. In the parallelized architecture, these fields are required by downstream nodes (passed via input items, not `$('Metro Config')` reference).
+- **Fix:** All 4 early-exit paths now return `[{ json: { metro, company_ids: companyIds } }]` to propagate the batch context. Deployed via MCP updateNode on sub-workflow.
+
 ### BUG-F003: Credentials stored as last names (Lmt, Cmt, Rmt)
 - **Fixed:** 2026-02-17
 - **Fix:** Layer 1 validation rejects credential patterns. SQL cleanup applied.
@@ -396,3 +455,6 @@ Enhancement ideas discovered during the Session 17 pipeline quality audit. These
 | IMP-009 | Config | Social discovery + SociaVault disabled (no Apify/SociaVault credentials) | Facebook/Instagram profile discovery and enrichment would provide social presence data for lead scoring |
 | IMP-010 | Step 4 | No re-enrichment path for previously enriched contacts | Once a contact is marked as enriched (email_status != unverified/null), it's never re-processed even if new data sources become available |
 | IMP-011 | Step 3a | BUG-005 still open: email-domain mismatch detection | Apollo sometimes returns emails that don't match the company domain (college emails, platform emails). Need cross-validation logic |
+| IMP-012 | Enrich Companies | Website email scraping has no counter — `best_email` is written to `companies.email` but the summary stats don't track how many emails were scraped | Add `emails_scraped` counter to the Enrich Companies stats object and summary output |
+| IMP-013 | Enrich Contacts | Company emails only get verified when a contact exists for that company — companies with website-scraped emails but no contacts never get Hunter verification | Add company email verification directly in Enrich Companies (or a separate post-enrichment step) so all scraped emails get verified regardless of contact existence |
+| IMP-014 | Enrich Contacts | ~~NamSor cultural_affinity guard requires BOTH first_name AND last_name~~ **FIXED (Session 46):** Guard relaxed to only require `first_name`. Deployed to sub-workflow. However, NamSor API itself is failing (BUG-040) — verification deferred until API works. | ~~Relax the guard on line 448 to only require `first_name`.~~ **DONE.** |

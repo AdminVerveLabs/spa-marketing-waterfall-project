@@ -16,6 +16,7 @@ const METROS = {
   'Nashville, TN':  { latitude: '36.1627',  longitude: '-86.7816',  yelp_location: 'Nashville, TN', radius_meters: '15000' },
   'Asheville, NC':  { latitude: '35.5951',  longitude: '-82.5515',  yelp_location: 'Asheville, NC', radius_meters: '15000' },
   'Sedona, AZ':     { latitude: '34.8697',  longitude: '-111.7610', yelp_location: 'Sedona, AZ', radius_meters: '15000' },
+  'Scottsdale, AZ': { latitude: '33.4942',  longitude: '-111.9261', yelp_location: 'Scottsdale, AZ', radius_meters: '15000' },
 };
 
 const webhookData = $('Webhook').first().json;

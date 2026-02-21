@@ -1,5 +1,177 @@
 # Changelog
 
+## 2026-02-20 (Session 48 — Boise, ID Pipeline Re-Run)
+
+### Pipeline Trigger
+- **Boise, ID re-run** after SQL reset of `partially_enriched` companies from failed execs #143/#146
+- Pre-flight checks passed: no running executions, both workflows active
+- User ran SQL: `UPDATE companies SET enrichment_status = 'discovered' WHERE discovery_metro = 'Boise, ID' AND enrichment_status = 'partially_enriched'`
+
+### Exec #242 Results (Boise, ID — FULL SUCCESS)
+- **Status:** success, 6m 51s (411s), 22 nodes
+- Discovery: 240 Google + 89 Yelp → 329 merged → 168 deduplicated → 165 inserted + 3 flagged
+- Batch Dispatcher: **31.6s** — 165 companies, 7 batches of 25, 7/7 dispatched
+- Sub-workflows #244-#250: ALL SUCCESS (7/7), 51-103s per batch
+- Calculate Lead Scores: SUCCESS
+- Run Summary5: SUCCESS
+
+### Failed Executions (no damage)
+- **Exec #241:** MCP `n8n_test_workflow` bug — stripped query params from webhook URL. Metro Config error.
+- **Exec #243:** Accidental double-trigger — Apify memory exceeded (all memory used by #242's runs). Failed before data writes.
+
+### Lesson Learned
+- n8n MCP `n8n_test_workflow` tool does NOT forward query parameters in `webhookPath`. Use direct `curl` for GET webhooks with query params.
+
+---
+
+## 2026-02-20 (Session 47 — Nashville Exec #227 Aggregate Analysis)
+
+### Research Only — No Code Changes
+- **Full aggregate analysis** of Nashville TN exec #227 across all 13 sub-workflow batches (#228-#240)
+- 8 batches inspected with full detail, 5 with structure-only (contact counts confirmed for all 13)
+- Key findings: 324 companies enriched, 33 new contacts, 37 total enriched, 0 emails, 0 NamSor, 89 update errors (27.5%)
+- Update errors investigation escalated from ~13% to 27.5% — needs priority investigation
+- Tracking files updated with complete per-batch breakdown
+
+## 2026-02-20 (Session 46 — Fix NamSor Guard + Nashville TN Re-run)
+
+### Bug Fix
+- **IMP-014 CODE FIX DEPLOYED:** Relaxed NamSor `cultural_affinity` guard in `enrich-contacts.js` line 448. Removed `&& (contact.last_name || '').length > 0` — guard now only requires `first_name`. Line 450 already sends `'Unknown'` as fallback last_name. Deployed to sub-workflow `fGm4IP0rWxgHptN8` via MCP `n8n_update_partial_workflow` (updateNode on `Enrich Contacts`).
+
+### Nashville TN Exec #227 Results (SUCCESS)
+- **Status:** success, 7m 52s (472s), 22 nodes
+- Discovery: 239 Google + 95 Yelp → 334 raw → 158 unique → 156 inserted + 2 flagged
+- Batch Dispatcher: 60.5s, 297 discovered companies, **9/13 batches dispatched** (partial_dispatch), 324 companies in batches of 25
+- Calculate Lead Scores: SUCCESS
+- Run Summary5: scoring_status SUCCESS
+
+### Sub-workflow executions #228-#240 — ALL SUCCESS (13/13)
+- All 13 executions completed with 6 nodes each
+- Spot-check batch #228 (25 companies): 14 websites, 9 booking platforms, 1 paid ad. Find Contacts: 5 contacts (2 Apollo + 2 solo + 1 website). Phones verified (valid landline/mobile).
+- Spot-check batch #233 (25 companies): 19 websites, 15 booking platforms, 3 paid ads. Find Contacts: 3 contacts (3 solo). Phones verified.
+- Digital signals confirmed flowing: booking platforms, paid ads, Google Details
+
+### NamSor API Failure (NEW FINDING — BUG-040)
+- **NamSor `cultural_affinity` = null across ALL contacts in ALL batches**, including contacts with BOTH first AND last name (e.g., Melanie Joye, Laura Stendel).
+- IMP-014 code fix is structurally correct (verified: old `last_name` guard is gone from deployed code), but NamSor API itself is returning no data.
+- Likely cause: NamSor API key expired or service down. Try/catch silently catches errors.
+- This is a separate issue from IMP-014 — the code fix is correct but unverifiable until NamSor API works.
+
+### Modified Files
+- `scripts/nodes/enrich-contacts.js` — Line 448: removed `last_name` guard from NamSor condition
+
+### Handoff Doc Updated
+- `docs/HANDOFF-namsor-nashville.md` created (Session 45) — plan followed for this session
+
+---
+
+## 2026-02-20 (Session 45 — Pre-Flight Check Rule + Austin TX Results + San Diego Re-run)
+
+### New Rule
+- **CLAUDE.md Rule 12: Pre-Flight Check Before Pipeline Triggers.** Mandatory check for running/recent executions before any webhook trigger. Must list main workflow and sub-workflow recent executions. Never re-trigger if unsure — wait and check again. Added to prevent double-trigger incidents (Sedona #181, Austin #212).
+
+### Bug Logged
+- **BUG-039 (MEDIUM, procedural):** Double-trigger incidents from missing pre-flight check. n8n execution list API has latency — new executions may not appear for several minutes after trigger. Operator assumed trigger failed and re-triggered. Prevention: Rule 12.
+
+### Improvement Items
+- **IMP-012:** Website email scraping has no counter in Enrich Companies stats.
+- **IMP-013:** Company emails only get verified when a contact exists — companies with scraped emails but no contacts skip Hunter verification.
+- **IMP-014:** NamSor cultural_affinity guard too strict — requires both `first_name` AND `last_name`, but ~90% of contacts are solo-detected with first_name only. NamSor effectively never called. Fix: relax guard to only require `first_name` (line 448 of `enrich-contacts.js`).
+
+### Handoff Doc
+- Created `docs/HANDOFF-namsor-nashville.md` — Fix IMP-014 (NamSor guard too strict) + verify with Nashville TN re-run. Includes exact before/after code change, deploy steps, pre-flight check, success criteria.
+
+### Memory Updated
+- Added "Pipeline Trigger Safety" section to MEMORY.md.
+
+### Austin TX Exec #198 Results (SUCCESS)
+- **Status:** success, 6m 12s, 22 nodes
+- Discovery: 168 inserted + 3 flagged → 171 companies
+- Batch Dispatcher: **60.5s** — 212 discovered, 9/13 batches dispatched (partial_dispatch), 314 companies
+- Sub-workflows: 13 executions (#199-#211), all SUCCESS, 75-137s each
+- Spot-check batch #203: 25 companies, 14 websites, 11 booking platforms, 8 update errors, 4 contacts inserted (2 Apollo + 1 solo + 1 website), phones verified
+- Lead scoring: SUCCESS
+
+### Exec #212 (Austin TX — CANCELLED)
+- Double-trigger. Started 23:36:51 while #198's sub-workflows were still running. Cancelled by user at 23:38:08. May have dispatched 4 sub-workflow batches before cancellation — those 4 (#208-#211) all succeeded harmlessly (idempotent enrichment).
+
+### San Diego CA Exec #213 Results (SUCCESS — Backfill Re-run)
+- **Status:** success, 7m 34s (454s), 22 nodes
+- Discovery: 178 unique → 177 inserted + 1 flagged
+- Batch Dispatcher: **60.4s** — 216 discovered, 9/13 batches dispatched (partial_dispatch), 303 companies
+- Sub-workflows: 10 executions (#214-#225), all SUCCESS, 20-139s each
+- Spot-check batch #214: 25 companies, 18 websites, 15 booking platforms, 3 paid ads, 30 social profiles, 16 update errors. 4 contacts inserted (2 Apollo + 2 solo). Phone verification: valid mobile (Verizon), VoIP (Twilio).
+- Spot-check batch #216: 25 companies, 19 websites, 17 booking platforms, 0 paid ads, 0 update errors. 5 contacts inserted (4 Apollo + 1 website).
+- Spot-check batch #219: 25 companies, 18 websites, 17 booking platforms, 3 paid ads, 0 update errors. 1 contact inserted (Apollo).
+- **Digital signals confirmed flowing:** booking platforms (~60-68%), paid ads (0-12%), Google Details (~92-96%), social profiles.
+- **NamSor cultural_affinity: 0 across all batches** — all contacts have `_namsor_country: null`. Root cause: IMP-014 (guard too strict).
+- Lead scoring: SUCCESS
+
+---
+
+## 2026-02-20 (Session 44 — Scottsdale, AZ Metro Expansion)
+
+### New Metro
+- **Scottsdale, AZ** added to Metro Config lookup table (latitude 33.4942, longitude -111.9261, 15km radius). 11th operational metro. ~20km east of Phoenix; overlap handled by google_place_id upsert.
+
+### Modified Files
+- `scripts/nodes/metro-config.js` — Added Scottsdale, AZ to METROS lookup
+
+### Deployment
+- Metro Config: MCP `updateNode` on main workflow `yxvQst30sWlNIeZq`
+
+### Exec #189 Results (Scottsdale, AZ — FULL SUCCESS)
+- **Status:** success, 6m 46s, 22 nodes
+- Discovery: 239 Google + 84 Yelp → 196 unique → 193 inserted + 3 flagged
+- Batch Dispatcher: **31.6s** — 193 companies, 8 batches, 8/8 dispatched
+- Sub-workflows: 7 executions (#190-#197), all 6 nodes, 84-89s each, all SUCCESS
+- Spot-check batch #193: 25 companies enriched, 0 update errors, 13 booking platforms, 6 contacts inserted (5 Apollo + 1 website), phones verified
+- Lead scoring: SUCCESS
+
+---
+
+## 2026-02-20 (Session 43 — Sedona AZ Backfill Re-run)
+
+### Backfill Run
+- **Exec #180 (Main workflow — SUCCESS):** Re-ran Sedona AZ pipeline to backfill digital signal fields after Session 42 fixes. 125 companies inserted, 7 batches dispatched in 31.8s, all sub-workflows succeeded. Lead scoring SUCCESS.
+- **Sub-workflow executions #182-#188:** 7/7 SUCCESS. 153 companies enriched across all batches. Digital signals confirmed flowing: booking platforms (37%), paid ads (14%), Google Details (74%).
+- **Remaining issue:** ~13% Enrich Companies update_errors (10/78 sampled). Down from ~50-70% pre-Session 42 but not zero. Needs investigation.
+- **Diagnostic SQL** at `scripts/diagnostic.sql` — user should re-run to verify before/after digital signals.
+
+---
+
+## 2026-02-20 (Session 42 — Pipeline Recovery: Fix Zero Digital Signals)
+
+### Bug Fixes
+- **BUG-036 (CRITICAL):** Insert to Supabase and Insert Flagged HTTP Request nodes dropped 8 fields from the insert payload: `google_rating`, `google_review_count`, `has_online_booking`, `booking_platform`, `has_paid_ads`, `estimated_size`, `on_yelp`, `on_groupon`. All digital signal fields were being computed by discovery normalization but silently dropped at the insert stage. Added all 8 fields to both node bodies via MCP.
+- **BUG-037 (HIGH):** Enrich Companies PATCH payload included 4 nonexistent Supabase columns (`opening_hours`, `business_status`, `photo_count`, `price_level`). Caused ~50-70% update_errors in sub-workflow executions, leaving companies stuck at `partially_enriched`. Removed from PATCH payload in `enrich-companies.js`.
+- **BUG-038 (HIGH):** 4 early-exit paths in enrichment Code nodes returned bare `[]` without `metro`/`company_ids`, breaking downstream nodes. Fixed to pass through `{ metro, company_ids: companyIds }`.
+
+### Modified Files
+- `scripts/nodes/enrich-companies.js` — Removed 4 nonexistent columns from PATCH payload; fixed early-exit propagation
+- `scripts/nodes/find-contacts.js` — Fixed early-exit propagation
+- `scripts/nodes/enrich-contacts.js` — Fixed early-exit propagation
+
+### Deployment
+- **Sub-workflow `fGm4IP0rWxgHptN8`:** 3 Code node updates via MCP `n8n_update_partial_workflow`
+- **Main workflow `yxvQst30sWlNIeZq`:** 2 Insert node updates via MCP `n8n_update_partial_workflow` (8 new fields each)
+
+### Snapshots Updated
+- `workflows/current/deployed-fixed.json` — Main workflow (22 nodes)
+- `workflows/current/sub-workflow-deployed.json` — Sub-workflow (6 nodes)
+
+### Verification
+- Sub-workflow test with 5 Sedona company IDs: webhook returned 200 OK, `company_count: 5`
+
+### SQL Provided
+- Backfill `on_yelp` from `source_urls` for existing companies
+- Re-run metros to populate newly-saved fields (google_rating, booking_platform, etc.)
+
+### Decisions
+- **ADR-031:** Pipeline Recovery — Fix Zero Digital Signals
+
+---
+
 ## 2026-02-20 (Session 41 — Diagnostic SQL + Root Cause Analysis)
 
 ### New Files

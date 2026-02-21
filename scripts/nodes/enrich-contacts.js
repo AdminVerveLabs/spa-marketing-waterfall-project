@@ -101,7 +101,7 @@ const crossMetroSkipped = needsEnrichment.length - metroFiltered.length;
 console.log(`Contacts: ${uniqueContacts.length} unique, ${needsEnrichment.length} need enrichment, ${crossMetroSkipped} skipped (other metro), ${metroFiltered.length} in current metro`);
 
 if (metroFiltered.length === 0) {
-  return [{ json: { _empty: true, _count: 0, _message: 'All contacts are already enriched or belong to other metros' } }];
+  return [{ json: { _empty: true, _count: 0, _message: 'All contacts are already enriched or belong to other metros', metro, company_ids: companyIds } }];
 }
 
 // Merge company data into each contact
@@ -445,7 +445,7 @@ for (const item of contacts) {
   }
 
   // NAMSOR CULTURAL AFFINITY
-  if (!contact.cultural_affinity && contact.first_name && (contact.last_name || '').length > 0 && config.skip_namsor !== 'true') {
+  if (!contact.cultural_affinity && contact.first_name && config.skip_namsor !== 'true') {
     try {
       const namsorUrl = `https://v2.namsor.com/NamSorAPIv2/api2/json/origin/${encodeURIComponent(contact.first_name)}/${encodeURIComponent(contact.last_name || 'Unknown')}`;
       const namsorResp = await this.helpers.httpRequest({ method: 'GET', url: namsorUrl, headers: { 'X-API-KEY': $env.NAMSOR_API_KEY, 'Accept': 'application/json' }, json: true });
