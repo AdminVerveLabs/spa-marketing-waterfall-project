@@ -151,7 +151,16 @@
 - **Evidence:** San Diego exec #213 also had 0 cultural_affinity across all batches (originally attributed to IMP-014, but same issue for full-name contacts). In early sessions (6-8), NamSor worked correctly (e.g., Jenny Rice → "Europe / Northern Europe / GB").
 - **Distinction from IMP-014:** IMP-014 (guard too strict) is a separate code issue that was FIXED in Session 46. BUG-040 is an API-level failure affecting ALL contacts regardless of name completeness.
 - **Investigation needed:** Check NamSor API key validity, test a direct API call, check NamSor account dashboard.
-- **Status:** OPEN
+- **Update (2026-02-21, Session 54):** Tampa exec #262 sub-workflows show NamSor IS returning data again (Irena→IL, Joshua→GB, Rain→EE, Gennell→GB). API may have recovered. Needs further monitoring to confirm stable.
+- **Status:** POSSIBLY RESOLVED — monitoring
+
+### BUG-041: Webhook multipleMethods routes POST to output 1 (no connection)
+- **Severity:** HIGH
+- **Location:** Main workflow → Webhook node
+- **Symptom:** Tampa POST from dashboard got `200 OK` but pipeline didn't execute. Webhook with `multipleMethods: true` routed POST to output index 1, which had no downstream connection. GET was on output 0 → Metro Config.
+- **Root cause:** n8n Webhook with `multipleMethods: true` creates separate outputs per HTTP method. POST was routed to the second output (index 1) which was never wired to Metro Config.
+- **Fix:** Changed webhook from `multipleMethods: true` (GET+POST) to POST-only (single output → Metro Config). Legacy GET triggers no longer supported.
+- **Status:** FIXED (Session 54)
 
 ### BUG-022: Apify Yelp actor memory limit exceeded
 - **Severity:** MEDIUM

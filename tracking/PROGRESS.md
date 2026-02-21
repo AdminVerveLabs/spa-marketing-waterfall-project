@@ -29,7 +29,7 @@
 
 ### Next Steps
 - [x] ~~Production baseline snapshot~~ — Fresh workflow JSON pulled, committed to `master` (commit `a2ec77c`), improvement branch created (2026-02-21, Session 49)
-- [x] ~~Integrate pipeline with dashboard~~ — Dashboard-pipeline integration deployed (ADR-032, Session 50). Webhook accepts POST, run_id flows through pipeline, batch progress tracked. **Pending: user must run `scripts/dashboard-schema.sql` in Supabase and set `VITE_N8N_WEBHOOK_URL` + Supabase env vars in dashboard.**
+- [x] ~~Integrate pipeline with dashboard~~ — Dashboard-pipeline integration deployed (ADR-032, Session 50). **Verified end-to-end with Tampa FL (Session 54).** run_id lifecycle, batch progress tracking, and dashboard trigger all working.
 - [ ] Backfill `on_yelp` for existing companies (SQL provided in Session 42)
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
@@ -39,6 +39,24 @@
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
 
 ## Session Log
+
+### Session 54 — 2026-02-21 (Tampa FL E2E Test + Webhook Fix)
+- **BUG-041 FOUND & FIXED:** Webhook `multipleMethods: true` routed POST to output 1 (no connection). Changed to POST-only single-output webhook. Deployed via MCP.
+- **Tampa FL metro added:** 12th operational metro. Coords 27.9506, -82.4572, radius 20km. Deployed to Metro Config via MCP.
+- **Stuck pipeline_runs rows cleaned up:** User ran SQL to mark stuck Tampa `queued`/`running` rows as `failed` and delete `test` row.
+- **First dashboard-triggered pipeline run: Tampa FL exec #262 (SUCCESS):**
+  - Status: success, 6m 53s (412s), 23/23 nodes
+  - Discovery: 180 Google + 97 Yelp → 277 merged → 161 deduplicated → 159 inserted + 2 flagged
+  - Batch Dispatcher: 31.7s, 159 companies, 7 batches, all_dispatched
+  - Sub-workflow execs #263-#269: ALL 7 SUCCESS (7 nodes each, 77-101s)
+  - 0 update errors (sampled batches #263, #265)
+  - Lead Scoring: SUCCESS, Run Summary5: SUCCESS
+- **Enrichment results (sampled batches #263 + #265):**
+  - Enrich Companies: 50 companies, 39 websites, 30 booking platforms, 3 paid ads, 63 social profiles, 44 Google Details, **0 update errors**
+  - Find Contacts: 10 contacts inserted (8 Apollo, 2 solo)
+  - Enrich Contacts: phones verified (valid mobile Verizon, valid landline BANDWIDTH/Peerless)
+  - **NamSor working again** (BUG-040 possibly resolved): Irena→IL, Joshua→GB, Rain→EE, Gennell→GB
+- **Dashboard integration fully verified:** run_id lifecycle worked end-to-end. pipeline_runs: queued → running → completed with batch progress tracking.
 
 ### Session 53 — 2026-02-21 (Backfill Historical Pipeline Runs)
 - **Created `scripts/backfill-pipeline-runs.sql`** — INSERT statement to populate `pipeline_runs` table with historical data for 7 metros that have `discovery_metro` data.

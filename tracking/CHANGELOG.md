@@ -1,5 +1,31 @@
 # Changelog
 
+## 2026-02-21 (Session 54 — Tampa FL E2E Test + Webhook Fix)
+
+### Bug Fixes
+- **BUG-041 FIXED:** Webhook `multipleMethods: true` routed POST to output 1 (no connection). Changed to POST-only webhook with single output → Metro Config.
+- **Tampa FL metro added** to Metro Config lookup table (coords 27.9506, -82.4572, radius 20km).
+
+### Pipeline Run
+- **Tampa FL exec #262 (SUCCESS):** 6m 53s, 23/23 nodes
+  - Discovery: 180 Google + 97 Yelp = 277 raw → 161 deduplicated → 159 inserted + 2 flagged
+  - Batch Dispatcher: 31.7s, 7 batches dispatched (all_dispatched)
+  - Sub-workflows #263-#269: 7/7 SUCCESS (all 7 nodes each, 77-101s per batch)
+  - 0 update errors (sampled batches)
+  - NamSor cultural affinity working again (Irena→IL, Joshua→GB, Rain→EE, Gennell→GB)
+  - Lead Scoring: SUCCESS
+
+### Dashboard Integration Verified
+- First successful dashboard-triggered pipeline run with full run_id lifecycle
+- pipeline_runs row: queued → running → completed (7/7 batches tracked)
+- Dashboard properly sent POST with metro_name, run_id, lat/lng/radius
+
+### Observations
+- **BUG-040 (NamSor) possibly resolved** — NamSor returning data for Tampa contacts after being null for Nashville/San Diego
+- **0 update errors** — significant improvement vs Nashville (27.5%) and Sedona (13%)
+
+---
+
 ## 2026-02-21 (Session 53 — Backfill Historical Pipeline Runs)
 
 ### New Files
