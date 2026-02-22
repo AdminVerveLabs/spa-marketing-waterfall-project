@@ -50,17 +50,19 @@
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)
 
-## Report Generator v0 — Remaining Steps
+## Report Generator v0 — COMPLETE (Session 59)
 
 - [x] ~~Run `scripts/supabase/report-schema.sql`~~ — Done by Zack
 - [x] ~~Install ExcelJS in n8n container~~ — Done by Zack (`/home/node/.n8n/node_modules`)
-- [x] ~~Set `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`~~ — Done by Zack (but not effective with Task Runner)
+- [x] ~~Set `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`~~ — Done by Zack (overridden by task runner config)
 - [x] ~~Set up Resend account + `RESEND_API_KEY`~~ — Done by Zack
 - [x] ~~Deploy report generator workflow~~ — Deployed as `SL9RrJBYnZjJ8LI6` (5 nodes, activated)
-- [ ] **FIX BUG-042: ExcelJS blocked by Task Runner (ADR-034)** — Task Runners can't be disabled in n8n 2.x. Recommended: Coolify pre-start command: `sed -i 's/"NODE_FUNCTION_ALLOW_EXTERNAL": "[^"]*"/"NODE_FUNCTION_ALLOW_EXTERNAL": "exceljs"/g' /etc/n8n-task-runners.json` (Zack)
-- [ ] **Re-test with curl**: `curl -X POST http://n8n-xw00wok0wk4gg0kc8000gwwg.5.161.95.57.sslip.io/webhook/report-generator-v1 -H "Content-Type: application/json" -d '{"run_id":"3ee06810-8ea1-4a5f-9258-91e5bfd9facf","metro":"Tampa, FL"}'`
-- [ ] **Set `REPORT_GENERATOR_WEBHOOK_URL`** in Coolify env vars (Zack, after test succeeds)
-- [ ] **Update Track Batch Completion** in live sub-workflow `fGm4IP0rWxgHptN8` with report trigger code (via MCP)
+- [x] ~~FIX BUG-042: ExcelJS blocked by Task Runner~~ — Fixed via Docker Compose task-runners entrypoint (Session 59)
+- [x] ~~BUG-043: xlsx corruption~~ — Fixed `Buffer.from(arrayBuffer)` before upload (Session 59)
+- [x] ~~Re-test report generator~~ — Exec #276 SUCCESS: 157 records, xlsx uploaded to Supabase Storage
+- [x] ~~Set `REPORT_GENERATOR_WEBHOOK_URL`~~ — Done by Zack in Coolify env vars
+- [x] ~~Update Track Batch Completion~~ — Deployed report trigger code to live sub-workflow via MCP
+- [ ] **Verify Resend email delivery** — Domain not verified in Resend account (403 error). Non-blocking.
 
 ## Priority: MEDIUM (Quality improvements)
 

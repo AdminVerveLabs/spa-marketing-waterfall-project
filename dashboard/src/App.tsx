@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { NewRunPage } from '@/pages/NewRunPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { ReportsPage } from '@/pages/ReportsPage';
+import { BugReportsPage } from '@/pages/BugReportsPage';
 
 function AppLayout() {
   const { user, signOut } = useAuth();
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/runs/new" element={<NewRunPage />} />
             <Route path="/runs" element={<HistoryPage />} />
             <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/bugs" element={<BugReportsPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

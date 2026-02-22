@@ -1,8 +1,8 @@
-# New Run Page Redesign — Metro Table Selector
+# New Run Page Redesign — Metro Table Selector + Map Preview
 
 ## Overview
 
-Replace the cascading dropdown selectors (Country → State → City) on the New Pipeline Run page with a searchable, sortable table of all metros that shows run history inline. This lets users immediately see which metros need attention without memorizing what's been run.
+Replace the cascading dropdown selectors (Country → State → City) on the New Pipeline Run page with a searchable, sortable table of all metros that shows run history inline, paired with an interactive map preview that visualizes the selected metro's location and search radius. This lets users immediately see which metros need attention and spatially verify the search area before launching a run.
 
 **Reference prototype:** `new-run-metro-table.jsx` in the project files — this is a working React prototype built in Claude Chat. Use it as the visual/behavioral reference, but DO NOT copy-paste it. Implement using whatever component patterns and styling approach the dashboard already uses.
 
@@ -43,6 +43,18 @@ Replace the cascading dropdown selectors (Country → State → City) on the New
 ---
 
 ## What to Build
+
+Step 1 (Location) contains two side-by-side panels: the metro table on the left and a map preview on the right. Search and filter controls sit above both at full width.
+
+```
+Search bar + filter buttons (full width)
+┌──────────────────────────┬─────────────────┐
+│  Metro Table (flex-[3])  │  Map  (flex-[2]) │
+│  + "N metros shown" text │                  │
+└──────────────────────────┴─────────────────┘
+```
+
+On narrow screens (`< lg`), the layout stacks vertically (map below table).
 
 ### The Metro Table (replaces Step 1: Location)
 
@@ -99,6 +111,42 @@ For each metro in the static data, look up its most recent run from the query re
 - **Investigate:** Whether the dashboard already has global scrollbar styles. If so, extend them rather than adding new ones.
 
 **Footer text below table:** "{N} metros shown · Click a row to select"
+
+### Map Preview (right panel)
+
+**Component:** `MapPreview` at `dashboard/src/components/runs/MapPreview.tsx`
+
+A read-only Leaflet map that shows the selected metro's location with a teal circle representing the search radius. It sits to the right of the metro table in a `flex-[2]` column (table is `flex-[3]`).
+
+**Dependencies:**
+- `leaflet` ^1.9.4
+- `react-leaflet` ^4.2.1
+- `@types/leaflet` ^1.9.21 (dev)
+- `@import 'leaflet/dist/leaflet.css'` added to `dashboard/src/index.css`
+
+**Tile provider:** CARTO dark basemap (`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png`) — matches the dashboard's dark theme.
+
+**Behavior:**
+- **No selection:** Zoomed-out US overview (center `[39.8, -98.6]`, zoom 4) at 50% opacity, with a centered overlay label: "Select a metro to preview location"
+- **Metro selected:** `flyTo` animates to the metro coordinates (0.8s), then after 850ms `fitBounds` zooms to fit the radius circle with 30% padding
+- **Radius changed (Step 2):** Circle updates to new radius; map re-fits to new bounds
+- **Metro deselected:** Returns to US overview
+- **All user interaction disabled:** `dragging`, `zoomControl`, `scrollWheelZoom`, `doubleClickZoom`, `touchZoom`, `keyboard`, `boxZoom` all set to `false`
+
+**Radius circle styling:**
+- Stroke: `#3ecfad`, 2px weight
+- Fill: `#3ecfad`, 12% opacity
+
+**Container styling:**
+- 400px fixed height
+- Rounded corners (`rounded-xl`), `overflow: hidden`
+- 1px border matching table: `rgba(255,255,255,0.06)`
+- Opacity transitions from 0.5 → 1.0 when a metro is selected
+
+**Dark theme attribution (in `index.css`):**
+- Background: `rgba(0,0,0,0.5)`
+- Text: `rgba(255,255,255,0.3)`, 9px font
+- Links: `rgba(255,255,255,0.4)`
 
 ### Selected Metro Badge
 
@@ -165,10 +213,12 @@ After submission, show a confirmation screen with:
 - Write a merge function that combines static metros + run data
 - Test: log the merged data to console. Verify metros with runs show status/counts, metros without show nulls.
 
-### Stage 2: Table component
+### Stage 2: Table component + Map preview
 - Build the metro table with columns, row click selection, sticky header, custom scrollbar
+- Build the `MapPreview` component using `react-leaflet` (CARTO dark tiles, disabled interactions)
 - Wire up the merged data from Stage 1
-- Test: table renders all metros, clicking a row selects it, scrolling works with custom scrollbar
+- Lay out table and map side-by-side (`flex-[3]` / `flex-[2]`), search/filters above both
+- Test: table renders all metros, clicking a row selects it, scrolling works with custom scrollbar, map animates to selected metro with radius circle
 
 ### Stage 3: Filters + sorting
 - Add search input, status toggles, country toggles
@@ -211,9 +261,27 @@ After each stage, verify:
 - [ ] Confirmation screen appears after submission
 - [ ] "Start Another" resets the form and deselects the metro
 - [ ] Custom scrollbar appears when table has enough rows to scroll
+- [ ] Map renders at 50% opacity with "Select a metro to preview location" when no metro selected
+- [ ] Selecting a metro animates the map to the correct location with a teal radius circle
+- [ ] Teal circle size matches the selected search radius
+- [ ] Changing radius (Step 2) updates the circle and map zoom
+- [ ] Deselecting a metro returns the map to the zoomed-out US overview
+- [ ] Map is non-interactive (no drag, zoom, scroll, or keyboard)
+- [ ] Map top edge aligns with the table header (search/filters are above both)
+- [ ] On mobile/narrow screens, map stacks below the table
 - [ ] No regressions on other pages
 
 ---
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `dashboard/src/components/runs/NewRunForm.tsx` | Main form component — table, map, filters, form submission |
+| `dashboard/src/components/runs/MapPreview.tsx` | Leaflet map preview component |
+| `dashboard/src/data/metros.ts` | Static metro data (city, state, country, lat, lng, metro_name, yelp_location) |
+| `dashboard/src/types/index.ts` | `MetroTableRow` type definition |
+| `dashboard/src/index.css` | Custom scrollbar styles + Leaflet dark theme overrides |
 
 ## Reference
 

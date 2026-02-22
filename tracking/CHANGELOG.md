@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-02-22 (Session 59 — BUG-042 Fix + Report Generator Fully Operational)
+
+### Bug Fixes
+- **BUG-042 FIXED:** ExcelJS blocked by n8n external Task Runner. Fix: Docker Compose task-runners service entrypoint — `sed` allowlist + symlink module to runner's `node_modules` path. Verified across container redeploys (exec #274, #275).
+- **BUG-043 FIXED:** xlsx files corrupted (wouldn't open in Excel). `workbook.xlsx.writeBuffer()` returns `ArrayBuffer` which `this.helpers.httpRequest()` can't upload. Fix: `Buffer.from(arrayBuffer)` conversion before upload.
+
+### Deployments
+- **Docker Compose updated** for task-runners service: `user: '0'`, custom entrypoint with `sed` + symlink, `n8n-data` volume mount
+- **Report Generator workflow updated** (`SL9RrJBYnZjJ8LI6`) — Buffer fix deployed via MCP
+- **Track Batch Completion updated** in live sub-workflow `fGm4IP0rWxgHptN8` — report trigger code deployed via MCP
+- **`REPORT_GENERATOR_WEBHOOK_URL`** env var set in Coolify
+
+### Verification
+- **Exec #276 (Tampa FL):** Report Generator fully operational — 157 records, 107 sendable, multi-sheet xlsx uploaded to Supabase Storage, `report_url` populated in `pipeline_runs`
+
+### Known Issue
+- **Resend email 403:** Domain not verified in Resend account. Report generation works; email delivery deferred.
+
+---
+
 ## 2026-02-21 (Session 58 — Dashboard Metro Config Sync)
 
 ### Dashboard Fix

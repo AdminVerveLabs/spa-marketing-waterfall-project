@@ -72,3 +72,19 @@ export interface RunCoverageStats {
   total_contacts: number;
   last_completed_at: string | null;
 }
+
+export interface BugReport {
+  id: string;
+  page: string;
+  severity: 'broken' | 'annoying' | 'cosmetic';
+  what_happened: string;
+  expected_behavior: string | null;
+  steps_to_reproduce: string | null;
+  browser_info: string | null;
+  current_url: string | null;
+  console_errors: string | null;
+  submitted_by: string | null;
+  status: 'open' | 'investigating' | 'fixed' | 'wont_fix';
+  created_at: string;
+  updated_at: string;
+}

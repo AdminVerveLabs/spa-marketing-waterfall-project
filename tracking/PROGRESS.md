@@ -37,9 +37,22 @@
 - [ ] Set up Snov.io account and API key
 - [ ] Add email-domain mismatch detection (ISSUE-012)
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
-- [ ] **Deploy Report Generator v0 (ADR-033)** — Workflow deployed + activated (`SL9RrJBYnZjJ8LI6`). BLOCKED: ExcelJS blocked by Task Runner (BUG-042). Fix: modify `/etc/n8n-task-runners.json` via pre-start command (ADR-034). Task Runners are mandatory in n8n 2.x — cannot be disabled.
+- [x] **Deploy Report Generator v0 (ADR-033)** — Workflow `SL9RrJBYnZjJ8LI6` fully operational. BUG-042 fixed (Docker Compose task-runners fix). BUG-043 fixed (xlsx Buffer corruption). Track Batch Completion updated with report trigger. Exec #276 verified.
 
 ## Session Log
+
+### Session 59 — 2026-02-22 (BUG-042 Fix + Report Generator Fully Operational)
+- **BUG-042 FIXED:** ExcelJS blocked by n8n Task Runner. Root cause: EXTERNAL task runner container (`n8nio/runners:2.1.5`) has `/etc/n8n-task-runners.json` with `NODE_FUNCTION_ALLOW_EXTERNAL: "moment"` — overrides env vars. Fix applied via Docker Compose:
+  1. `user: '0'` on task-runners service (root needed to edit `/etc/`)
+  2. `sed -i 's/"moment"/"moment,exceljs"/' /etc/n8n-task-runners.json` — add exceljs to allowlist
+  3. `ln -sf /home/node/.n8n/node_modules/exceljs /opt/runners/task-runner-javascript/node_modules/exceljs` — symlink module
+  4. Verified: exec #274 (pre-redeploy) + #275 (post-redeploy) both SUCCESS
+- **BUG-043 FOUND & FIXED:** xlsx files corrupted (wouldn't open in Excel). Root cause: `workbook.xlsx.writeBuffer()` returns `ArrayBuffer`, but `this.helpers.httpRequest()` (axios) can't handle it. Fix: `Buffer.from(arrayBuffer)` before upload. Deployed to live workflow via MCP.
+- **Track Batch Completion updated:** Deployed report trigger code to live sub-workflow `fGm4IP0rWxgHptN8` via MCP. Future pipeline completions auto-trigger report generation (guarded by `REPORT_GENERATOR_WEBHOOK_URL` env var).
+- **`REPORT_GENERATOR_WEBHOOK_URL` set** in Coolify env vars by Zack.
+- **Report Generator fully operational:** Exec #276 (Tampa FL) — 157 records, 107 sendable, 4 Tier 1b, 26 Tier 2a, 77 Tier 2b. xlsx uploaded to Supabase Storage, report_url populated.
+- **Docker Compose reference:** `coolify-docker-compose-fixed.yaml` — complete YAML with task-runners fix for Coolify.
+- **Resend email 403:** Send Email node returns 403 — domain not verified in Resend account. Non-blocking (report generation works, email delivery deferred).
 
 ### Session 58 — 2026-02-21 (Dashboard Metro Config Sync)
 - **Added 3 missing metros to dashboard:** Boise ID, Sedona AZ, Asheville NC in `dashboard/src/data/metros.ts`

@@ -1,6 +1,7 @@
-// Generate & Upload Report — ExcelJS-based report generator
+// Generate Report — ExcelJS-based report generator
 // Mode: runOnceForAllItems
-// Implements the full v2 report guide: clean, tier, build xlsx, upload to Supabase Storage.
+// Implements the full v2 report guide: clean, tier, build xlsx.
+// Outputs binary xlsx as n8n binary attachment for downstream HTTP Request upload.
 // Requires: NODE_FUNCTION_ALLOW_EXTERNAL=exceljs in n8n env vars.
 
 const ExcelJS = require('exceljs');
@@ -542,72 +543,14 @@ for (const mg of metroGroups) {
 }
 
 // ============================================================
-// STEP 5: GENERATE BUFFER & UPLOAD
+// STEP 5: GENERATE BUFFER & OUTPUT AS BINARY
 // ============================================================
-const supabaseUrl = $env.SUPABASE_URL;
-const supabaseKey = $env.SUPABASE_SERVICE_KEY;
-const sbHeaders = {
-  'apikey': supabaseKey,
-  'Authorization': 'Bearer ' + supabaseKey,
-  'Content-Type': 'application/json'
-};
 
 // Generate filename
 const metroSlug = metro.replace(/, /g, '_').replace(/ /g, '_');
 const filename = `VerveLabs_Sales_Leads_${metroSlug}_${TODAY}.xlsx`;
 
-let reportUrl = null;
-let base64Data = null;
-
-try {
-  const buffer = await workbook.xlsx.writeBuffer();
-  base64Data = Buffer.from(buffer).toString('base64');
-
-  // Upload to Supabase Storage
-  const storagePath = `${run_id}/${filename}`;
-  await this.helpers.httpRequest({
-    method: 'POST',
-    url: `${supabaseUrl}/storage/v1/object/run-reports/${storagePath}`,
-    headers: {
-      'apikey': supabaseKey,
-      'Authorization': 'Bearer ' + supabaseKey,
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'x-upsert': 'true'
-    },
-    body: buffer,
-    encoding: null,
-    json: false
-  });
-
-  reportUrl = `${supabaseUrl}/storage/v1/object/public/run-reports/${storagePath}`;
-  console.log(`Generate Report: uploaded to ${reportUrl}`);
-
-  // PATCH pipeline_runs with report_url + report_status
-  await this.helpers.httpRequest({
-    method: 'PATCH',
-    url: `${supabaseUrl}/rest/v1/pipeline_runs?id=eq.${run_id}`,
-    headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-    body: { report_url: reportUrl, report_status: 'completed' },
-    json: true
-  });
-
-} catch(e) {
-  console.log(`Generate Report: ERROR — ${e.message}`);
-  // Mark as failed
-  try {
-    await this.helpers.httpRequest({
-      method: 'PATCH',
-      url: `${supabaseUrl}/rest/v1/pipeline_runs?id=eq.${run_id}`,
-      headers: { ...sbHeaders, 'Prefer': 'return=minimal' },
-      body: { report_status: 'failed', report_error: e.message.substring(0, 500) },
-      json: true
-    });
-  } catch(e2) { /* best effort */ }
-
-  return [{ json: { error: e.message, run_id } }];
-}
-
-// Build summary for email node
+// Build summary for downstream nodes
 const summary = {
   total_records: totalRecords,
   sendable: sendable.length,
@@ -620,14 +563,22 @@ const summary = {
   filename
 };
 
-console.log(`Generate Report: SUCCESS — ${sendable.length} sendable, ${other.length} other, ${metroGroups.length} metros`);
+const arrayBuffer = await workbook.xlsx.writeBuffer();
+const nodeBuffer = Buffer.from(arrayBuffer);
+const base64Data = nodeBuffer.toString('base64');
 
-return [{ json: {
-  run_id,
-  metro,
-  triggered_by,
-  report_url: reportUrl,
-  filename,
-  base64: base64Data,
-  summary
-}}];
+console.log(`Generate Report: SUCCESS — ${sendable.length} sendable, ${other.length} other, ${metroGroups.length} metros, ${nodeBuffer.length} bytes`);
+
+// Output binary xlsx as n8n binary attachment.
+// Downstream HTTP Request node will upload this binary data correctly
+// (avoids IPC serialization corruption with task runners).
+return [{
+  json: { run_id, metro, triggered_by, filename, base64: base64Data, summary },
+  binary: {
+    data: await this.helpers.prepareBinaryData(
+      nodeBuffer,
+      filename,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+  }
+}];

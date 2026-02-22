@@ -6,15 +6,24 @@
 - **Severity:** HIGH (blocks report generator deployment)
 - **Location:** Report Generator v0 workflow → Generate & Upload Report node
 - **Symptom:** Execution #270 fails with `Module 'exceljs' is disallowed [line 6]`
-- **Root cause:** n8n uses EXTERNAL Task Runners (`n8nio/runners:2.1.5` container). The runners container has `/etc/n8n-task-runners.json` with `env-overrides` that set `NODE_FUNCTION_ALLOW_EXTERNAL: "moment"` — only moment is allowed. Env vars set in Coolify are overridden by this config. The config file at `/etc/` requires root to edit.
-- **Fix applied (Session 58):** Modified Docker Compose for task-runners service:
+- **Root cause:** n8n uses EXTERNAL Task Runners (`n8nio/runners:2.1.5` container). The runners container has `/etc/n8n-task-runners.json` with `env-overrides` that set `NODE_FUNCTION_ALLOW_EXTERNAL: "moment"` — only moment is allowed. Env vars set in Coolify are overridden by this config. The config file at `/etc/` requires root to edit. Module resolution path: `/opt/runners/task-runner-javascript/node_modules/`.
+- **Fix applied (Session 59):** Modified Docker Compose for task-runners service:
   1. `user: '0'` — run as root so entrypoint can edit `/etc/`
   2. `sed -i 's/"moment"/"moment,exceljs"/' /etc/n8n-task-runners.json` — add exceljs to allowlist
   3. `ln -sf /home/node/.n8n/node_modules/exceljs /opt/runners/task-runner-javascript/node_modules/exceljs` — symlink exceljs from n8n-data volume to runner's node_modules path
   4. `exec tini -- /usr/local/bin/task-runner-launcher javascript python` — start original launcher
   5. `n8n-data:/home/node/.n8n` volume mounted to task-runners container
 - **Verified:** Exec #274 (pre-redeploy) + #275 (post-redeploy) both succeeded. Report generated and uploaded to Supabase Storage.
-- **Status:** FIXED (Session 58)
+- **Status:** FIXED (Session 59)
+
+### BUG-043: xlsx file corruption — report won't open in Excel
+- **Severity:** HIGH
+- **Location:** Report Generator v0 → Generate & Upload Report node → Supabase Storage upload
+- **Symptom:** Downloaded xlsx from Supabase Storage won't open in Excel: "file format or file extension is not valid"
+- **Root cause:** `workbook.xlsx.writeBuffer()` returns an `ArrayBuffer`. This was passed directly as the HTTP body to `this.helpers.httpRequest()` (axios-based). Axios doesn't handle `ArrayBuffer` correctly — the upload produces a corrupted file.
+- **Fix:** Convert to Node.js Buffer before upload: `const nodeBuffer = Buffer.from(arrayBuffer)` then `body: nodeBuffer`. Also removed invalid `encoding: null` option.
+- **Verified:** Exec #276 SUCCESS — report generated with 157 records, xlsx uploaded correctly.
+- **Status:** FIXED (Session 59)
 
 ### BUG-017: Steps 3a/4 have no metro filter — cross-metro data contamination
 - **Severity:** CRITICAL

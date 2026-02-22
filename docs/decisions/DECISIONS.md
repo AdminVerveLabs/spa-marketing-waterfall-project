@@ -388,17 +388,33 @@
   - **Tracking:** `pipeline_runs` columns: `report_url`, `report_status`, `report_error`, `report_emailed_at`
 - **Impact:** Zero changes to existing pipeline behavior. Only addition is a non-blocking POST in Track Batch Completion, guarded by env var (no-op until configured).
 - **Prerequisites:** ExcelJS in n8n container, `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`, Resend account + API key, SQL schema migration
-- **Blocker (BUG-042):** n8n 2.35.4 Task Runner blocks `require('exceljs')` even with `NODE_FUNCTION_ALLOW_EXTERNAL` set. Task Runners are mandatory in 2.x — cannot be disabled. Fix: modify `/etc/n8n-task-runners.json` via pre-start command (ADR-034).
-- **Status:** Workflow deployed + activated (`SL9RrJBYnZjJ8LI6`). Blocked on Task Runner config (Session 56)
+- **Blocker (BUG-042):** RESOLVED. n8n external Task Runner blocked `require('exceljs')`. Fixed via Docker Compose task-runners entrypoint (ADR-034, Session 59). BUG-043 (xlsx corruption) also fixed.
+- **Status:** Fully operational (Session 59). Exec #276 verified.
 
-## ADR-034: Fix ExcelJS Task Runner Block via Pre-Start Config Modification
-- **Date:** 2026-02-21
-- **Decision:** Fix BUG-042 by modifying `/etc/n8n-task-runners.json` inside the n8n container to add `exceljs` to the `NODE_FUNCTION_ALLOW_EXTERNAL` allowlist. Recommended approach: Coolify pre-start command with `sed`.
-- **Reason:** n8n 2.x Task Runners are **mandatory** — they cannot be disabled. `N8N_RUNNERS_DISABLED=true` and `N8N_RUNNERS_ENABLED=false` are not real/supported options. Task Runners exist for CVE isolation (sandbox bypass vulnerabilities) and are required since n8n 2.0. The only modes are **internal** (child process, default) vs **external** (separate container). The internal mode task runner reads `/etc/n8n-task-runners.json`, which has `env-overrides` that override `NODE_FUNCTION_ALLOW_EXTERNAL` with an empty string, blocking all external modules regardless of container env vars.
+## ADR-034: Fix ExcelJS Task Runner Block via Docker Compose Entrypoint
+- **Date:** 2026-02-21 (planned), 2026-02-22 (implemented)
+- **Decision:** Fix BUG-042 by modifying the Docker Compose `task-runners` service to add ExcelJS to the allowlist and symlink the module. The fix runs on every container start via entrypoint.
+- **Reason:** n8n 2.x Task Runners are **mandatory** — they cannot be disabled. This deployment uses **external** Task Runners (`n8nio/runners:2.1.5` container, `N8N_RUNNERS_MODE=external`). The `/etc/n8n-task-runners.json` config in the runners container has `env-overrides` that set `NODE_FUNCTION_ALLOW_EXTERNAL: "moment"`, overriding container env vars. Runner module resolution looks in `/opt/runners/task-runner-javascript/node_modules/`, not the n8n-data volume.
+- **Implementation (Docker Compose task-runners service):**
+  ```yaml
+  user: '0'
+  entrypoint: /bin/sh
+  command:
+    - -c
+    - |
+      sed -i 's/"moment"/"moment,exceljs"/' /etc/n8n-task-runners.json
+      ln -sf /home/node/.n8n/node_modules/exceljs /opt/runners/task-runner-javascript/node_modules/exceljs
+      exec tini -- /usr/local/bin/task-runner-launcher javascript python
+  volumes:
+    - 'n8n-data:/home/node/.n8n'
+  ```
+- **Key findings during implementation:**
+  1. `/etc/n8n-task-runners.json` only exists in the task-runners container, NOT in n8n or n8n-worker
+  2. Runner resolves `require()` from `/opt/runners/task-runner-javascript/node_modules/` (not `/home/runner/`)
+  3. Container default user can't write to `/etc/` — `user: '0'` (root) required
+  4. ExcelJS installed at `/home/node/.n8n/node_modules/exceljs` via shared `n8n-data` volume
 - **Alternatives considered:**
-  1. `N8N_RUNNERS_DISABLED=true` env var → **Not a real option** in n8n 2.x. Task Runners are mandatory.
-  2. Coolify pre-start command: `sed -i 's/"NODE_FUNCTION_ALLOW_EXTERNAL": "[^"]*"/"NODE_FUNCTION_ALLOW_EXTERNAL": "exceljs"/g' /etc/n8n-task-runners.json` → **Recommended.** Simplest, no image rebuild, works immediately.
-  3. Custom Dockerfile extending `n8nio/n8n:2.35.4` with `npm install exceljs` + same `sed` → More robust, survives config resets, but requires image rebuild.
-  4. Volume mount custom `n8n-task-runners.json` → Clean but requires maintaining the full config file, which may drift between n8n versions.
-- **Impact:** Only affects the Task Runner's module allowlist. No workflow changes needed. ExcelJS was already installed in `/home/node/.n8n/node_modules/` by Zack.
-- **Status:** Pending — Zack to apply pre-start command in Coolify and restart n8n
+  1. sed on n8n container → Wrong container, file doesn't exist there
+  2. Env vars on task-runners → Overridden by config file's `env-overrides`
+  3. Symlink to `/home/runner/node_modules/` → Wrong path, runner resolves from `/opt/runners/`
+- **Status:** Active — deployed Session 59. Verified across redeployments (exec #274, #275, #276).
