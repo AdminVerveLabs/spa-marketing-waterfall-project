@@ -37,6 +37,8 @@ export interface PipelineRun {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  report_url: string | null;
+  report_status: 'generating' | 'completed' | 'failed' | null;
 }
 
 export interface SearchQueryTemplate {

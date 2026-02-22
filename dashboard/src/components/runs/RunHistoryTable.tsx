@@ -18,6 +18,10 @@ export function RunHistoryTable({ runs, onRerun }: RunHistoryTableProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(run: PipelineRun) {
+    if (run.report_url) {
+      window.open(run.report_url, '_blank');
+      return;
+    }
     setDownloadingId(run.id);
     try {
       await downloadRunReport(run.metro_name);
@@ -109,13 +113,22 @@ export function RunHistoryTable({ runs, onRerun }: RunHistoryTableProps) {
                   {(run.status === "completed" || run.status === "failed") && (
                     <div className="flex items-center gap-1.5">
                       {run.status === "completed" && (
-                        <button
-                          onClick={() => handleDownload(run)}
-                          disabled={downloadingId === run.id}
-                          className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-brand bg-brand/[0.08] hover:bg-brand/15 disabled:opacity-50"
-                        >
-                          {downloadingId === run.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Download
-                        </button>
+                        run.report_status === 'generating' ? (
+                          <button
+                            disabled
+                            className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-brand bg-brand/[0.08] disabled:opacity-50"
+                          >
+                            <Loader2 size={14} className="animate-spin" /> Generating...
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDownload(run)}
+                            disabled={downloadingId === run.id}
+                            className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-brand bg-brand/[0.08] hover:bg-brand/15 disabled:opacity-50"
+                          >
+                            {downloadingId === run.id ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Download
+                          </button>
+                        )
                       )}
                       <button
                         onClick={() => onRerun(run)}
