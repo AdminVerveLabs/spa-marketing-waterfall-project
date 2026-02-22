@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-02-22 (Session 61 — BUG-044 Fix — Empty Data Sheets in Reports)
+
+### Bug Fixes
+- **BUG-044 FIXED:** Report xlsx data sheets were completely empty (0 rows) while Summary tab worked fine. TWO root causes discovered:
+  1. Invalid autoFilter column reference when >26 columns: `String.fromCharCode(64 + 27)` = `[` not `AA`. Fixed with `colLetter()` helper.
+  2. ExcelJS `addRow()` does not serialize to sheet XML in the n8n task runner environment. The Summary sheet worked because it uses direct `ws.getCell()` writes. Rewrote `writeLeadSheet()` to use direct cell writes.
+- **New n8n pitfall documented:** ExcelJS `addRow()` is incompatible with n8n external task runners — use `ws.getCell(row, col)` instead.
+
+### Files Changed
+- `scripts/nodes/report-generator/generate-report.js` — Added `colLetter()` helper, rewrote `writeLeadSheet()` from `addRow()` to direct `ws.getCell()` writes
+- `workflows/generated/report-generator-workflow.json` — Regenerated
+
+### Deployment
+- Deployed via MCP `n8n_update_partial_workflow` to live workflow `SL9RrJBYnZjJ8LI6`
+
+### Verification
+- **Exec #280 (Tampa FL):** All 7 nodes SUCCESS. All Leads: 108 rows, Tier 1: 5, Tier 2a: 27, Tier 2b: 78, All Other: 51, Tampa: 108. File size 62KB (was 14KB with empty sheets).
+
+## 2026-02-22 (Session 60 — BUG-043 Proper Fix — Binary Data Separation)
+
+### Bug Fixes
+- **BUG-043 PROPERLY FIXED:** The `Buffer.from()` fix from Session 59 was insufficient — real root cause is IPC serialization between n8n task runner container and main n8n process corrupting binary data in `this.helpers.httpRequest()`. Proper fix: split monolithic Code node into 3 separate nodes using n8n native binary data handling.
+- **Complete Report `$input` bug fixed:** HTTP Request node replaces input JSON with its response body — Complete Report now reads from `$('Generate Report').first().json` instead of `$input.first().json`.
+
+### Architecture Changes
+- **Report Generator expanded from 5 to 7 nodes:** Split "Generate & Upload Report" into: Generate Report (Code + binary output) → Upload to Storage (HTTP Request) → Complete Report (Code + PATCH pipeline_runs)
+- **New file:** `scripts/nodes/report-generator/complete-report.js` — PATCH pipeline_runs after Storage upload
+- **Updated:** `generate-report.js` — removed upload/PATCH code, added `this.helpers.prepareBinaryData()` binary output
+- **Updated:** `build-report-workflow.py` — builds 7-node workflow with HTTP Request upload node
+
+### Deployment
+- Deployed via MCP `n8n_update_partial_workflow` — renamed node, added 2 new nodes, updated connections and jsCode
+- Live workflow `SL9RrJBYnZjJ8LI6` now has 7 nodes (was 5)
+
+### Verification
+- **Exec #278 (Tampa FL):** All 7 nodes SUCCESS. Correct report_url, report_status 'completed', 157 records, 107 sendable.
+
+---
+
 ## 2026-02-22 (Session 59 — BUG-042 Fix + Report Generator Fully Operational)
 
 ### Bug Fixes

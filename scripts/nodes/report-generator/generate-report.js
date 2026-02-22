@@ -222,34 +222,49 @@ const hdrFont = { name: 'Arial', bold: true, size: 10, color: { argb: 'FFFFFFFF'
 const cellFont = { name: 'Arial', size: 10 };
 const thinBorder = { bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } } };
 
+function colLetter(n) {
+  let s = '';
+  while (n > 0) {
+    n--;
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
+}
+
 function writeLeadSheet(ws, rows) {
-  // Header row
-  const headerRow = ws.addRow(headers);
-  headerRow.eachCell((cell, colNumber) => {
+  // Use direct cell writes (not addRow) — addRow doesn't serialize in task runner ExcelJS.
+  // Header row (row 1)
+  for (let c = 0; c < headers.length; c++) {
+    const cell = ws.getCell(1, c + 1);
+    cell.value = headers[c];
     cell.font = hdrFont;
     cell.fill = hdrFill;
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-  });
+  }
 
   // Freeze panes
   ws.views = [{ state: 'frozen', ySplit: 1 }];
 
-  // Auto filter
-  ws.autoFilter = { from: 'A1', to: `${String.fromCharCode(64 + headers.length)}1` };
+  // Auto filter (colLetter handles >26 columns correctly: 27=AA, 28=AB, etc.)
+  ws.autoFilter = { from: 'A1', to: `${colLetter(headers.length)}1` };
 
-  // Data rows
-  for (const r of rows) {
+  // Data rows (starting at row 2)
+  for (let ri = 0; ri < rows.length; ri++) {
+    const r = rows[ri];
     const mapped = mapRow(r);
-    const dataRow = ws.addRow(mapped);
+    const rowNum = ri + 2;
     const tier = r.tier || 'Other';
     const fillColor = TIER_COLORS[tier] || 'FFFFFFFF';
 
-    dataRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    for (let c = 0; c < mapped.length; c++) {
+      const cell = ws.getCell(rowNum, c + 1);
+      cell.value = mapped[c];
       cell.font = cellFont;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fillColor } };
       cell.border = thinBorder;
 
-      const colName = headers[colNumber - 1];
+      const colName = headers[c];
       if (colName === 'Rating' && cell.value !== '') {
         cell.numFmt = '0.0';
       }
@@ -259,7 +274,7 @@ function writeLeadSheet(ws, rows) {
       if (colName === 'Reviews' && cell.value !== '') {
         cell.numFmt = '#,##0';
       }
-    });
+    }
   }
 
   // Column widths

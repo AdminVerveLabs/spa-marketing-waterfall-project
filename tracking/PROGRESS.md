@@ -37,9 +37,21 @@
 - [ ] Set up Snov.io account and API key
 - [ ] Add email-domain mismatch detection (ISSUE-012)
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
-- [x] **Deploy Report Generator v0 (ADR-033)** — Workflow `SL9RrJBYnZjJ8LI6` fully operational. BUG-042 fixed (Docker Compose task-runners fix). BUG-043 fixed (xlsx Buffer corruption). Track Batch Completion updated with report trigger. Exec #276 verified.
+- [x] **Deploy Report Generator v0 (ADR-033)** — Workflow `SL9RrJBYnZjJ8LI6` fully operational (7 nodes). BUG-042 fixed (Docker Compose task-runners fix). BUG-043 properly fixed (binary data separation via HTTP Request node). Track Batch Completion updated with report trigger. Exec #278 verified.
+- [x] **Fix BUG-044: Empty data sheets in reports** — `addRow()` doesn't serialize in task runner ExcelJS. Rewrote to direct `ws.getCell()` writes + added `colLetter()` for >26-column autoFilter. Exec #280 verified — all sheets populated.
 
 ## Session Log
+
+### Session 60 — 2026-02-22 (BUG-043 Proper Fix — Binary Data Separation)
+- **BUG-043 PROPERLY FIXED:** Session 59's `Buffer.from()` fix was insufficient — the real issue was IPC serialization between n8n task runner and main process corrupting binary data in `this.helpers.httpRequest()`. Proper fix: split "Generate & Upload Report" (1 node) into 3 separate nodes:
+  1. **Generate Report** (Code) — generates xlsx, outputs as n8n binary attachment via `this.helpers.prepareBinaryData()`
+  2. **Upload to Storage** (HTTP Request) — uploads binary attachment natively (no IPC corruption)
+  3. **Complete Report** (Code) — PATCHes `pipeline_runs` with `report_url` + `report_status`
+- **Workflow expanded:** 5 nodes → 7 nodes. Architecture: `Webhook → Respond → Fetch Report Data → Generate Report → Upload to Storage → Complete Report → Send Email via Resend`
+- **Secondary bug found & fixed:** Complete Report node initially read `$input.first().json` — but HTTP Request node replaces input JSON with its response body (`{Key, Id}`), losing `run_id`/`filename`. Fixed to read `$('Generate Report').first().json` for data fields.
+- **Deployed via MCP:** `n8n_update_partial_workflow` operations — rename node, add 2 new nodes, update connections, update jsCode
+- **Exec #278 (Tampa FL) verified:** All 7 nodes SUCCESS. report_url: `https://cjruzmimbkmnhmpcvwnn.supabase.co/storage/v1/object/public/run-reports/3ee06810-.../VerveLabs_Sales_Leads_Tampa_FL_2026-02-22.xlsx`, report_status: 'completed', 157 records, 107 sendable.
+- **Files updated:** `generate-report.js` (removed upload code, added binary output), `complete-report.js` (new), `build-report-workflow.py` (7 nodes), `report-generator-workflow.json` (regenerated)
 
 ### Session 59 — 2026-02-22 (BUG-042 Fix + Report Generator Fully Operational)
 - **BUG-042 FIXED:** ExcelJS blocked by n8n Task Runner. Root cause: EXTERNAL task runner container (`n8nio/runners:2.1.5`) has `/etc/n8n-task-runners.json` with `NODE_FUNCTION_ALLOW_EXTERNAL: "moment"` — overrides env vars. Fix applied via Docker Compose:

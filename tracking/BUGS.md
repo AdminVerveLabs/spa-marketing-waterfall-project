@@ -2,6 +2,16 @@
 
 ## Open
 
+### BUG-044: Empty data sheets in Report Generator xlsx — TWO root causes
+- **Severity:** HIGH (reports useless without lead data)
+- **Location:** Report Generator v0 → Generate Report node → `writeLeadSheet()` function
+- **Symptom:** All 6 data sheets (All Leads, Tier 1, Tier 2a, Tier 2b, All Other, Tampa) have 0 rows. Summary tab works fine (45 rows).
+- **Root cause 1:** Invalid autoFilter column ref when columns > 26. `String.fromCharCode(64 + 27)` = `[` instead of `AA`. Fixed by adding `colLetter()` helper.
+- **Root cause 2 (actual):** ExcelJS `addRow()` does not serialize rows to sheet XML in the n8n task runner environment. The Summary sheet works because it uses direct `ws.getCell(row, col).value = ...` writes instead of `addRow()`. This is likely a compatibility issue with the ExcelJS version on the task runner.
+- **Fix:** Rewrote `writeLeadSheet()` to use direct `ws.getCell(rowNum, colNum)` writes instead of `ws.addRow()`. Added `colLetter()` helper for correct autoFilter references >26 columns.
+- **Verified:** Exec #280 SUCCESS — All Leads: 108 rows (1 hdr + 107 data), Tier 1: 5, Tier 2a: 27, Tier 2b: 78, All Other: 51, Tampa: 108. AutoFilter correctly `A1:AA1`.
+- **Status:** FIXED (Session 61)
+
 ### BUG-042: ExcelJS blocked by n8n Task Runner — report generator fails
 - **Severity:** HIGH (blocks report generator deployment)
 - **Location:** Report Generator v0 workflow → Generate & Upload Report node
@@ -20,10 +30,12 @@
 - **Severity:** HIGH
 - **Location:** Report Generator v0 → Generate & Upload Report node → Supabase Storage upload
 - **Symptom:** Downloaded xlsx from Supabase Storage won't open in Excel: "file format or file extension is not valid"
-- **Root cause:** `workbook.xlsx.writeBuffer()` returns an `ArrayBuffer`. This was passed directly as the HTTP body to `this.helpers.httpRequest()` (axios-based). Axios doesn't handle `ArrayBuffer` correctly — the upload produces a corrupted file.
-- **Fix:** Convert to Node.js Buffer before upload: `const nodeBuffer = Buffer.from(arrayBuffer)` then `body: nodeBuffer`. Also removed invalid `encoding: null` option.
-- **Verified:** Exec #276 SUCCESS — report generated with 157 records, xlsx uploaded correctly.
-- **Status:** FIXED (Session 59)
+- **Root cause (initial):** `workbook.xlsx.writeBuffer()` returns `ArrayBuffer` → `Buffer.from()` needed before upload
+- **Root cause (actual):** n8n external Task Runners serialize all data via IPC/JSON between runner container and main n8n process. When `this.helpers.httpRequest()` is called with binary data from a Code node, the bytes get corrupted during IPC transit. Even with `Buffer.from()`, the data still corrupts.
+- **Fix (Session 59):** Initial `Buffer.from(arrayBuffer)` conversion — partially helped but didn't fully resolve.
+- **Fix (Session 60 — proper):** Split "Generate & Upload Report" into 3 nodes: Generate Report (outputs n8n binary attachment via `this.helpers.prepareBinaryData()`), Upload to Storage (HTTP Request node handles binary natively without IPC corruption), Complete Report (PATCHes pipeline_runs). This completely bypasses the Code node → IPC → httpRequest binary corruption path.
+- **Verified:** Exec #278 SUCCESS — all 7 nodes pass, xlsx uploads correctly, opens in Excel.
+- **Status:** FIXED (Session 60)
 
 ### BUG-017: Steps 3a/4 have no metro filter — cross-metro data contamination
 - **Severity:** CRITICAL

@@ -58,8 +58,8 @@
 - [x] ~~Set up Resend account + `RESEND_API_KEY`~~ — Done by Zack
 - [x] ~~Deploy report generator workflow~~ — Deployed as `SL9RrJBYnZjJ8LI6` (5 nodes, activated)
 - [x] ~~FIX BUG-042: ExcelJS blocked by Task Runner~~ — Fixed via Docker Compose task-runners entrypoint (Session 59)
-- [x] ~~BUG-043: xlsx corruption~~ — Fixed `Buffer.from(arrayBuffer)` before upload (Session 59)
-- [x] ~~Re-test report generator~~ — Exec #276 SUCCESS: 157 records, xlsx uploaded to Supabase Storage
+- [x] ~~BUG-043: xlsx corruption~~ — Properly fixed via binary data separation (Session 60): Generate Report outputs n8n binary attachment, Upload to Storage (HTTP Request) handles binary natively. Exec #278 verified.
+- [x] ~~Re-test report generator~~ — Exec #278 SUCCESS: all 7 nodes pass, xlsx uploads correctly
 - [x] ~~Set `REPORT_GENERATOR_WEBHOOK_URL`~~ — Done by Zack in Coolify env vars
 - [x] ~~Update Track Batch Completion~~ — Deployed report trigger code to live sub-workflow via MCP
 - [ ] **Verify Resend email delivery** — Domain not verified in Resend account (403 error). Non-blocking.

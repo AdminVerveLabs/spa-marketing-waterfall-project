@@ -379,7 +379,7 @@
 - **Decision:** Build a separate n8n workflow (5 nodes) that auto-generates a styled Excel report after each pipeline run completes. Triggered by Track Batch Completion when `is_last_batch = true`. Uses ExcelJS for full v2 guide styling, uploads to Supabase Storage, emails via Resend API.
 - **Reason:** No automated report generation existed. Dashboard had a basic client-side download that dumped raw data into 2 sheets with no styling. The v2 report guide defined full tiering, multi-sheet, styled reports but was never implemented server-side.
 - **Architecture:**
-  - **Report Generator Workflow** (5 nodes): Webhook POST → Respond 200 → Fetch Report Data → Generate & Upload Report → Send Email via Resend
+  - **Report Generator Workflow** (7 nodes): Webhook POST → Respond 200 → Fetch Report Data → Generate Report → Upload to Storage → Complete Report → Send Email via Resend
   - **Trigger:** Track Batch Completion POSTs `{ run_id, metro }` to `REPORT_GENERATOR_WEBHOOK_URL` (non-blocking, guarded by env var)
   - **Data:** `get_lead_report(p_metro)` RPC function — companies + best contact + social profiles
   - **Output:** Multi-sheet xlsx (Summary, All Leads, Tier 1, Tier 2a, Tier 2b, All Other, per-metro tabs)
@@ -388,8 +388,8 @@
   - **Tracking:** `pipeline_runs` columns: `report_url`, `report_status`, `report_error`, `report_emailed_at`
 - **Impact:** Zero changes to existing pipeline behavior. Only addition is a non-blocking POST in Track Batch Completion, guarded by env var (no-op until configured).
 - **Prerequisites:** ExcelJS in n8n container, `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`, Resend account + API key, SQL schema migration
-- **Blocker (BUG-042):** RESOLVED. n8n external Task Runner blocked `require('exceljs')`. Fixed via Docker Compose task-runners entrypoint (ADR-034, Session 59). BUG-043 (xlsx corruption) also fixed.
-- **Status:** Fully operational (Session 59). Exec #276 verified.
+- **Blocker (BUG-042):** RESOLVED. n8n external Task Runner blocked `require('exceljs')`. Fixed via Docker Compose task-runners entrypoint (ADR-034, Session 59). BUG-043 (xlsx corruption) properly fixed via binary data separation (Session 60).
+- **Status:** Fully operational (Session 60). 7 nodes deployed. Exec #278 verified.
 
 ## ADR-034: Fix ExcelJS Task Runner Block via Docker Compose Entrypoint
 - **Date:** 2026-02-21 (planned), 2026-02-22 (implemented)

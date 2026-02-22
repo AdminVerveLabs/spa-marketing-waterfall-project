@@ -3,8 +3,10 @@
 // Constructs report_url, marks report as completed (or failed if upload errored).
 // Passes all data through for Send Email node.
 
-const input = $input.first().json;
-const { run_id, metro, triggered_by, filename, base64, summary } = input;
+// Read from Generate Report node — the HTTP Request node replaces JSON with its response body,
+// so run_id, filename, etc. are only available from the upstream Code node.
+const genOutput = $('Generate Report').first().json;
+const { run_id, metro, triggered_by, filename, base64, summary } = genOutput;
 
 const supabaseUrl = $env.SUPABASE_URL;
 const supabaseKey = $env.SUPABASE_SERVICE_KEY;
@@ -16,8 +18,9 @@ const sbHeaders = {
 };
 
 // Check if the Upload to Storage node returned an error
-// n8n HTTP Request with "Continue on Error" puts error info in the item
-const uploadError = input.error || input.errorMessage || null;
+// n8n HTTP Request with "neverError" returns error info in the JSON
+const uploadResponse = $input.first().json;
+const uploadError = uploadResponse.error || uploadResponse.errorMessage || null;
 
 let reportUrl = null;
 let reportStatus = 'completed';
