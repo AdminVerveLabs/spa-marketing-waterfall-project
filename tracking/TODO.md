@@ -62,6 +62,7 @@
 - [x] ~~Re-test report generator~~ — Exec #278 SUCCESS: all 7 nodes pass, xlsx uploads correctly
 - [x] ~~Set `REPORT_GENERATOR_WEBHOOK_URL`~~ — Done by Zack in Coolify env vars
 - [x] ~~Update Track Batch Completion~~ — Deployed report trigger code to live sub-workflow via MCP
+- [x] **Connect download button to stored reports** — Dashboard Download button prefers `report_url` from pipeline_runs. Falls back to on-the-fly export. Shows "Generating..." state. (2026-02-22)
 - [ ] **Verify Resend email delivery** — Domain not verified in Resend account (403 error). Non-blocking.
 
 ## Priority: MEDIUM (Quality improvements)

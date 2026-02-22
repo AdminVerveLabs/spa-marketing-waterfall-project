@@ -39,6 +39,7 @@
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
 - [x] **Deploy Report Generator v0 (ADR-033)** — Workflow `SL9RrJBYnZjJ8LI6` fully operational (7 nodes). BUG-042 fixed (Docker Compose task-runners fix). BUG-043 properly fixed (binary data separation via HTTP Request node). Track Batch Completion updated with report trigger. Exec #278 verified.
 - [x] **Fix BUG-044: Empty data sheets in reports** — `addRow()` doesn't serialize in task runner ExcelJS. Rewrote to direct `ws.getCell()` writes + added `colLetter()` for >26-column autoFilter. Exec #280 verified — all sheets populated.
+- [x] **Connect download button to stored reports** — Dashboard Download button now uses pre-generated `report_url` from pipeline_runs when available. Falls back to on-the-fly export for older runs. Shows "Generating..." spinner during report generation.
 
 ## Session Log
 

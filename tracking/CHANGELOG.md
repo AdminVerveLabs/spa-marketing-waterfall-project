@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-02-22 — Connect Download Button to Stored Reports
+
+### Enhancement
+- **Download button now uses pre-generated reports:** When a pipeline run has a `report_url` (set by the report generator workflow), the Download button opens it directly instead of generating a simpler on-the-fly export. Falls back to on-the-fly export for older runs without reports.
+- **"Generating..." state:** While `report_status === 'generating'`, the button shows a spinner and is disabled.
+
+### Files Changed
+- `dashboard/src/types/index.ts` — Added `report_url` and `report_status` fields to `PipelineRun` interface
+- `dashboard/src/components/runs/RunHistoryTable.tsx` — Updated `handleDownload()` to prefer stored URL; added generating state to button
+
+---
+
 ## 2026-02-22 (Session 61 — BUG-044 Fix — Empty Data Sheets in Reports)
 
 ### Bug Fixes
