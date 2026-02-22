@@ -37,6 +37,7 @@
 - [x] **Test parallelized pipeline** — Sedona AZ exec #170: 128 companies, 8 batches dispatched in 32s, all sub-workflows succeeded, lead scoring SUCCESS. (2026-02-20, Session 38)
 - [x] **Pipeline recovery: Fix zero digital signals (ADR-031)** — Fixed 5 issues: Insert node field drops, nonexistent PATCH columns, early-exit propagation. Verified in exec #179: 0 update errors, booking platforms detected, metro propagation working. (2026-02-20, Session 42)
 - [x] **Backfill historical pipeline_runs for dashboard** — Created `scripts/backfill-pipeline-runs.sql` with 7 metros. User runs in Supabase SQL Editor. 4 metros (Denver, Phoenix, Toronto, Portland) deferred — no `discovery_metro` data. (2026-02-21, Session 53)
+- [x] **Sync dashboard metro config with pipeline** — Added Boise ID, Sedona AZ, Asheville NC to `dashboard/src/data/metros.ts`. Dashboard now matches pipeline (12/12 metros). (2026-02-21, Session 58)
 - [ ] **Backfill `on_yelp` for existing companies** — SQL provided: `UPDATE companies SET on_yelp = true WHERE source_urls::text LIKE '%yelp_apify%' AND (on_yelp IS NULL OR on_yelp = false);`
 - [x] **Re-run a metro to populate newly-saved fields** — Sedona AZ exec #180: 125 companies re-discovered, 153 re-enriched across 7 batches, digital signals now populated (booking platforms, paid ads, Google ratings). (2026-02-20, Session 43)
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name). Check API key validity, test direct API call, check NamSor account dashboard. Code fix (IMP-014) is correct — this is an API-level issue.
@@ -48,6 +49,18 @@
 - [ ] **End-to-end email test** — Need contacts with first_name + domain but no email to truly test Hunter Finder discovery
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)
+
+## Report Generator v0 — Remaining Steps
+
+- [x] ~~Run `scripts/supabase/report-schema.sql`~~ — Done by Zack
+- [x] ~~Install ExcelJS in n8n container~~ — Done by Zack (`/home/node/.n8n/node_modules`)
+- [x] ~~Set `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`~~ — Done by Zack (but not effective with Task Runner)
+- [x] ~~Set up Resend account + `RESEND_API_KEY`~~ — Done by Zack
+- [x] ~~Deploy report generator workflow~~ — Deployed as `SL9RrJBYnZjJ8LI6` (5 nodes, activated)
+- [ ] **FIX BUG-042: ExcelJS blocked by Task Runner (ADR-034)** — Task Runners can't be disabled in n8n 2.x. Recommended: Coolify pre-start command: `sed -i 's/"NODE_FUNCTION_ALLOW_EXTERNAL": "[^"]*"/"NODE_FUNCTION_ALLOW_EXTERNAL": "exceljs"/g' /etc/n8n-task-runners.json` (Zack)
+- [ ] **Re-test with curl**: `curl -X POST http://n8n-xw00wok0wk4gg0kc8000gwwg.5.161.95.57.sslip.io/webhook/report-generator-v1 -H "Content-Type: application/json" -d '{"run_id":"3ee06810-8ea1-4a5f-9258-91e5bfd9facf","metro":"Tampa, FL"}'`
+- [ ] **Set `REPORT_GENERATOR_WEBHOOK_URL`** in Coolify env vars (Zack, after test succeeds)
+- [ ] **Update Track Batch Completion** in live sub-workflow `fGm4IP0rWxgHptN8` with report trigger code (via MCP)
 
 ## Priority: MEDIUM (Quality improvements)
 

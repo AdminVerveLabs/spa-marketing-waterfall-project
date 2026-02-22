@@ -373,3 +373,32 @@
   2. Add Insert Flagged data to Insert to Supabase output → Architectural change, flagged items intentionally separate
   3. Remove convergence guard, rely on Phase 1 polling → Dangerous, Phase 1 would run twice in parallel
 - **Status:** Active — deployed Session 38
+
+## ADR-033: Server-Side Report Generator v0
+- **Date:** 2026-02-21
+- **Decision:** Build a separate n8n workflow (5 nodes) that auto-generates a styled Excel report after each pipeline run completes. Triggered by Track Batch Completion when `is_last_batch = true`. Uses ExcelJS for full v2 guide styling, uploads to Supabase Storage, emails via Resend API.
+- **Reason:** No automated report generation existed. Dashboard had a basic client-side download that dumped raw data into 2 sheets with no styling. The v2 report guide defined full tiering, multi-sheet, styled reports but was never implemented server-side.
+- **Architecture:**
+  - **Report Generator Workflow** (5 nodes): Webhook POST → Respond 200 → Fetch Report Data → Generate & Upload Report → Send Email via Resend
+  - **Trigger:** Track Batch Completion POSTs `{ run_id, metro }` to `REPORT_GENERATOR_WEBHOOK_URL` (non-blocking, guarded by env var)
+  - **Data:** `get_lead_report(p_metro)` RPC function — companies + best contact + social profiles
+  - **Output:** Multi-sheet xlsx (Summary, All Leads, Tier 1, Tier 2a, Tier 2b, All Other, per-metro tabs)
+  - **Storage:** Supabase Storage `run-reports` bucket → `{run_id}/{filename}.xlsx`
+  - **Email:** Resend API with xlsx attachment + tier breakdown HTML summary
+  - **Tracking:** `pipeline_runs` columns: `report_url`, `report_status`, `report_error`, `report_emailed_at`
+- **Impact:** Zero changes to existing pipeline behavior. Only addition is a non-blocking POST in Track Batch Completion, guarded by env var (no-op until configured).
+- **Prerequisites:** ExcelJS in n8n container, `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`, Resend account + API key, SQL schema migration
+- **Blocker (BUG-042):** n8n 2.35.4 Task Runner blocks `require('exceljs')` even with `NODE_FUNCTION_ALLOW_EXTERNAL` set. Task Runners are mandatory in 2.x — cannot be disabled. Fix: modify `/etc/n8n-task-runners.json` via pre-start command (ADR-034).
+- **Status:** Workflow deployed + activated (`SL9RrJBYnZjJ8LI6`). Blocked on Task Runner config (Session 56)
+
+## ADR-034: Fix ExcelJS Task Runner Block via Pre-Start Config Modification
+- **Date:** 2026-02-21
+- **Decision:** Fix BUG-042 by modifying `/etc/n8n-task-runners.json` inside the n8n container to add `exceljs` to the `NODE_FUNCTION_ALLOW_EXTERNAL` allowlist. Recommended approach: Coolify pre-start command with `sed`.
+- **Reason:** n8n 2.x Task Runners are **mandatory** — they cannot be disabled. `N8N_RUNNERS_DISABLED=true` and `N8N_RUNNERS_ENABLED=false` are not real/supported options. Task Runners exist for CVE isolation (sandbox bypass vulnerabilities) and are required since n8n 2.0. The only modes are **internal** (child process, default) vs **external** (separate container). The internal mode task runner reads `/etc/n8n-task-runners.json`, which has `env-overrides` that override `NODE_FUNCTION_ALLOW_EXTERNAL` with an empty string, blocking all external modules regardless of container env vars.
+- **Alternatives considered:**
+  1. `N8N_RUNNERS_DISABLED=true` env var → **Not a real option** in n8n 2.x. Task Runners are mandatory.
+  2. Coolify pre-start command: `sed -i 's/"NODE_FUNCTION_ALLOW_EXTERNAL": "[^"]*"/"NODE_FUNCTION_ALLOW_EXTERNAL": "exceljs"/g' /etc/n8n-task-runners.json` → **Recommended.** Simplest, no image rebuild, works immediately.
+  3. Custom Dockerfile extending `n8nio/n8n:2.35.4` with `npm install exceljs` + same `sed` → More robust, survives config resets, but requires image rebuild.
+  4. Volume mount custom `n8n-task-runners.json` → Clean but requires maintaining the full config file, which may drift between n8n versions.
+- **Impact:** Only affects the Task Runner's module allowlist. No workflow changes needed. ExcelJS was already installed in `/home/node/.n8n/node_modules/` by Zack.
+- **Status:** Pending — Zack to apply pre-start command in Coolify and restart n8n

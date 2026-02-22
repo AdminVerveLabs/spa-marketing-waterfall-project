@@ -9,6 +9,7 @@ export const METROS: MetroData = {
       { city: "Phoenix", lat: 33.4484, lng: -112.074, metro_name: "Phoenix, AZ", yelp_location: "Phoenix, AZ" },
       { city: "Tucson", lat: 32.2226, lng: -110.9747, metro_name: "Tucson, AZ", yelp_location: "Tucson, AZ" },
       { city: "Scottsdale", lat: 33.4942, lng: -111.9261, metro_name: "Scottsdale, AZ", yelp_location: "Scottsdale, AZ" },
+      { city: "Sedona", lat: 34.8697, lng: -111.7610, metro_name: "Sedona, AZ", yelp_location: "Sedona, AZ" },
     ]},
     CA: { name: "California", cities: [
       { city: "Los Angeles", lat: 34.0522, lng: -118.2437, metro_name: "Los Angeles, CA", yelp_location: "Los Angeles, CA" },
@@ -36,6 +37,9 @@ export const METROS: MetroData = {
     ]},
     HI: { name: "Hawaii", cities: [
       { city: "Honolulu", lat: 21.3069, lng: -157.8583, metro_name: "Honolulu, HI", yelp_location: "Honolulu, HI" },
+    ]},
+    ID: { name: "Idaho", cities: [
+      { city: "Boise", lat: 43.6150, lng: -116.2023, metro_name: "Boise, ID", yelp_location: "Boise, ID" },
     ]},
     IL: { name: "Illinois", cities: [
       { city: "Chicago", lat: 41.8781, lng: -87.6298, metro_name: "Chicago, IL", yelp_location: "Chicago, IL" },
@@ -68,6 +72,7 @@ export const METROS: MetroData = {
     NC: { name: "North Carolina", cities: [
       { city: "Charlotte", lat: 35.2271, lng: -80.8431, metro_name: "Charlotte, NC", yelp_location: "Charlotte, NC" },
       { city: "Raleigh", lat: 35.7796, lng: -78.6382, metro_name: "Raleigh, NC", yelp_location: "Raleigh, NC" },
+      { city: "Asheville", lat: 35.5951, lng: -82.5515, metro_name: "Asheville, NC", yelp_location: "Asheville, NC" },
     ]},
     NV: { name: "Nevada", cities: [
       { city: "Las Vegas", lat: 36.1699, lng: -115.1398, metro_name: "Las Vegas, NV", yelp_location: "Las Vegas, NV" },

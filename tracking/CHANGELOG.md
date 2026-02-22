@@ -1,5 +1,68 @@
 # Changelog
 
+## 2026-02-21 (Session 58 — Dashboard Metro Config Sync)
+
+### Dashboard Fix
+- **Added 3 missing metros to `dashboard/src/data/metros.ts`:** Boise ID, Sedona AZ, Asheville NC
+- Dashboard had 9 metros, pipeline had 12 — now synced (12/12)
+
+---
+
+## 2026-02-21 (Session 57 — BUG-042 Fix Research)
+
+### Research
+- **Task Runners are mandatory in n8n 2.x** — `N8N_RUNNERS_DISABLED=true` is not a supported option. Previous Session 56 recommendation was incorrect.
+- Root cause: `/etc/n8n-task-runners.json` has `env-overrides` that override `NODE_FUNCTION_ALLOW_EXTERNAL` with empty string
+
+### Documentation Updates
+- **ADR-034:** Logged correct fix approach (pre-start sed command to modify task runner config)
+- **BUG-042:** Updated with corrected root cause and fix options
+- **ADR-033:** Updated blocker note to reference ADR-034
+- **TODO.md:** Updated report generator remaining steps
+
+### Notification
+- Sent corrected fix instructions to Zack with 3 options (pre-start command recommended)
+
+---
+
+## 2026-02-21 (Session 56 — Report Generator Deployment)
+
+### Deployment
+- **Report Generator v0 deployed to n8n** — Workflow `SL9RrJBYnZjJ8LI6` created with all 5 nodes via MCP partial updates
+- Nodes: Webhook (POST `report-generator-v1`) → Respond to Webhook → Fetch Report Data → Generate & Upload Report → Send Email via Resend
+- Workflow activated
+
+### Bug Found
+- **BUG-042:** ExcelJS blocked by n8n 2.35.4 Task Runner. `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs` not propagated to task runner process. Test exec #270 failed with "Module 'exceljs' is disallowed"
+- Fix requires Coolify env change: `N8N_RUNNERS_DISABLED=true` (simplest) or mounting `/etc/n8n-task-runners.json` config
+
+---
+
+## 2026-02-21 (Session 55 — Report Generator v0 Implementation)
+
+### New Feature: Report Generator v0 (ADR-033)
+- **New n8n workflow** (5 nodes): Webhook → Respond 200 → Fetch Report Data → Generate & Upload Report → Send Email via Resend
+- **Full v2 report guide** implemented in ExcelJS: junk category filter, null normalization, category simplification, metro grouping, deduplication, 4-tier assignment (1a/1b/2a/2b/Other)
+- **Multi-sheet Excel report**: Summary, All Leads, Tier 1 Priority, Tier 2a Direct Phone, Tier 2b Cold Call, All Other Leads, per-metro tabs
+- **Full styling**: tier-colored rows, dark blue headers, Arial fonts, freeze panes, auto-filter, column widths
+- **Upload to Supabase Storage** (`run-reports` bucket) with direct download URL
+- **Email via Resend API** with xlsx attachment and tier breakdown summary
+- **Pipeline integration**: Track Batch Completion triggers report generation on last batch (non-blocking, guarded by env var)
+- **Supabase schema**: `report_url`, `report_status`, `report_error`, `report_emailed_at` columns on `pipeline_runs` + `get_lead_report` RPC function
+
+### Files Created
+- `scripts/supabase/report-schema.sql`
+- `scripts/nodes/report-generator/fetch-report-data.js`
+- `scripts/nodes/report-generator/generate-report.js`
+- `scripts/nodes/report-generator/send-email.js`
+- `scripts/build-report-workflow.py`
+- `workflows/generated/report-generator-workflow.json`
+
+### Files Modified
+- `scripts/nodes/track-batch-completion.js` — Added report trigger POST (lines 95-106)
+
+---
+
 ## 2026-02-21 (Session 54 — Tampa FL E2E Test + Webhook Fix)
 
 ### Bug Fixes

@@ -47,6 +47,20 @@ export interface SearchQueryTemplate {
   created_at: string;
 }
 
+export interface MetroTableRow {
+  city: string;
+  state: string;
+  country: string;
+  lat: number;
+  lng: number;
+  metro_name: string;
+  yelp_location: string;
+  lastStatus: PipelineRun['status'] | null;
+  totalDiscovered: number | null;
+  contactsFound: number | null;
+  completedAt: string | null;
+}
+
 export interface RunCoverageStats {
   country: string;
   state: string;

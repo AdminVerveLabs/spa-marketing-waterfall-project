@@ -91,6 +91,23 @@ try {
     } catch(e) {
       console.log(`  WARNING: Failed to mark run as completed: ${e.message}`);
     }
+
+    // Trigger report generation (non-blocking)
+    const reportWebhookUrl = $env.REPORT_GENERATOR_WEBHOOK_URL;
+    if (reportWebhookUrl) {
+      try {
+        await this.helpers.httpRequest({
+          method: 'POST',
+          url: reportWebhookUrl,
+          body: { run_id: runId, metro: metro },
+          json: true,
+          timeout: 10000
+        });
+        console.log(`Track Batch Completion: report generation triggered for ${metro}`);
+      } catch(e) {
+        console.log(`Track Batch Completion: report trigger failed (non-fatal): ${e.message}`);
+      }
+    }
   }
 
   return [{ json: {

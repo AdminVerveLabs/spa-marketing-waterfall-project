@@ -37,8 +37,47 @@
 - [ ] Set up Snov.io account and API key
 - [ ] Add email-domain mismatch detection (ISSUE-012)
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
+- [ ] **Deploy Report Generator v0 (ADR-033)** — Workflow deployed + activated (`SL9RrJBYnZjJ8LI6`). BLOCKED: ExcelJS blocked by Task Runner (BUG-042). Fix: modify `/etc/n8n-task-runners.json` via pre-start command (ADR-034). Task Runners are mandatory in n8n 2.x — cannot be disabled.
 
 ## Session Log
+
+### Session 58 — 2026-02-21 (Dashboard Metro Config Sync)
+- **Added 3 missing metros to dashboard:** Boise ID, Sedona AZ, Asheville NC in `dashboard/src/data/metros.ts`
+- Dashboard metro config now matches pipeline (12/12 metros)
+
+### Session 57 — 2026-02-21 (BUG-042 Fix Research — Task Runner Config)
+- **Key finding: Task Runners CANNOT be disabled in n8n 2.x.** `N8N_RUNNERS_DISABLED=true` is not a real/supported option. Task Runners are mandatory since 2.0 for CVE isolation (sandbox bypass vulnerabilities). Only modes are internal (child process) vs external (separate container).
+- **Root cause clarified:** The internal mode task runner reads `/etc/n8n-task-runners.json`, which has `env-overrides` that set `NODE_FUNCTION_ALLOW_EXTERNAL: ""` (empty), overriding the container env var and blocking all external modules.
+- **ADR-034 logged:** Correct fix is to modify `/etc/n8n-task-runners.json` via Coolify pre-start command: `sed -i 's/"NODE_FUNCTION_ALLOW_EXTERNAL": "[^"]*"/"NODE_FUNCTION_ALLOW_EXTERNAL": "exceljs"/g' /etc/n8n-task-runners.json`
+- **BUG-042 updated** with corrected fix options (removed N8N_RUNNERS_DISABLED recommendation)
+- **Notification sent to Zack** with 3 corrected options (A: pre-start sed, B: custom Dockerfile, C: volume mount)
+- **Confirmed live Track Batch Completion** does NOT have report trigger code yet (as expected — deploy after BUG-042 fixed)
+- **BLOCKED:** Waiting for Zack to apply pre-start command in Coolify and restart n8n
+
+### Session 56 — 2026-02-21 (Report Generator Deployment — Blocked on Task Runner)
+- **Report Generator v0 workflow deployed to n8n** (ID: `SL9RrJBYnZjJ8LI6`, 5 nodes, activated):
+  - All 5 nodes added via MCP: Webhook → Respond to Webhook → Fetch Report Data → Generate & Upload Report → Send Email via Resend
+  - Webhook path: `report-generator-v1` (POST)
+- **Test execution #270: FAILED** — `Module 'exceljs' is disallowed [line 6]`
+  - n8n 2.35.4 uses Task Runner architecture (`/opt/runners/task-runner-javascript/`)
+  - Task Runner has its own module allowlist that ignores `NODE_FUNCTION_ALLOW_EXTERNAL`
+  - Per GitHub issue #20087: fix requires either mounting `/etc/n8n-task-runners.json` with exceljs in allowlist, OR setting `N8N_RUNNERS_DISABLED=true` in Coolify
+- **BUG-042 logged:** ExcelJS blocked by Task Runner
+- **Track Batch Completion:** Confirmed live sub-workflow does NOT yet have report trigger code (step 7 of plan, deferred until report generator works)
+- **Notifications sent to Zack** with fix options (A: disable task runners, B: mount config, C: custom Docker image)
+- **BLOCKED:** Waiting for Zack to apply one of the Task Runner fixes in Coolify
+
+### Session 55 — 2026-02-21 (Report Generator v0 Implementation)
+- **Report Generator v0 — all files created (ADR-033):**
+  - `scripts/supabase/report-schema.sql` — ALTER TABLE for report columns + storage bucket + `get_lead_report` RPC function
+  - `scripts/nodes/report-generator/fetch-report-data.js` — Fetches pipeline_runs row, marks report_status, calls RPC (~70 lines)
+  - `scripts/nodes/report-generator/generate-report.js` — Full v2 guide ExcelJS implementation: clean, tier, multi-sheet xlsx, upload to Supabase Storage (~630 lines)
+  - `scripts/nodes/report-generator/send-email.js` — Resend API email with xlsx attachment (~110 lines)
+  - `scripts/build-report-workflow.py` — Builds workflow JSON from JS source files
+  - `workflows/generated/report-generator-workflow.json` — 5-node n8n workflow (Webhook → Respond → Fetch → Generate → Email)
+  - `scripts/nodes/track-batch-completion.js` — Added non-blocking report trigger in is_last_batch block (guarded by REPORT_GENERATOR_WEBHOOK_URL env var)
+- **Prerequisites for deployment:** ExcelJS install in n8n container, `NODE_FUNCTION_ALLOW_EXTERNAL=exceljs`, `RESEND_API_KEY`, `REPORT_GENERATOR_WEBHOOK_URL` env vars, SQL schema migration, Resend account + verified domain
+- **No deployment yet** — awaiting Zack to complete prerequisites
 
 ### Session 54 — 2026-02-21 (Tampa FL E2E Test + Webhook Fix)
 - **BUG-041 FOUND & FIXED:** Webhook `multipleMethods: true` routed POST to output 1 (no connection). Changed to POST-only single-output webhook. Deployed via MCP.

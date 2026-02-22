@@ -1,3 +1,5 @@
+@import 'leaflet/dist/leaflet.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,4 +20,23 @@ select option {
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.08);
   border-radius: 3px;
+}
+
+.metro-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(62, 207, 173, 0.25);
+}
+
+.metro-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(62, 207, 173, 0.4);
+}
+
+/* Leaflet dark theme attribution */
+.leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  font-size: 9px !important;
+}
+
+.leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.4) !important;
 }
