@@ -17,6 +17,10 @@ export function RecentRunsTable({ runs, onRerun }: RecentRunsTableProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function handleDownload(run: PipelineRun) {
+    if (run.report_url) {
+      window.open(run.report_url, '_blank');
+      return;
+    }
     setDownloadingId(run.id);
     try {
       await downloadRunReport(run.metro_name);
