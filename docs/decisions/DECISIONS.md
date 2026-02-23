@@ -418,3 +418,71 @@
   2. Env vars on task-runners → Overridden by config file's `env-overrides`
   3. Symlink to `/home/runner/node_modules/` → Wrong path, runner resolves from `/opt/runners/`
 - **Status:** Active — deployed Session 59. Verified across redeployments (exec #274, #275, #276).
+
+## ADR-035: Add 4 New Contact-Finding Sources to Find Contacts Waterfall
+- **Date:** 2026-02-22
+- **Decision:** Extend `find-contacts.js` (Option A — same Code node) with 4 new sources that run after the existing waterfall (solo → Apollo → website → no-domain). New waterfall order:
+  1. Solo Detection (existing)
+  2. Apollo Search (existing)
+  3. Website Scrape (existing)
+  4. No-Domain Fallback (existing)
+  5. **Hunter.io Domain Search** — finds people + emails at a domain (different from existing Hunter Email Finder in enrich-contacts.js)
+  6. **Google Reviews** — extract owner name from Place Details profile name + review response sign-offs
+  7. **Yelp Owner** — scrape owner name from Yelp business page "About the Business" section
+  8. **Facebook Page** — extract email addresses from public Facebook page HTML
+- **Reason:** Apollo yields ~0% for massage therapy vertical (ADR-019). Website scraping has low-moderate yield. Need additional contact discovery sources to improve the 9% contact name coverage rate. State licensing boards were evaluated but SKIPPED (high effort, fragile scraping, low match rate).
+- **Architecture choice: Extend vs. new node:** Chose to extend `find-contacts.js` rather than add a separate Code node because:
+  - The waterfall is inherently sequential per-company
+  - A second node would re-fetch the same companies and contacts from Supabase
+  - Shared validation logic (name validation, email filtering, role scoring) is reused
+  - 630 → 931 lines is manageable when following established patterns
+- **Source conditions:**
+  - Hunter: `domain exists AND (!contact || !contact.first_name)` — people finder
+  - Google: `google_place_id exists AND (!contact || !contact.first_name)` — name finder
+  - Yelp: `source_urls has yelp URL AND (!contact || !contact.first_name)` — name finder
+  - Facebook: `facebook_url in social_profiles AND (!contact || !contact.email_business)` — email finder
+- **Skip toggles:** Each source has `SKIP_*` config. Deployed with all 4 set to `true` (disabled). Enable one at a time for testing.
+- **Schema change:** contacts `source` CHECK updated to include: `'hunter'`, `'google_reviews'`, `'facebook'`, `'yelp'`
+- **Yelp URL source:** Uses `source_urls` JSONB on companies table (not `social_profiles`, which doesn't have 'yelp' as valid platform). Searches for keys containing `yelp.com/biz/`.
+- **Facebook URL source:** Uses `social_profiles` table (`platform='facebook'`). Fetched once per batch, stored in lookup map.
+- **Rate limiting:** Hunter 1s, Yelp 3s, Facebook 2s between requests. Google Places no explicit delay (API handles rate limiting).
+- **Status:** Active — implemented in `scripts/nodes/find-contacts.js`. Deployed with all sources SKIP=true.
+
+## ADR-036: Google Reviews API Migration (Legacy → New Places API v1)
+- **Date:** 2026-02-22
+- **Decision:** Rewrite the Google Reviews contact-finding code (find-contacts.js lines 666-738) to use the **New Places API v1** (`places.googleapis.com/v1/places/{placeId}`) instead of the legacy Places API (`maps.googleapis.com/maps/api/place/details/json`).
+- **Reason:** The legacy Places API's `reviews` field does not expose owner responses in a structured way. The `owner_response` field exists in some responses but is inconsistently formatted and doesn't attribute the response to a named person. The New Places API v1 provides:
+  - `displayName.text` — the business profile name (used in Method 1: compare against company name to detect personal names)
+  - `reviews[].ownerResponse.text` — structured owner response text (used in Method 2: parse sign-off patterns like "Thanks, Jane")
+- **Implementation:**
+  - **Auth:** Switched from query param (`?key=API_KEY`) to header-based auth (`X-Goog-Api-Key`, `X-Goog-FieldMask: displayName,reviews`)
+  - **URL:** `places.googleapis.com/v1/places/{placeId}` (URL-encodes place_id)
+  - **Response parsing:** `placeResp.displayName.text` for profile name, `review.ownerResponse.text` (handles both string and `{text: string}` object formats)
+  - **Debug logging:** First API response per batch logged for verification
+- **Cost:** Same pricing ($17/1000 calls). Uses same `GOOGLE_PLACES_API_KEY`.
+- **Discovered during:** Phase 2 of progressive rollout (Session 63). The original code from Session 62 was written against the legacy API based on the outline doc's examples.
+- **Status:** Active — deployed Session 63
+- **UPDATE (Session 64):** `ownerResponse` field does NOT exist in Places API v1 Review objects. Method 2 was dead code. Removed. See BUG-045.
+
+## ADR-037: Add yelp_is_claimed Column + Debug Logging for Contact Sources
+- **Date:** 2026-02-23
+- **Decision:** Add `yelp_is_claimed` BOOLEAN column to companies table, populated during Yelp Owner scraping in find-contacts.js. Add comprehensive debug logging to Google Reviews and Yelp Owner sources to diagnose 0% hit rates.
+- **Reason:** After Phase 2-3 testing showed 0 contacts from both Google Reviews and Yelp Owner, investigation revealed: (1) Google Reviews Method 2 was impossible (ownerResponse not in API), and (2) Yelp Owner HTML parsing was untestable without seeing what Yelp actually returns. Debug logging captures first-response content, review field structures, and Yelp claimed status per company.
+- **Implementation:**
+  - **Google Reviews:** Enhanced debug log on first response (review keys + snippet). Method 2 removed (BUG-045).
+  - **Yelp Owner:** First-response debug log (HTML length, content checks for About/Owner/Claimed keywords). Per-company claimed status detection. Non-blocking PATCH to `companies.yelp_is_claimed`.
+  - **SQL:** `ALTER TABLE companies ADD COLUMN IF NOT EXISTS yelp_is_claimed BOOLEAN DEFAULT NULL;`
+- **Status:** Active — deployed Session 64. SQL migration pending user execution.
+
+## ADR-038: Relax Google Reviews Method 1 Criteria
+- **Date:** 2026-02-23
+- **Decision:** Remove the three overly-strict gates in Google Reviews Method 1 (profile name extraction) and replace with a simpler, more permissive approach.
+- **Reason:** Method 1 had three gates that were too restrictive: (1) outer gate rejected when profile name matched company name (but "Jane Smith Massage" company with "Jane Smith Massage" profile IS the owner), (2) cleaning regex required a separator char before keywords (so "Jane Smith Massage" didn't clean to "Jane Smith"), (3) inner gate rejected if first name appeared in company words. Combined, these gates likely rejected many valid owner names.
+- **Changes:**
+  - Removed outer gate (`profileName !== company.name`)
+  - Made separator optional in regex (`[-–—|,]?` instead of `[-–|,]`)
+  - Added more business suffixes: `studio`, `center`, `centre`, `clinic`, `practice`, `llc`, `inc`
+  - Removed inner gate (companyWords check)
+  - Safety retained: `isLikelyFirstName()` (~400 common names) + word count (2-4 parts)
+- **Safety analysis:** "Sedona Wellness Center" → 1 word → rejected. "Healing Hands Massage" → "Healing" not in names list → rejected. "Jane Smith Massage" → "Jane" in names → accepted (correct). "Massage by Jane" → "Massage" matched at start → 0 words → rejected.
+- **Status:** Active

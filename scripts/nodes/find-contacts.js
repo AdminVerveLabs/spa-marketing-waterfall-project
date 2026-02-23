@@ -17,12 +17,18 @@ if (!metro) {
 const supabaseUrl = $env.SUPABASE_URL;
 const supabaseKey = $env.SUPABASE_SERVICE_KEY;
 const apolloApiKey = $env.APOLLO_API_KEY;
+const hunterApiKey = $env.HUNTER_API_KEY;
+const googlePlacesApiKey = $env.GOOGLE_PLACES_API_KEY;
 const sbHeaders = { 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey };
 
 // ═══ CONFIG (previously in Step 3a Config Set node) ═══
 const SKIP_APOLLO = false;
 const SKIP_WEBSITE_SCRAPE = false;
 const APOLLO_ENRICH_ENABLED = true;
+const SKIP_HUNTER_DOMAIN_SEARCH = false;  // Phase 1 enabled
+const SKIP_GOOGLE_REVIEWS = false;        // Phase 2 enabled
+const SKIP_YELP_OWNER = false;            // Phase 3 enabled
+const SKIP_FACEBOOK = true;               // Phase 4 — not yet enabled
 
 const delay = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -320,7 +326,7 @@ if (companyIds && companyIds.length > 0) {
 
 const companies = await this.helpers.httpRequest({
   method: 'GET',
-  url: `${supabaseUrl}/rest/v1/companies?${companyQueryParams}&order=lead_score.desc,discovered_at.asc&limit=1000&select=id,name,phone,domain,address,city,state,country,google_place_id,category,estimated_size,has_website,google_review_count,google_rating`,
+  url: `${supabaseUrl}/rest/v1/companies?${companyQueryParams}&order=lead_score.desc,discovered_at.asc&limit=1000&select=id,name,phone,domain,address,city,state,country,google_place_id,category,estimated_size,has_website,google_review_count,google_rating,on_yelp,source_urls`,
   headers: sbHeaders,
   json: true
 });
@@ -354,12 +360,38 @@ if (needsContacts.length === 0) {
   return [{ json: { step: 'find_contacts', processed: 0, message: 'All companies already have contacts', metro, company_ids: companyIds } }];
 }
 
+// ═══ FETCH SOCIAL PROFILES (for Facebook URLs) ═══
+const fbProfileMap = {};
+if (!SKIP_FACEBOOK) {
+  const idsForSocial = needsContacts.map(c => c.id);
+  if (idsForSocial.length > 0) {
+    try {
+      const socialProfiles = await this.helpers.httpRequest({
+        method: 'GET',
+        url: `${supabaseUrl}/rest/v1/social_profiles?company_id=in.(${idsForSocial.join(',')})&platform=eq.facebook&select=company_id,profile_url`,
+        headers: sbHeaders,
+        json: true
+      });
+      for (const sp of (socialProfiles || [])) {
+        if (sp.company_id && sp.profile_url) fbProfileMap[sp.company_id] = sp.profile_url;
+      }
+      console.log(`  Loaded ${Object.keys(fbProfileMap).length} Facebook profile URLs`);
+    } catch(e) {
+      console.log('Warning: Failed to fetch social profiles: ' + e.message);
+    }
+  }
+}
+
 // ═══ STATS ═══
 const stats = {
   processed: 0, soloDetected: 0, soloWithName: 0,
   apolloSearched: 0, apolloFound: 0, apolloEnriched: 0,
   websiteScraped: 0, websiteFoundName: 0,
   noDomainFallback: 0, noDomainFoundName: 0,
+  hunterDomainSearched: 0, hunterDomainFound: 0,
+  googleReviewsSearched: 0, googleReviewsFound: 0,
+  yelpOwnerSearched: 0, yelpOwnerFound: 0,
+  facebookSearched: 0, facebookFound: 0,
   contactsInserted: 0, validationIssues: 0, errors: 0
 };
 
@@ -569,12 +601,311 @@ for (const company of needsContacts) {
       }
     }
 
-    // ── 4. Validate & clean contact ──
+    // ═══ NEW SOURCES (only if still no contact with name) ═══
+
+    // ── 4. Hunter Domain Search (finds people + emails at a domain) ──
+    if (!SKIP_HUNTER_DOMAIN_SEARCH && hunterApiKey && company.domain && (!contact || !contact.first_name)) {
+      try {
+        stats.hunterDomainSearched++;
+        const hunterResp = await this.helpers.httpRequest({
+          method: 'GET',
+          url: `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(company.domain)}&api_key=${hunterApiKey}&limit=5`,
+          json: true, timeout: 15000
+        });
+
+        const hunterData = hunterResp.data || hunterResp;
+        const hunterEmails = hunterData.emails || [];
+
+        // Filter out generic/role-based emails and keep only people with names
+        const genericPrefix = /^(info|hello|contact|admin|support|office|mail|booking|appointments|noreply|sales|reception|frontdesk|billing|schedule|scheduling|team|staff|general)@/i;
+        const people = hunterEmails.filter(e => e.first_name && !genericPrefix.test(e.value || ''));
+
+        if (people.length > 0) {
+          // Score by role relevance
+          let bestPerson = null, bestScore = -1;
+          for (const person of people) {
+            let score = 0;
+            const pos = (person.position || '').toLowerCase();
+            if (/owner|founder|ceo|principal|proprietor/.test(pos)) score = 10;
+            else if (/manager|director/.test(pos)) score = 5;
+            else if (/therapist|lmt|rmt|cmt|massage|bodywork|esthetician/.test(pos)) score = 3;
+            else score = 1;
+            if (person.confidence && person.confidence > 70) score += 2;
+            if (score > bestScore) { bestScore = score; bestPerson = person; }
+          }
+
+          if (bestPerson) {
+            stats.hunterDomainFound++;
+            const pos = (bestPerson.position || '').toLowerCase();
+            const role = /owner|founder|ceo|principal|proprietor/.test(pos) ? 'owner' :
+                         /manager|director/.test(pos) ? 'manager' :
+                         /therapist|lmt|rmt|cmt|massage/.test(pos) ? 'practitioner' : 'unknown';
+            contact = {
+              company_id: company.id,
+              first_name: bestPerson.first_name || null,
+              last_name: bestPerson.last_name || null,
+              role,
+              is_owner: /owner|founder|ceo|principal|proprietor/.test(pos),
+              email_business: bestPerson.value || null,
+              email_personal: null,
+              phone_direct: null,
+              linkedin_url: bestPerson.linkedin || null,
+              location: [company.city, company.state].filter(Boolean).join(', ') || null,
+              cultural_affinity: null,
+              source: 'hunter'
+            };
+            sourceMethod = 'hunter_domain_search';
+          }
+        }
+        await delay(1000); // Hunter rate limit: 10-15 req/s, but be conservative
+      } catch(e) {
+        console.log(`Hunter Domain Search error for ${company.name} (${company.domain}): ${e.message}`);
+      }
+    }
+
+    // ── 5. Google Reviews — extract owner name from Place Details (New Places API v1) ──
+    if (!SKIP_GOOGLE_REVIEWS && googlePlacesApiKey && company.google_place_id && (!contact || !contact.first_name)) {
+      try {
+        stats.googleReviewsSearched++;
+        const placeResp = await this.helpers.httpRequest({
+          method: 'GET',
+          url: `https://places.googleapis.com/v1/places/${encodeURIComponent(company.google_place_id)}`,
+          headers: {
+            'X-Goog-Api-Key': googlePlacesApiKey,
+            'X-Goog-FieldMask': 'displayName,reviews'
+          },
+          json: true, timeout: 10000
+        });
+
+        const profileName = ((placeResp.displayName && placeResp.displayName.text) || '').trim();
+        const reviews = placeResp.reviews || [];
+        let ownerName = null;
+
+        // Debug: log first response per batch to verify API is working
+        if (stats.googleReviewsSearched === 1) {
+          console.log(`Google Reviews API check: profileName="${profileName}", reviews=${reviews.length}, keys=${Object.keys(placeResp).join(',')}`);
+          if (reviews.length > 0) {
+            console.log(`Google Reviews first review keys: ${Object.keys(reviews[0]).join(',')}`);
+            console.log(`Google Reviews first review snippet: ${JSON.stringify(reviews[0]).substring(0, 500)}`);
+          }
+        }
+
+        // Method 1: Extract owner name from Google profile name
+        // Strip business suffixes (separator optional) to reveal person name
+        if (profileName) {
+          const cleaned = profileName
+            .replace(/\s*[-–—|,]?\s*\b(massage|spa|wellness|bodywork|healing|therapy|therapeutic|lmt|cmt|rmt|licensed|studio|center|centre|clinic|practice|llc|inc)\b.*/i, '')
+            .trim();
+          const parts = cleaned.split(/\s+/);
+          if (parts.length >= 2 && parts.length <= 4 && isLikelyFirstName(parts[0])) {
+            ownerName = { firstName: parts[0], lastName: parts.slice(1).join(' ') };
+          }
+        }
+
+        // Method 2: REMOVED (BUG-045) — Places API v1 Review object has NO ownerResponse field.
+        // The API only returns: name, relativePublishTimeDescription, text, originalText, rating,
+        // authorAttribution, publishTime, flagContentUri, googleMapsUri. Owner replies are not
+        // exposed as structured data in this API version.
+
+        if (ownerName) {
+          stats.googleReviewsFound++;
+          contact = {
+            company_id: company.id,
+            first_name: ownerName.firstName,
+            last_name: ownerName.lastName,
+            role: 'owner', is_owner: true,
+            email_business: null, email_personal: null,
+            phone_direct: null, linkedin_url: null,
+            location: [company.city, company.state].filter(Boolean).join(', ') || null,
+            cultural_affinity: null,
+            source: 'google_reviews'
+          };
+          sourceMethod = 'google_reviews';
+        }
+      } catch(e) {
+        console.log(`Google Reviews error for ${company.name}: ${e.message}`);
+      }
+    }
+
+    // ── 6. Yelp Owner — scrape owner name from Yelp business page ──
+    if (!SKIP_YELP_OWNER && (!contact || !contact.first_name)) {
+      // Extract Yelp URL from source_urls JSONB
+      let yelpUrl = null;
+      if (company.source_urls) {
+        const urls = typeof company.source_urls === 'string' ? JSON.parse(company.source_urls) : company.source_urls;
+        // source_urls is an array of {source, url, query_used} objects
+        if (Array.isArray(urls)) {
+          for (const entry of urls) {
+            if (entry && typeof entry.url === 'string' && entry.url.includes('yelp.com/biz/')) {
+              yelpUrl = entry.url;
+              break;
+            }
+          }
+        } else if (urls && typeof urls === 'object') {
+          // Fallback: if stored as key-value object
+          for (const [key, value] of Object.entries(urls)) {
+            const urlStr = typeof value === 'string' ? value : (value && value.url) || '';
+            if (urlStr.includes('yelp.com/biz/')) {
+              yelpUrl = urlStr;
+              break;
+            }
+          }
+        }
+      }
+
+      if (yelpUrl) {
+        try {
+          stats.yelpOwnerSearched++;
+          const yelpResp = await this.helpers.httpRequest({
+            method: 'GET', url: yelpUrl,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+            returnFullResponse: true, timeout: 15000, json: false
+          });
+          const html = yelpResp.body || '';
+          let yelpOwnerName = null;
+
+          // Debug: log first response per batch to see what Yelp returns
+          if (stats.yelpOwnerSearched === 1) {
+            console.log(`Yelp HTML length: ${html.length}, first 500 chars: ${html.substring(0, 500)}`);
+            const hasAboutBiz = html.includes('About the Business') || html.includes('about-the-business');
+            const hasOwner = html.includes('Business Owner') || html.includes('business-owner');
+            const isClaimed = html.includes('Claimed') || html.includes('"isClaimed":true') || html.includes('"is_claimed":true');
+            console.log(`Yelp content check: hasAboutBusiness=${hasAboutBiz}, hasOwner=${hasOwner}, isClaimed=${isClaimed}`);
+          }
+
+          // Pattern 1: "Business Owner" label near a name
+          const ownerP1 = html.match(/([A-Z][a-z]+(?:\s[A-Z]\.?)?)\s*(?:<[^>]*>\s*)*(?:Business\s+Owner|Owner)/i);
+          if (ownerP1 && ownerP1[1] && isLikelyFirstName(ownerP1[1].split(/\s/)[0])) {
+            yelpOwnerName = ownerP1[1].trim();
+          }
+
+          // Pattern 2: "Meet the Business Owner" section
+          if (!yelpOwnerName) {
+            const ownerP2 = html.match(/Meet the (?:Business )?Owner[\s\S]{0,200}?([A-Z][a-z]+(?:\s[A-Z][a-z]*)?)(?:\s*<|,|\s+Business)/i);
+            if (ownerP2 && ownerP2[1] && isLikelyFirstName(ownerP2[1].split(/\s/)[0])) {
+              yelpOwnerName = ownerP2[1].trim();
+            }
+          }
+
+          // Pattern 3: JSON-LD structured data
+          if (!yelpOwnerName) {
+            const jsonLdMatches = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi) || [];
+            for (const raw of jsonLdMatches) {
+              try {
+                const jsonStr = raw.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+                const ld = JSON.parse(jsonStr);
+                const person = ld.founder || (Array.isArray(ld.employee) ? ld.employee[0] : ld.employee);
+                if (person && person.name && isLikelyFirstName(person.name.split(/\s/)[0])) {
+                  yelpOwnerName = person.name;
+                  break;
+                }
+              } catch(e) { /* invalid JSON-LD */ }
+            }
+          }
+
+          // Detect claimed status and PATCH to company record
+          const yelpIsClaimed = html.includes('"isClaimed":true') || html.includes('"is_claimed":true') ||
+            (html.includes('Claimed') && !html.includes('Unclaimed'));
+          try {
+            await this.helpers.httpRequest({
+              method: 'PATCH',
+              url: `${supabaseUrl}/rest/v1/companies?id=eq.${company.id}`,
+              headers: { ...sbHeaders, 'Prefer': 'return=minimal', 'Content-Type': 'application/json' },
+              body: { yelp_is_claimed: yelpIsClaimed },
+              json: true
+            });
+          } catch(e) { /* non-blocking — yelp_is_claimed update failure is OK */ }
+
+          // Debug: log claimed status for companies where no owner was found
+          if (!yelpOwnerName) {
+            console.log(`Yelp no owner for ${company.name}: claimed=${yelpIsClaimed}, htmlLen=${html.length}`);
+          }
+
+          if (yelpOwnerName) {
+            stats.yelpOwnerFound++;
+            const parts = yelpOwnerName.split(/\s+/);
+            let lastName = parts.length > 1 ? parts[1].replace(/\.$/, '') : null;
+            // Yelp often shows "FirstName L." — if single letter, append period
+            if (lastName && lastName.length === 1) lastName = lastName + '.';
+            contact = {
+              company_id: company.id,
+              first_name: parts[0],
+              last_name: lastName,
+              role: 'owner', is_owner: true,
+              email_business: null, email_personal: null,
+              phone_direct: null, linkedin_url: null,
+              location: [company.city, company.state].filter(Boolean).join(', ') || null,
+              cultural_affinity: null,
+              source: 'yelp'
+            };
+            sourceMethod = 'yelp_owner';
+          }
+          await delay(3000); // Yelp aggressive on scraping — 3s delay
+        } catch(e) {
+          console.log(`Yelp owner error for ${company.name}: ${e.message}`);
+        }
+      }
+    }
+
+    // ── 7. Facebook Page — extract email from public page ──
+    if (!SKIP_FACEBOOK && (!contact || !contact.email_business)) {
+      const fbUrl = fbProfileMap[company.id];
+      if (fbUrl) {
+        try {
+          stats.facebookSearched++;
+          const fbResp = await this.helpers.httpRequest({
+            method: 'GET', url: fbUrl,
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+            returnFullResponse: true, timeout: 15000, json: false
+          });
+          const fbHtml = fbResp.body || '';
+
+          // Extract emails from page HTML
+          const emailRegex = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+          const rawEmails = [...new Set(fbHtml.match(emailRegex) || [])];
+
+          // Filter out platform/junk emails
+          const usableEmails = rawEmails.filter(e => {
+            const lower = e.toLowerCase();
+            return !lower.includes('facebook.com') && !lower.includes('fbcdn.net') &&
+                   !lower.includes('sentry.io') && !lower.includes('example.com') &&
+                   !/^(noreply|no-reply|donotreply|mailer-daemon|postmaster|abuse)@/i.test(lower);
+          });
+
+          if (usableEmails.length > 0) {
+            stats.facebookFound++;
+            if (contact) {
+              // Already have a contact (with name from earlier source) — add email
+              contact.email_business = usableEmails[0].toLowerCase();
+              sourceMethod = sourceMethod + '+facebook_email';
+            } else {
+              // No contact yet — create one with email only
+              contact = {
+                company_id: company.id,
+                first_name: null, last_name: null,
+                role: 'unknown', is_owner: false,
+                email_business: usableEmails[0].toLowerCase(),
+                email_personal: null, phone_direct: null, linkedin_url: null,
+                location: [company.city, company.state].filter(Boolean).join(', ') || null,
+                cultural_affinity: null,
+                source: 'facebook'
+              };
+              sourceMethod = 'facebook_email';
+            }
+          }
+          await delay(2000); // Facebook rate limit
+        } catch(e) {
+          console.log(`Facebook page error for ${company.name}: ${e.message}`);
+        }
+      }
+    }
+
+    // ── 8. Validate & clean contact ──
     if (contact) {
       const { contact: cleanedContact, flags, hasValidContact } = validateAndCleanContact(contact);
       if (flags.length > 0) stats.validationIssues++;
 
-      // ── 5. Insert to Supabase (with dedup) ──
+      // ── 9. Insert to Supabase (with dedup) ──
       if (hasValidContact) {
         try {
           await this.helpers.httpRequest({
@@ -616,10 +947,18 @@ const summary = {
   website_names_found: stats.websiteFoundName,
   no_domain_fallback: stats.noDomainFallback,
   no_domain_names_found: stats.noDomainFoundName,
+  hunter_domain_searched: stats.hunterDomainSearched,
+  hunter_domain_found: stats.hunterDomainFound,
+  google_reviews_searched: stats.googleReviewsSearched,
+  google_reviews_found: stats.googleReviewsFound,
+  yelp_owner_searched: stats.yelpOwnerSearched,
+  yelp_owner_found: stats.yelpOwnerFound,
+  facebook_searched: stats.facebookSearched,
+  facebook_found: stats.facebookFound,
   contacts_inserted: stats.contactsInserted,
   validation_issues: stats.validationIssues,
   fatal_errors: stats.errors,
-  message: `Found contacts for ${stats.contactsInserted} of ${stats.processed} companies. Sources: ${stats.soloWithName} solo, ${stats.apolloEnriched} Apollo, ${stats.websiteFoundName} website, ${stats.noDomainFoundName} name extraction. Validation issues: ${stats.validationIssues}.`
+  message: `Found contacts for ${stats.contactsInserted} of ${stats.processed} companies. Sources: ${stats.soloWithName} solo, ${stats.apolloEnriched} Apollo, ${stats.websiteFoundName} website, ${stats.noDomainFoundName} name extraction, ${stats.hunterDomainFound} Hunter, ${stats.googleReviewsFound} Google Reviews, ${stats.yelpOwnerFound} Yelp, ${stats.facebookFound} Facebook. Validation issues: ${stats.validationIssues}.`
 };
 
 console.log('=== STEP 3a: FIND CONTACTS SUMMARY ===');
