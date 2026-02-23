@@ -1,5 +1,147 @@
 # Changelog
 
+## 2026-02-23 (Session 67 — Report Generator Handoff Document)
+
+### Documentation: Report Generator Feature Handoff
+- Created `projects/report_generator/HANDOFF-report-generator.md` — comprehensive feature handoff covering Sessions 58–64
+- Sections: architecture, tiering logic, Excel sheet structure, trigger paths, Supabase schema, dashboard integration, environment variables, bugs & fixes, key files, known issues
+- TODO.md updated with link to handoff doc
+
+### Files Changed
+- `projects/report_generator/HANDOFF-report-generator.md` — NEW
+- Tracking files updated
+
+---
+
+## 2026-02-23 (Session 66 — Relax Google Reviews Method 1)
+
+### Enhancement: Google Reviews Method 1 Relaxation (ADR-038)
+- **Removed 3 overly-strict gates** from Google Reviews Method 1 (profile name extraction):
+  1. Outer gate (`profileName !== company.name`) — rejected valid owner names when profile matched company
+  2. Separator requirement in cleaning regex — "Jane Smith Massage" didn't clean to "Jane Smith"
+  3. Inner gate (companyWords check) — rejected if first name appeared in company name
+- **Made separator optional** in business suffix regex (`[-–—|,]?`)
+- **Added business suffixes:** `studio`, `center`, `centre`, `clinic`, `practice`, `llc`, `inc`
+- **Safety retained:** `isLikelyFirstName()` (~400 names) + word count (2-4 parts)
+- Yelp Owner fix deferred pending exec #338 debug output from n8n UI
+
+### Files Changed
+- `scripts/nodes/find-contacts.js` — Google Reviews Method 1 rewritten (lines 693-703)
+- `docs/decisions/DECISIONS.md` — ADR-038 added
+- Tracking files updated
+
+---
+
+## 2026-02-23 (Session 65 — Fix Google Reviews & Yelp Owner Debug Logging)
+
+### Bug Fix: BUG-045 — Google Reviews Method 2 Removed
+- **Removed Method 2** (owner sign-off parsing) from Google Reviews source — `review.ownerResponse` does NOT exist in Places API v1. The Review object only contains: name, relativePublishTimeDescription, text, originalText, rating, authorAttribution, publishTime, flagContentUri, googleMapsUri, visitDate. Method 2 was dead code since ADR-036.
+- Method 1 (profile name comparison) still active.
+
+### Enhancement: Debug Logging for Contact Sources
+- **Google Reviews:** Added first-review key dump + JSON snippet (500 chars) to confirm API field structure.
+- **Yelp Owner:** Added first-response HTML length + content checks (About the Business, Business Owner, Claimed keywords). Per-company log when no owner found showing claimed status + HTML length.
+
+### Enhancement: yelp_is_claimed Tracking (ADR-037)
+- **New column:** `companies.yelp_is_claimed` (BOOLEAN, default NULL). SQL migration prepared.
+- **Populated during Yelp Owner scraping:** Detects `"isClaimed":true` or `Claimed` (excluding `Unclaimed`) in HTML. Non-blocking PATCH to Supabase for every company with a Yelp URL.
+
+### Files Changed
+- `scripts/nodes/find-contacts.js` — Google Reviews Method 2 removed, debug logging enhanced for both sources, yelp_is_claimed PATCH added
+- `docs/decisions/DECISIONS.md` — ADR-036 updated, ADR-037 added
+- `tracking/BUGS.md` — BUG-045 added
+- Tracking files updated
+
+### SQL Migration (user runs in Supabase SQL Editor)
+```sql
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS yelp_is_claimed BOOLEAN DEFAULT NULL;
+```
+
+---
+
+## 2026-02-23 (Session 64 — Backfill Reports for Previous Pipeline Runs)
+
+### Report Backfill
+- **Backfilled reports for 6 completed pipeline runs** that predated the report generator:
+  - Austin, TX (156 contacts) — exec #332
+  - Nashville, TN (37 contacts) — exec #333
+  - San Diego, CA (68 contacts) — exec #334
+  - Scottsdale, AZ (41 contacts) — exec #335
+  - Sedona, AZ (40 contacts) — exec #336
+  - Boise, ID (34 contacts) — exec #337
+- **Method:** Temporarily added backfill mode to `Fetch Report Data` node in Report Generator workflow. Queried `pipeline_runs` for `status=completed, report_url IS NULL, contacts_found > 0`. Triggered individual report generation for each via `REPORT_GENERATOR_WEBHOOK_URL` with 15s delays.
+- **Reverted** Fetch Report Data to original code after backfill completed.
+- **Deleted** one-time backfill workflow `Rm96MRnMbgic2ghf`.
+
+### Files Changed
+- Workflow `SL9RrJBYnZjJ8LI6` — temporarily modified, then reverted to original
+- Workflow `Rm96MRnMbgic2ghf` — deleted
+- Tracking files updated
+
+---
+
+## 2026-02-22 (Session 63 — Progressive Source Rollout: Phases 0-2)
+
+### Progressive Rollout
+- **Phase 0 (Baseline, exec #289):** All 4 new sources SKIP=true. 13 contacts. Zero errors.
+- **Phase 1 (Hunter Domain Search, exec #295):** 41 domains searched, 3 contacts found (7.3% hit rate). Zero errors.
+- **Phase 2 (Google Reviews, exec #313):** 41 places searched, 0 found. Zero errors. Legitimate for Sedona AZ.
+
+### Bug Fix: Google Reviews API Migration (ADR-036)
+- **Rewrote Google Reviews code** (lines 666-738 of `find-contacts.js`) from legacy Places API to **New Places API v1**:
+  - Old: `GET maps.googleapis.com/maps/api/place/details/json?place_id=...&key=...`
+  - New: `GET places.googleapis.com/v1/places/{placeId}` with `X-Goog-Api-Key` + `X-Goog-FieldMask: displayName,reviews` headers
+- Legacy API didn't expose structured `ownerResponse` fields on reviews. New API provides `displayName.text` and `review.ownerResponse.text`.
+- Debug logging added for first API response per batch.
+
+### Deployment Process
+- Discovered `N8N_API_KEY` not available in shell (only in MCP process). `deploy-find-contacts.py` cannot run from CLI.
+- Working method: edit local file → user pastes full content into n8n editor → save/publish.
+
+### SQL Migration
+- `enrichment-sources-migration.sql` executed — contacts source CHECK updated, on_yelp backfilled.
+
+### Files Changed
+- `scripts/nodes/find-contacts.js` — Google Reviews API rewrite (lines 666-738), SKIP flags updated
+- `projects/enrichment-enhancement-v1/progressive-rollout-handoff.md` — NEW handoff doc
+- `docs/decisions/DECISIONS.md` — ADR-036
+- Tracking files updated
+
+---
+
+## 2026-02-22 (Session 62 — Enrichment Enhancement v1: 4 New Contact Sources)
+
+### New Feature: Contact Enrichment Enhancement (ADR-035)
+- **4 new contact-finding sources added to Find Contacts waterfall** in `find-contacts.js` (630 → 931 lines):
+  1. **Hunter.io Domain Search** — finds people + emails at a company domain. Uses existing `$env.HUNTER_API_KEY`, different endpoint (`/v2/domain-search`) than the Email Finder in enrich-contacts.js. Scores results by role relevance (owner > manager > practitioner). Filters out generic/role-based emails.
+  2. **Google Reviews** — extracts owner name from Google Place Details. Two methods: (a) compare Google profile name vs stored company name — if different and looks like a person, it's likely the owner; (b) scan review response sign-offs for owner names ("Thanks, Jane", "- Mike Smith").
+  3. **Yelp Owner** — scrapes owner name from Yelp business page "About the Business" section. Three extraction patterns: "Business Owner" label, "Meet the Owner" section, JSON-LD structured data. Handles partial names (first + last initial). Rate limited 3s between requests.
+  4. **Facebook Page** — extracts email addresses from public Facebook page HTML. Filters out facebook.com, fbcdn.net, sentry.io, and other platform emails. Can augment existing contacts (add email to name-only contact). Rate limited 2s.
+
+### Schema Migration
+- `scripts/supabase/enrichment-sources-migration.sql` — Updates contacts `source` CHECK to add `'hunter'`, `'google_reviews'`, `'facebook'`, `'yelp'`. Also backfills `on_yelp` for existing companies.
+
+### Architecture
+- Extended existing `find-contacts.js` (Option A from plan) rather than adding a new Code node
+- New sources run AFTER existing waterfall (solo → Apollo → website → no-domain fallback)
+- Each source has independent `SKIP_*` toggle — all deployed as `true` (disabled) for safe rollout
+- Social profiles fetched once per batch for Facebook URLs; Yelp URLs extracted from `source_urls` JSONB
+- Summary stats extended with 8 new counters for all 4 sources
+
+### Files Changed
+- `scripts/nodes/find-contacts.js` — 4 new sources, new env vars, social profiles fetch, stats counters, summary
+- `scripts/supabase/enrichment-sources-migration.sql` — NEW — source CHECK + on_yelp backfill
+- `docs/decisions/DECISIONS.md` — ADR-035
+- Tracking files updated
+
+### Deployment
+- All 4 sources deployed with SKIP=true. Enable one at a time for testing.
+- SQL migration needs to be run in Supabase SQL Editor before enabling new sources.
+- `deploy-find-contacts.py` script created for deploying Find Contacts code updates. Fixed n8n API payload validation (removed `staticData`, filtered `settings` to allowed keys only).
+- Deployed to live sub-workflow `fGm4IP0rWxgHptN8` at 2026-02-22T20:36:25Z. Verified: 44,903 chars, mode=runOnceForAllItems [OK].
+
+---
+
 ## 2026-02-22 — Connect Download Button to Stored Reports
 
 ### Enhancement

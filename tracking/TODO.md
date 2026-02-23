@@ -38,7 +38,7 @@
 - [x] **Pipeline recovery: Fix zero digital signals (ADR-031)** — Fixed 5 issues: Insert node field drops, nonexistent PATCH columns, early-exit propagation. Verified in exec #179: 0 update errors, booking platforms detected, metro propagation working. (2026-02-20, Session 42)
 - [x] **Backfill historical pipeline_runs for dashboard** — Created `scripts/backfill-pipeline-runs.sql` with 7 metros. User runs in Supabase SQL Editor. 4 metros (Denver, Phoenix, Toronto, Portland) deferred — no `discovery_metro` data. (2026-02-21, Session 53)
 - [x] **Sync dashboard metro config with pipeline** — Added Boise ID, Sedona AZ, Asheville NC to `dashboard/src/data/metros.ts`. Dashboard now matches pipeline (12/12 metros). (2026-02-21, Session 58)
-- [ ] **Backfill `on_yelp` for existing companies** — SQL provided: `UPDATE companies SET on_yelp = true WHERE source_urls::text LIKE '%yelp_apify%' AND (on_yelp IS NULL OR on_yelp = false);`
+- [x] **Backfill `on_yelp` for existing companies** — Included in `scripts/supabase/enrichment-sources-migration.sql` (Session 62)
 - [x] **Re-run a metro to populate newly-saved fields** — Sedona AZ exec #180: 125 companies re-discovered, 153 re-enriched across 7 batches, digital signals now populated (booking platforms, paid ads, Google ratings). (2026-02-20, Session 43)
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name). Check API key validity, test direct API call, check NamSor account dashboard. Code fix (IMP-014) is correct — this is an API-level issue.
 - [ ] **Investigate 27.5% Enrich Companies update_errors** — 89 errors in 324 companies across Nashville #227 (up from ~13% in Sedona #180). Down from ~50-70% pre-fix but worsening again. Need to check Supabase error responses.
@@ -50,7 +50,7 @@
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)
 
-## Report Generator v0 — COMPLETE (Session 59)
+## Report Generator v0 — COMPLETE (Session 59) — [Handoff Doc](../projects/report_generator/HANDOFF-report-generator.md)
 
 - [x] ~~Run `scripts/supabase/report-schema.sql`~~ — Done by Zack
 - [x] ~~Install ExcelJS in n8n container~~ — Done by Zack (`/home/node/.n8n/node_modules`)
@@ -63,7 +63,24 @@
 - [x] ~~Set `REPORT_GENERATOR_WEBHOOK_URL`~~ — Done by Zack in Coolify env vars
 - [x] ~~Update Track Batch Completion~~ — Deployed report trigger code to live sub-workflow via MCP
 - [x] **Connect download button to stored reports** — Dashboard Download button prefers `report_url` from pipeline_runs. Falls back to on-the-fly export. Shows "Generating..." state. (2026-02-22)
+- [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). Backfill workflow deleted. (2026-02-23, Session 64)
+- [x] **Write handoff document** — `projects/report_generator/HANDOFF-report-generator.md` (2026-02-23, Session 67)
 - [ ] **Verify Resend email delivery** — Domain not verified in Resend account (403 error). Non-blocking.
+
+## Enrichment Enhancement v1 — NEW CONTACT SOURCES (Session 62)
+
+- [x] **Implement 4 new sources in find-contacts.js (ADR-035)** — Hunter Domain Search, Google Reviews, Yelp Owner, Facebook Page. All in same Code node, 630→931 lines. Skip toggles default true.
+- [x] **Run enrichment-sources-migration.sql** — Executed in Supabase. Source CHECK updated, on_yelp backfilled. (2026-02-22, Session 63)
+- [x] **Deploy updated find-contacts.js to sub-workflow** — Deployed via Python deploy script (30,647 → 44,903 chars). Verified: 932 lines, mode=runOnceForAllItems. All sources start SKIP=true. (2026-02-22)
+- [x] **Enable + test Hunter Domain Search** — Phase 1 rollout. Exec #295: 41 searched, 3 found (7.3% hit rate), zero errors. (2026-02-22, Session 63)
+- [x] **Enable + test Google Reviews** — Phase 2 rollout. Exec #313: 41 searched, 0 found (Sedona — legitimate), zero errors. Google Reviews API rewritten to New Places API v1 (ADR-036). (2026-02-22, Session 63)
+- [ ] **Run yelp_is_claimed SQL migration** — `ALTER TABLE companies ADD COLUMN IF NOT EXISTS yelp_is_claimed BOOLEAN DEFAULT NULL;` Run in Supabase SQL Editor before Yelp Owner test.
+- [x] **Relax Google Reviews Method 1 (ADR-038)** — Removed 3 overly-strict gates. Made separator optional, added business suffixes (studio, center, etc.), kept isLikelyFirstName safety. (2026-02-23, Session 66)
+- [ ] **Enable + test Yelp Owner** — Set `SKIP_YELP_OWNER = false`. Deploy updated find-contacts.js (with debug logging + yelp_is_claimed PATCH). Trigger Sedona. Check execution logs for: Yelp HTML content, claimed ratio, parsing failures. (Session 65: debug logging + yelp_is_claimed added)
+- [ ] **Fix Yelp Owner parsing based on debug output** — After Sedona test, check if: (a) Yelp returns login wall/block → source non-viable, (b) HTML has owner section but regex misses → fix patterns, (c) most businesses unclaimed → low yield is expected.
+- [ ] **Enable + test Facebook Page** — Set `SKIP_FACEBOOK = false`. Expected: ~10-20% email extraction rate. High fragility — monitor for login walls.
+- [ ] **Verify no duplicate contacts from new sources** — Check UNIQUE index handles cross-source contacts correctly.
+- [ ] **Monitor API costs** — Hunter Domain Search: ~$0.10/lookup, Google Reviews: ~$0.017/lookup. Track per-metro spend.
 
 ## Priority: MEDIUM (Quality improvements)
 

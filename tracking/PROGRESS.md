@@ -23,14 +23,19 @@
 
 ### Current Config (Simplified Pipeline — config embedded in Code nodes)
 - **Enrich Companies:** `SKIP_GOOGLE_DETAILS=false`, `HTTP_TIMEOUT=15000`
-- **Find Contacts:** `SKIP_APOLLO=false`, `SKIP_WEBSITE_SCRAPE=false`, `APOLLO_ENRICH_ENABLED=true`
+- **Find Contacts:** `SKIP_APOLLO=false`, `SKIP_WEBSITE_SCRAPE=false`, `APOLLO_ENRICH_ENABLED=true`, `SKIP_HUNTER_DOMAIN_SEARCH=false`, `SKIP_GOOGLE_REVIEWS=false`, `SKIP_YELP_OWNER=true`, `SKIP_FACEBOOK=true`
 - **Enrich Contacts:** `skip_hunter="false"`, `skip_snovio="true"`, `skip_hunter_verifier="false"`, `skip_namsor="false"`, `skip_phone_verifier="false"`, `batch_size="1000"`
 - **Discovery:** 12 search queries per metro, Apify/Yelp `searchLimit=100`, per-metro radius (15-25km)
 
 ### Next Steps
 - [x] ~~Production baseline snapshot~~ — Fresh workflow JSON pulled, committed to `master` (commit `a2ec77c`), improvement branch created (2026-02-21, Session 49)
 - [x] ~~Integrate pipeline with dashboard~~ — Dashboard-pipeline integration deployed (ADR-032, Session 50). **Verified end-to-end with Tampa FL (Session 54).** run_id lifecycle, batch progress tracking, and dashboard trigger all working.
-- [ ] Backfill `on_yelp` for existing companies (SQL provided in Session 42)
+- [x] ~~Backfill `on_yelp` for existing companies~~ — Included in enrichment-sources-migration.sql
+- [x] **Run enrichment-sources-migration.sql in Supabase** — Executed. Source CHECK updated, on_yelp backfilled. (2026-02-22, Session 63)
+- [x] **Enable Hunter Domain Search** — Phase 1 rollout. Exec #295: 41 searched, 3 found (7.3% hit rate), zero errors. (2026-02-22, Session 63)
+- [x] **Enable Google Reviews** — Phase 2 rollout. Exec #313: 41 searched, 0 found (Sedona — legitimate), zero errors. Google Reviews code rewritten from legacy Places API to New Places API v1 (ADR-036). (2026-02-22, Session 63)
+- [ ] **Enable Yelp Owner** — Debug logging + yelp_is_claimed PATCH added (Session 65). Set `SKIP_YELP_OWNER = false`, deploy, test on Sedona. Check execution logs for Yelp HTML content.
+- [ ] **Enable Facebook Page** — Set `SKIP_FACEBOOK = false`. Test.
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
 - [ ] Re-run Portland, OR after SQL cleanup
@@ -40,8 +45,57 @@
 - [x] **Deploy Report Generator v0 (ADR-033)** — Workflow `SL9RrJBYnZjJ8LI6` fully operational (7 nodes). BUG-042 fixed (Docker Compose task-runners fix). BUG-043 properly fixed (binary data separation via HTTP Request node). Track Batch Completion updated with report trigger. Exec #278 verified.
 - [x] **Fix BUG-044: Empty data sheets in reports** — `addRow()` doesn't serialize in task runner ExcelJS. Rewrote to direct `ws.getCell()` writes + added `colLetter()` for >26-column autoFilter. Exec #280 verified — all sheets populated.
 - [x] **Connect download button to stored reports** — Dashboard Download button now uses pre-generated `report_url` from pipeline_runs when available. Falls back to on-the-fly export for older runs. Shows "Generating..." spinner during report generation.
+- [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 67 — 2026-02-23 (Report Generator Handoff Document)
+- **Created `projects/report_generator/HANDOFF-report-generator.md`** — comprehensive handoff document covering the entire report generator feature (Sessions 58–64).
+- Covers: architecture (7-node workflow), tiering logic (4 tiers + Other), Excel structure (7+ sheets, 27 columns), all 4 trigger paths, Supabase schema, dashboard integration, environment variables, BUG-042/043/044 fixes, key files, and known issues.
+
+### Session 66 — 2026-02-23 (Relax Google Reviews Method 1)
+- **Google Reviews Method 1 relaxation (ADR-038):** Removed 3 overly-strict gates from profile name extraction. Outer gate (profile ≠ company name), separator requirement in cleaning regex, and inner gate (companyWords check) all removed. Added more business suffixes (studio, center, centre, clinic, practice, llc, inc). Safety retained via `isLikelyFirstName()` + word count (2-4).
+- **Yelp Owner fix deferred:** Waiting for exec #338 debug output from n8n UI (console.log not available via API).
+- **Next:** User pastes updated find-contacts.js into n8n. After exec #338 sub-batches complete, user checks n8n UI for Yelp debug output → determines Yelp fix approach.
+
+### Session 65 — 2026-02-23 (Fix Google Reviews & Yelp Owner Debug Logging)
+- **BUG-045: Google Reviews Method 2 removed** — `review.ownerResponse` does NOT exist in Places API v1. Method 2 (sign-off parsing) was dead code since ADR-036. Removed entirely.
+- **Enhanced debug logging:** Google Reviews now logs first review keys + snippet. Yelp Owner logs first HTML response (length, content checks for About/Owner/Claimed).
+- **yelp_is_claimed tracking (ADR-037):** Added `yelp_is_claimed` BOOLEAN column to companies table (SQL migration prepared). Find Contacts Yelp Owner section now detects claimed status from HTML and PATCHes company record (non-blocking).
+- **Per-company Yelp debug:** Logs `claimed` status + HTML length for every company where no owner name was found — helps diagnose claimed-vs-unclaimed ratio.
+- **Next:** User runs SQL migration, pastes updated find-contacts.js into n8n, triggers Sedona with `SKIP_YELP_OWNER=false`. Check execution logs for debug output.
+
+### Session 64 — 2026-02-23 (Backfill Reports for Previous Pipeline Runs)
+- **Backfilled reports for 6 completed pipeline runs** that predated the report generator (deployed Session 59).
+- **Approach:** Temporarily piggybacked on working report generator webhook (`report-generator-v1`). Added backfill mode to `Fetch Report Data` node that queries `pipeline_runs` for eligible runs and triggers report generation for each with 15s delays.
+- **Results:** All 6 reports generated successfully (execs #332-337):
+  - Austin, TX (156 contacts), Nashville, TN (37), San Diego, CA (68), Scottsdale, AZ (41), Sedona, AZ (40), Boise, ID (34)
+- **Cleanup:** Reverted Fetch Report Data to original code. Deleted backfill workflow `Rm96MRnMbgic2ghf`.
+- **MCP partial update pitfall confirmed:** `n8n_update_partial_workflow` fails with large jsCode when using `name` field — but works with `nodeId`. Added to known pitfalls.
+
+### Session 63 — 2026-02-22 (Progressive Source Rollout: Phases 0-2)
+- **Progressive rollout of new contact sources against Sedona AZ as test metro.**
+- **Phase 0 (Baseline, exec #289):** All 4 new sources SKIP=true. 13 contacts found from existing sources. Zero errors. Baseline established.
+- **Phase 1 (Hunter Domain Search, exec #295):** `SKIP_HUNTER_DOMAIN_SEARCH=false`. 41 domains searched, 3 contacts found (7.3% hit rate). Zero errors. Low hit rate expected for massage therapy vertical.
+- **Phase 2 (Google Reviews, exec #313):** `SKIP_GOOGLE_REVIEWS=false`. 41 places searched, 0 found. Zero errors. 0% is legitimate for Sedona — small metro, personalized Google profiles rare.
+- **Major fix during Phase 2 (ADR-036):** Google Reviews code (lines 666-738) rewritten from legacy Places API (`maps.googleapis.com/maps/api/place/details/json`) to **New Places API v1** (`places.googleapis.com/v1/places/{placeId}`) with header-based auth (`X-Goog-Api-Key`, `X-Goog-FieldMask`). Legacy API didn't expose structured owner response fields.
+- **Deployment process learned:** `N8N_API_KEY` is NOT in shell env — only in MCP process. `deploy-find-contacts.py` can't run from CLI. Manual paste into n8n editor is the working deployment method.
+- **SQL migration executed:** `enrichment-sources-migration.sql` — contacts source CHECK updated, on_yelp backfilled.
+- **Handoff doc created:** `projects/enrichment-enhancement-v1/progressive-rollout-handoff.md`
+- **Remaining:** Phase 3 (Yelp Owner), Phase 4 (Facebook)
+
+### Session 62 — 2026-02-22 (Enrichment Enhancement v1: 4 New Contact Sources)
+- **4 new contact-finding sources implemented (ADR-035):** Hunter.io Domain Search, Google Reviews, Yelp Owner, Facebook Page Email. All added to `find-contacts.js` waterfall (630 → 931 lines).
+- **Architecture:** Extended existing Code node rather than adding new n8n node. New sources run after existing waterfall (solo → Apollo → website → no-domain). Each has independent SKIP toggle.
+- **Schema migration:** `enrichment-sources-migration.sql` — updates contacts source CHECK constraint + backfills on_yelp.
+- **Key implementation details:**
+  - Hunter Domain Search uses same API key as existing Email Finder but different endpoint (`/v2/domain-search`). Scores people by role relevance.
+  - Google Reviews uses **New Places API v1** (rewritten in Session 63, ADR-036). Extracts owner name from profile name comparison + review response sign-offs.
+  - Yelp Owner extracts URL from `source_urls` JSONB (not social_profiles — no 'yelp' platform in CHECK). Three HTML parsing patterns + JSON-LD.
+  - Facebook emails extracted from public page HTML. Can augment existing name-only contacts with email.
+  - Social profiles fetched once per batch via Supabase query for Facebook URLs.
+- **Deployed with all sources SKIP=true.** Enable one at a time after running SQL migration.
+- **Branch:** `enrichment-enhancement-v1`
 
 ### Session 60 — 2026-02-22 (BUG-043 Proper Fix — Binary Data Separation)
 - **BUG-043 PROPERLY FIXED:** Session 59's `Buffer.from()` fix was insufficient — the real issue was IPC serialization between n8n task runner and main process corrupting binary data in `this.helpers.httpRequest()`. Proper fix: split "Generate & Upload Report" (1 node) into 3 separate nodes:
