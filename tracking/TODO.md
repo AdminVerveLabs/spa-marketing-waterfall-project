@@ -67,20 +67,22 @@
 - [x] **Write handoff document** — `projects/report_generator/HANDOFF-report-generator.md` (2026-02-23, Session 67)
 - [ ] **Verify Resend email delivery** — Domain not verified in Resend account (403 error). Non-blocking.
 
-## Enrichment Enhancement v1 — NEW CONTACT SOURCES (Session 62)
+## Enrichment Enhancement v1 — MERGED TO MASTER (Session 70) — [Handoff Doc](../projects/enrichment-enhancement-v1/HANDOFF-enrichment-enhancement-v1.md)
 
 - [x] **Implement 4 new sources in find-contacts.js (ADR-035)** — Hunter Domain Search, Google Reviews, Yelp Owner, Facebook Page. All in same Code node, 630→931 lines. Skip toggles default true.
 - [x] **Run enrichment-sources-migration.sql** — Executed in Supabase. Source CHECK updated, on_yelp backfilled. (2026-02-22, Session 63)
 - [x] **Deploy updated find-contacts.js to sub-workflow** — Deployed via Python deploy script (30,647 → 44,903 chars). Verified: 932 lines, mode=runOnceForAllItems. All sources start SKIP=true. (2026-02-22)
 - [x] **Enable + test Hunter Domain Search** — Phase 1 rollout. Exec #295: 41 searched, 3 found (7.3% hit rate), zero errors. (2026-02-22, Session 63)
 - [x] **Enable + test Google Reviews** — Phase 2 rollout. Exec #313: 41 searched, 0 found (Sedona — legitimate), zero errors. Google Reviews API rewritten to New Places API v1 (ADR-036). (2026-02-22, Session 63)
-- [ ] **Run yelp_is_claimed SQL migration** — `ALTER TABLE companies ADD COLUMN IF NOT EXISTS yelp_is_claimed BOOLEAN DEFAULT NULL;` Run in Supabase SQL Editor before Yelp Owner test.
 - [x] **Relax Google Reviews Method 1 (ADR-038)** — Removed 3 overly-strict gates. Made separator optional, added business suffixes (studio, center, etc.), kept isLikelyFirstName safety. (2026-02-23, Session 66)
-- [ ] **Enable + test Yelp Owner** — Set `SKIP_YELP_OWNER = false`. Deploy updated find-contacts.js (with debug logging + yelp_is_claimed PATCH). Trigger Sedona. Check execution logs for: Yelp HTML content, claimed ratio, parsing failures. (Session 65: debug logging + yelp_is_claimed added)
+- [x] **Enable Yelp Owner** — `SKIP_YELP_OWNER = false` deployed. Exec #343 included Yelp Owner source. (2026-02-23, Session 68)
+- [x] **Write branch handoff + merge to master** — Handoff doc created, branch merged to master. (2026-02-23, Session 70)
+- [ ] **Run yelp_is_claimed SQL migration** — `ALTER TABLE companies ADD COLUMN IF NOT EXISTS yelp_is_claimed BOOLEAN DEFAULT NULL;` Run in Supabase SQL Editor.
 - [ ] **Fix Yelp Owner parsing based on debug output** — After Sedona test, check if: (a) Yelp returns login wall/block → source non-viable, (b) HTML has owner section but regex misses → fix patterns, (c) most businesses unclaimed → low yield is expected.
 - [ ] **Enable + test Facebook Page** — Set `SKIP_FACEBOOK = false`. Expected: ~10-20% email extraction rate. High fragility — monitor for login walls.
 - [ ] **Verify no duplicate contacts from new sources** — Check UNIQUE index handles cross-source contacts correctly.
 - [ ] **Monitor API costs** — Hunter Domain Search: ~$0.10/lookup, Google Reviews: ~$0.017/lookup. Track per-metro spend.
+- [ ] **Validate on larger metro** — Run enrichment on Tampa/Nashville for meaningful hit rates (Sedona too small for Google Reviews/Yelp Owner).
 
 ## Priority: MEDIUM (Quality improvements)
 

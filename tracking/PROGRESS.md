@@ -12,6 +12,7 @@
 **Pipeline Simplification** ✅ Deployed (127 → 27 nodes)
 **Parallelized Batch Enrichment** ✅ Deployed (ADR-029 — main 22 nodes + sub-workflow 6 nodes)
 **Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
+**Enrichment Enhancement v1** ✅ Merged to master (ADR-035 — 4 new contact sources, Phases 1-3 enabled)
 
 ## API STATUS: 5 of 6 APIs Enabled
 - **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)
@@ -23,7 +24,7 @@
 
 ### Current Config (Simplified Pipeline — config embedded in Code nodes)
 - **Enrich Companies:** `SKIP_GOOGLE_DETAILS=false`, `HTTP_TIMEOUT=15000`
-- **Find Contacts:** `SKIP_APOLLO=false`, `SKIP_WEBSITE_SCRAPE=false`, `APOLLO_ENRICH_ENABLED=true`, `SKIP_HUNTER_DOMAIN_SEARCH=false`, `SKIP_GOOGLE_REVIEWS=false`, `SKIP_YELP_OWNER=true`, `SKIP_FACEBOOK=true`
+- **Find Contacts:** `SKIP_APOLLO=false`, `SKIP_WEBSITE_SCRAPE=false`, `APOLLO_ENRICH_ENABLED=true`, `SKIP_HUNTER_DOMAIN_SEARCH=false`, `SKIP_GOOGLE_REVIEWS=false`, `SKIP_YELP_OWNER=false`, `SKIP_FACEBOOK=true`
 - **Enrich Contacts:** `skip_hunter="false"`, `skip_snovio="true"`, `skip_hunter_verifier="false"`, `skip_namsor="false"`, `skip_phone_verifier="false"`, `batch_size="1000"`
 - **Discovery:** 12 search queries per metro, Apify/Yelp `searchLimit=100`, per-metro radius (15-25km)
 
@@ -34,7 +35,7 @@
 - [x] **Run enrichment-sources-migration.sql in Supabase** — Executed. Source CHECK updated, on_yelp backfilled. (2026-02-22, Session 63)
 - [x] **Enable Hunter Domain Search** — Phase 1 rollout. Exec #295: 41 searched, 3 found (7.3% hit rate), zero errors. (2026-02-22, Session 63)
 - [x] **Enable Google Reviews** — Phase 2 rollout. Exec #313: 41 searched, 0 found (Sedona — legitimate), zero errors. Google Reviews code rewritten from legacy Places API to New Places API v1 (ADR-036). (2026-02-22, Session 63)
-- [ ] **Enable Yelp Owner** — Debug logging + yelp_is_claimed PATCH added (Session 65). Set `SKIP_YELP_OWNER = false`, deploy, test on Sedona. Check execution logs for Yelp HTML content.
+- [x] **Enable Yelp Owner** — Debug logging + yelp_is_claimed PATCH added (Session 65). `SKIP_YELP_OWNER = false` deployed. Exec #343 (Sedona) included Yelp Owner source.
 - [ ] **Enable Facebook Page** — Set `SKIP_FACEBOOK = false`. Test.
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
@@ -48,6 +49,12 @@
 - [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 70 — 2026-02-23 (Enrichment Enhancement v1 Handoff + Merge to Master)
+- **Created `projects/enrichment-enhancement-v1/HANDOFF-enrichment-enhancement-v1.md`** — comprehensive branch handoff document covering all 4 new sources, ADR-035/036/037/038, BUG-045/046/047, schema changes, progressive rollout results, pending work, and gotchas.
+- **Committed enrichment-enhancement-v1 files:** 7 files (+1535 lines) — handoff doc, project docs (Contact_Enrichment_Sources_Outline.md, progressive-rollout-handoff.md), DECISIONS.md (ADR-035–038), find-contacts.js (630→931 lines), deploy-find-contacts.py, enrichment-sources-migration.sql.
+- **Merged `enrichment-enhancement-v1` → `master`:** Clean fast-forward merge (20 files, +2764 lines). Pushed to remote. Branch work complete.
+- Updated tracking files for merge.
 
 ### Session 69 — 2026-02-23 (Help Center Handoff Document)
 - **Created `projects/help_center/HANDOFF-help-center.md`** — handoff document for the Help Center feature page. Committed to `enrichment-enhancement-v1`.

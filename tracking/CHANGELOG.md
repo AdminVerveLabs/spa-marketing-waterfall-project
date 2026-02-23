@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-02-23 (Session 70 — Enrichment Enhancement v1 Handoff + Merge to Master)
+
+### Documentation: Branch Handoff
+- Created `projects/enrichment-enhancement-v1/HANDOFF-enrichment-enhancement-v1.md` — comprehensive handoff covering all 4 new contact sources, ADR-035/036/037/038, BUG-045/046/047, schema changes, progressive rollout results, pending work, and gotchas
+
+### Branch Merge: `enrichment-enhancement-v1` → `master`
+- Committed 7 enrichment-specific files (+1535 lines): handoff doc, project docs, DECISIONS.md, find-contacts.js, deploy script, SQL migration
+- Clean fast-forward merge to master (20 files total, +2764 lines including prior branch commits)
+- Pushed to remote
+
+### Files Changed
+- `projects/enrichment-enhancement-v1/HANDOFF-enrichment-enhancement-v1.md` — NEW
+- `projects/enrichment-enhancement-v1/Contact_Enrichment_Sources_Outline.md` — NEW (committed)
+- `projects/enrichment-enhancement-v1/progressive-rollout-handoff.md` — NEW (committed)
+- `docs/decisions/DECISIONS.md` — ADR-035, 036, 037, 038 added
+- `scripts/nodes/find-contacts.js` — 630→931 lines (4 new sources)
+- `scripts/deploy-find-contacts.py` — NEW
+- `scripts/supabase/enrichment-sources-migration.sql` — NEW
+- Tracking files updated
+
+---
+
 ## 2026-02-23 (Session 69 — Help Center Handoff Document)
 
 ### Documentation: Help Center Feature Handoff
