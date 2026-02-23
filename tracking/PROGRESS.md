@@ -50,6 +50,9 @@
 
 ## Session Log
 
+### Session 71 — 2026-02-23 (Help Center Handoff Doc Update)
+- **Updated `projects/help_center/help-center-task.md`** — Fixed bucket SQL from `public: false` to `public: true`, removed unnecessary RLS policy. Updated video detection description from `.list()` check to `getPublicUrl()` + `onError` fallback. Matches deployed BUG-044 fix in `HelpCenterPage.tsx`.
+
 ### Session 70 — 2026-02-23 (Enrichment Enhancement v1 Handoff + Merge to Master)
 - **Created `projects/enrichment-enhancement-v1/HANDOFF-enrichment-enhancement-v1.md`** — comprehensive branch handoff document covering all 4 new sources, ADR-035/036/037/038, BUG-045/046/047, schema changes, progressive rollout results, pending work, and gotchas.
 - **Committed enrichment-enhancement-v1 files:** 7 files (+1535 lines) — handoff doc, project docs (Contact_Enrichment_Sources_Outline.md, progressive-rollout-handoff.md), DECISIONS.md (ADR-035–038), find-contacts.js (630→931 lines), deploy-find-contacts.py, enrichment-sources-migration.sql.

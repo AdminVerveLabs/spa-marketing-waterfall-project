@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-02-23 (Session 71 — Help Center Handoff Doc Update)
+
+### Documentation: Help Center Task Fix
+- Updated `projects/help_center/help-center-task.md` to match deployed BUG-044 fix
+- Bucket SQL: `public: false` → `public: true`, removed RLS policy (unnecessary for public bucket)
+- Video detection: replaced `.list()` check description with `getPublicUrl()` + `<video> onError` fallback approach
+
+### Files Changed
+- `projects/help_center/help-center-task.md` — UPDATED (bucket SQL + video detection)
+
+---
+
 ## 2026-02-23 (Session 70 — Enrichment Enhancement v1 Handoff + Merge to Master)
 
 ### Documentation: Branch Handoff
