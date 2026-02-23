@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutGrid, Play, Clock, BarChart3, Bug, LogOut } from 'lucide-react';
+import { LayoutGrid, Play, Clock, BarChart3, Bug, HelpCircle, LogOut } from 'lucide-react';
 
 interface SidebarProps {
   userEmail: string | null;
@@ -12,6 +12,7 @@ const navItems = [
   { path: "/runs", label: "Run History", icon: <Clock size={18} /> },
   { path: "/reports", label: "Coverage", icon: <BarChart3 size={18} /> },
   { path: "/bugs", label: "Bug Reports", icon: <Bug size={18} /> },
+  { path: "/help", label: "Help Center", icon: <HelpCircle size={18} /> },
 ];
 
 export function Sidebar({ userEmail, onLogout }: SidebarProps) {

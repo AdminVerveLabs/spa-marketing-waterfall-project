@@ -78,6 +78,7 @@
 ## Features (Post-Session 3)
 
 - [x] Add .xlsx report download for completed runs — 2026-02-19
+- [x] Add Help Center page with 12 accordion sections + video placeholder — 2026-02-23
 
 ## Future (Not in scope for initial build)
 

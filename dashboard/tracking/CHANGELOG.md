@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-02-23 — Session 4: Help Center Page
+
+### Feature: Help Center with accordion documentation
+- Created `src/pages/HelpCenterPage.tsx` with 12 expandable accordion sections
+- Video section checks Supabase Storage `help-assets` bucket for `walkthrough.mp4`
+  - Shows styled placeholder ("Walkthrough video coming soon") when video not yet uploaded
+  - Will render `<video>` tag with controls when video exists
+- Accordion built with `useState<Set<number>>` — no external dependencies
+- Section 1 ("Welcome to VerveLabs Run Manager") expanded by default
+- Multiple sections can be open simultaneously
+- Content covers: welcome, rules, pipeline flow, starting runs, timing, re-runs, failure handling, reports, tiers vs scores, report fields, bug reports, admin tasks
+- Updated `Sidebar.tsx` — added "Help Center" nav item with HelpCircle icon
+- Updated `App.tsx` — added `/help` route
+- **Manual step:** Run Supabase SQL to create `help-assets` storage bucket (not blocking — page handles missing bucket gracefully)
+
+### Build Verification
+- `npm run build` — clean (910KB JS + 33KB CSS)
+
+---
+
 ## 2026-02-19 — Session 3: .xlsx Report Download
 
 ### Feature: Download report for completed runs

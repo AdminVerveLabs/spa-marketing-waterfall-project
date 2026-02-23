@@ -9,6 +9,7 @@ import { NewRunPage } from '@/pages/NewRunPage';
 import { HistoryPage } from '@/pages/HistoryPage';
 import { ReportsPage } from '@/pages/ReportsPage';
 import { BugReportsPage } from '@/pages/BugReportsPage';
+import { HelpCenterPage } from '@/pages/HelpCenterPage';
 
 function AppLayout() {
   const { user, signOut } = useAuth();
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/runs" element={<HistoryPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/bugs" element={<BugReportsPage />} />
+            <Route path="/help" element={<HelpCenterPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

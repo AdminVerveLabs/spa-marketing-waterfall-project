@@ -57,5 +57,19 @@ Added .xlsx report download to completed runs. Users can click "Download" on any
 - **Contacts sheet:** Company Name, First Name, Last Name, Role, Is Owner, Business Email, Personal Email, Direct Phone, Email Status, Phone Status, Phone Type, Carrier, LinkedIn, Cultural Affinity, Source
 - **Build:** `npm run build` passes clean (711KB JS — xlsx library adds ~290KB)
 
+### Session 4 — 2026-02-23
+Added Help Center page with 12 accordion sections of user documentation and a video placeholder.
+
+- **New file:** `src/pages/HelpCenterPage.tsx` — Help Center page with:
+  - Video section: checks Supabase Storage `help-assets` bucket for `walkthrough.mp4`, shows styled placeholder if not found
+  - 12 expandable accordion sections with all help content from spec
+  - Section 1 ("Welcome") expanded by default, all others collapsed
+  - Multiple sections can be open simultaneously
+  - Custom accordion using `useState<Set<number>>` — no external library
+  - Dark theme styling matching existing dashboard patterns
+- **Modified:** `Sidebar.tsx` — added "Help Center" nav item with HelpCircle icon after Bug Reports
+- **Modified:** `App.tsx` — added `/help` route pointing to HelpCenterPage
+- **Build:** `npm run build` passes clean (910KB JS + 33KB CSS)
+
 ## Blocked On
 - Nothing — all code is written, awaiting Supabase setup
