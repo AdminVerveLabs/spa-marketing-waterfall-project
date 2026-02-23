@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-02-23 (Session 69 — Help Center Handoff Document)
+
+### Documentation: Help Center Feature Handoff
+- Created `projects/help_center/HANDOFF-help-center.md` — handoff document covering the Help Center page implementation
+- Committed to `enrichment-enhancement-v1` branch
+
+### Files Changed
+- `projects/help_center/HANDOFF-help-center.md` — NEW (committed)
+- Tracking files updated
+
+---
+
 ## 2026-02-23 (Session 68 — Fix Sub-Workflow Webhook + Re-trigger Sedona)
 
 ### Bugfix: BUG-046 — Sub-workflow webhook deregistration after editor save

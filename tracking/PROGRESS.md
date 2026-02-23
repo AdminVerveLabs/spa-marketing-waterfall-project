@@ -49,6 +49,9 @@
 
 ## Session Log
 
+### Session 69 — 2026-02-23 (Help Center Handoff Document)
+- **Created `projects/help_center/HANDOFF-help-center.md`** — handoff document for the Help Center feature page. Committed to `enrichment-enhancement-v1`.
+
 ### Session 68 — 2026-02-23 (Fix Sub-Workflow Webhook + Re-trigger Sedona)
 - **BUG-046: Sub-workflow webhook deregistration after editor save.** Exec #338 (Sedona) failed — all 6 batch dispatch POST calls rejected with "workflow without permission". Root cause: saving sub-workflow in n8n editor caused webhook re-registration to silently fail.
 - **Fix:** Toggled sub-workflow via MCP (`deactivateWorkflow` → `activateWorkflow`). Verified webhook responds 200 OK.
