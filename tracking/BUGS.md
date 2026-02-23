@@ -2,6 +2,35 @@
 
 ## Open
 
+### BUG-046: Sub-workflow webhook deregistration after editor save
+- **Severity:** HIGH (blocks all batch enrichment — pipeline discovers but can't enrich)
+- **Location:** Sub-workflow `fGm4IP0rWxgHptN8` → Webhook node (path: `batch-enrichment-v1`)
+- **Symptom:** Exec #338 (Sedona, larger KM) — Batch Dispatcher's 6 POST calls to `$env.BATCH_ENRICHMENT_WEBHOOK_URL` all rejected with "User attempted to access a workflow without permission" in n8n resource logs. No sub-workflow executions created (last was #330, 16+ hours prior).
+- **Root cause:** User saved the sub-workflow in the n8n editor (pasting updated find-contacts.js). In n8n, saving an active workflow triggers deactivate → save → reactivate. The webhook re-registration silently failed, leaving the path in a broken permission state. Workflow showed `active: true` but the webhook endpoint rejected all incoming requests.
+- **Fix:** Toggled sub-workflow active state via MCP: `deactivateWorkflow` → `activateWorkflow`. This forced n8n to re-register the webhook. Verified with `n8n_test_workflow` — returned 200 OK with `{"status": "accepted", "company_count": 0}`.
+- **Additional findings (exec #339):** Test webhook call created exec #339 which showed `status: canceled` with Bull queue error ("Missing key for job 338 updateProgress"). However, 4 nodes executed successfully including Code nodes (Enrich Companies, Find Contacts) — confirming Task Runner is healthy. The Bull queue error was from stale exec #338 job, not a runner issue.
+- **Prevention:** After saving a sub-workflow in the n8n editor, always deactivate+reactivate via API or UI to ensure webhook re-registration. Consider adding a webhook health check to the Batch Dispatcher before dispatching batches.
+- **Status:** FIXED (Session 68)
+
+### BUG-047: Apify monthly usage hard limit exceeded
+- **Severity:** HIGH (blocks all discovery/pipeline runs)
+- **Location:** Main workflow → Start Apify Run (HTTP Request node)
+- **Symptom:** Exec #341 (Sedona re-trigger) — all 5 Apify actor start requests returned 403: `{"error": {"type": "platform-feature-disabled", "message": "Monthly usage hard limit exceeded"}}`. Pipeline infrastructure works fine up to Start Apify Run.
+- **Root cause:** Apify account has hit its monthly usage hard limit. All actor runs are blocked until the billing cycle resets or the limit is increased.
+- **Impact:** No new metro discovery runs can execute. Enrichment-only runs (sub-workflow) are unaffected.
+- **Retry (Session 68):** User reported increasing Apify monthly hard limit. First attempt (exec #341) still got 403 — limit increase had not propagated. User increased limit further and exec #343 succeeded: 104 companies discovered across 5 Apify runs, all completed successfully.
+- **Resolution:** User increased Apify monthly hard limit sufficiently. Exec #343 (Sedona) completed with 104 companies discovered, 5 batches dispatched, all 5 sub-workflow execs (#344-#348) succeeded, lead scoring complete.
+- **Status:** FIXED (Session 68)
+
+### BUG-045: Google Reviews Method 2 impossible — ownerResponse not in Places API v1
+- **Severity:** MEDIUM (method silently returns nothing, not a crash)
+- **Location:** Find Contacts → Google Reviews source → Method 2 (sign-off parsing)
+- **Symptom:** Google Reviews Phase 2 rollout (exec #313): 41 places searched, 0 contacts found. Method 2 checks `review.ownerResponse || review.owner_response`, but neither field exists.
+- **Root cause:** The Places API v1 Review object does NOT have an `ownerResponse` field. Per the [official reference](https://developers.google.com/maps/documentation/places/web-service/reference/rest/v1/places), Review contains only: `name`, `relativePublishTimeDescription`, `text`, `originalText`, `rating`, `authorAttribution`, `publishTime`, `flagContentUri`, `googleMapsUri`, `visitDate`. Owner replies to reviews are not exposed as structured data.
+- **Impact:** Method 2 was dead code from the start — ADR-036 (Session 63) incorrectly assumed the New Places API v1 had `ownerResponse` based on legacy API documentation. Method 1 (profile name comparison) still works but has low yield in small metros.
+- **Fix:** Removed Method 2 entirely from find-contacts.js. Added enhanced debug logging (first review keys + snippet) to verify API fields.
+- **Status:** FIXED (Session 64)
+
 ### BUG-044: Empty data sheets in Report Generator xlsx — TWO root causes
 - **Severity:** HIGH (reports useless without lead data)
 - **Location:** Report Generator v0 → Generate Report node → `writeLeadSheet()` function

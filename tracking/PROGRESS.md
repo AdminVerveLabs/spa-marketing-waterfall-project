@@ -49,6 +49,23 @@
 
 ## Session Log
 
+### Session 68 — 2026-02-23 (Fix Sub-Workflow Webhook + Re-trigger Sedona)
+- **BUG-046: Sub-workflow webhook deregistration after editor save.** Exec #338 (Sedona) failed — all 6 batch dispatch POST calls rejected with "workflow without permission". Root cause: saving sub-workflow in n8n editor caused webhook re-registration to silently fail.
+- **Fix:** Toggled sub-workflow via MCP (`deactivateWorkflow` → `activateWorkflow`). Verified webhook responds 200 OK.
+- **Exec #338 analysis:** Status `canceled`, stopped during Apify polling (status RUNNING, pollCount 1). Discovery never completed — no companies to re-dispatch. Full re-trigger needed for Sedona.
+- **Exec #339 (test webhook):** Status `canceled` (by user or auto). Actually executed 4 nodes including Enrich Companies (2.4s) and Find Contacts — Task Runner IS healthy. Error was Bull queue issue ("Missing key for job 338 updateProgress"), not runner crash.
+- **Sub-workflow test passed:** `n8n_test_workflow` returned 200 OK, `{"status": "accepted", "company_count": 0}` in 150ms.
+- **Pre-flight check passed:** No running executions on either workflow.
+- **Exec #341 (Sedona re-trigger): FAILED — Apify monthly hard limit exceeded.** All 5 search queries got 403: `"platform-feature-disabled"`, `"Monthly usage hard limit exceeded"`. Pipeline infrastructure works (Webhook → Metro Config → Mark Running → Split Search Queries all succeeded). Blocked on Apify billing/quota.
+- **Decision notification sent** — waiting for Zack to increase Apify limit, wait for reset, or redirect to other tasks.
+- **Post-increase monitoring:** User reported increasing Apify monthly hard limit. Exec #341 checked — still 403 "Monthly usage hard limit exceeded" on all 5 search queries. Limit increase did NOT take effect. Sub-workflow exec #340 was a stale test dispatch (`company_ids: []`, `metro: "test"`, `run_id: null`) — not from Sedona trigger. BUG-047 remains OPEN.
+- **Exec #343 (Sedona): SUCCESS** — User increased Apify limit further. BUG-047 resolved.
+  - Main workflow: 104 companies discovered + inserted, 5 batches of 25 dispatched to sub-workflow, lead scoring complete.
+  - Sub-workflow execs #344-#348: all SUCCESS (10s-90s each — fast because most companies already enriched from prior Sedona runs).
+  - This is a Sedona RE-RUN (metro already had ~199 companies). 104 new companies found with updated enrichment enhancement sources (Hunter Domain Search, Google Reviews).
+  - **`run_id: null` throughout** — pipeline was triggered via direct webhook POST, not through the dashboard. The dashboard creates a `pipeline_run` record first and passes `run_id` in the POST body. Without it, `Mark Running` and `Track Batch Completion` skip their tracking logic, and the error handler reports "no matching run". Pipeline executed fully and correctly — only dashboard tracking was skipped.
+  - **For future runs:** Trigger from dashboard UI for full tracking, or manually create a `pipeline_run` record and include `run_id` in the POST body.
+
 ### Session 67 — 2026-02-23 (Report Generator Handoff Document)
 - **Created `projects/report_generator/HANDOFF-report-generator.md`** — comprehensive handoff document covering the entire report generator feature (Sessions 58–64).
 - Covers: architecture (7-node workflow), tiering logic (4 tiers + Other), Excel structure (7+ sheets, 27 columns), all 4 trigger paths, Supabase schema, dashboard integration, environment variables, BUG-042/043/044 fixes, key files, and known issues.

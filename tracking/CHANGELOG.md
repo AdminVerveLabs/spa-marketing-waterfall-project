@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-02-23 (Session 68 — Fix Sub-Workflow Webhook + Re-trigger Sedona)
+
+### Bugfix: BUG-046 — Sub-workflow webhook deregistration after editor save
+- **Problem:** Exec #338 (Sedona) — all batch dispatch POST calls rejected with "User attempted to access a workflow without permission". Sub-workflow showed `active: true` but webhook was broken.
+- **Root cause:** Saving sub-workflow in n8n editor caused deactivate→save→reactivate cycle where webhook re-registration silently failed.
+- **Fix:** Toggled sub-workflow via MCP `deactivateWorkflow` → `activateWorkflow`. Webhook re-registered and verified with test call (200 OK).
+- Exec #339 confirmed Task Runner healthy (4 nodes including Code nodes executed). Bull queue error from stale exec #338 job, not runner issue.
+
+### Sedona Re-trigger: BUG-047 — Apify monthly hard limit exceeded → RESOLVED
+- **Exec #341:** Sedona re-triggered — 403 `"Monthly usage hard limit exceeded"` on all 5 Apify requests. First limit increase did not take effect.
+- **Exec #343: SUCCESS** — User increased Apify limit further. Full pipeline completed:
+  - 104 companies discovered + inserted to Supabase (Sedona re-run — metro already had ~199 companies from prior runs)
+  - 5 batches of 25 dispatched to sub-workflow
+  - Sub-workflow execs #344-#348: all SUCCESS (10s-90s each, fast because most already enriched)
+  - Lead scoring recalculated for all Sedona companies
+- **`run_id: null` note:** All execs in this session had `run_id: null` because pipeline was triggered via direct webhook POST instead of through the dashboard. Dashboard tracking (Mark Running, Track Batch Completion) skipped but pipeline executed fully. For dashboard-tracked runs, trigger from the dashboard UI.
+- BUG-047 marked FIXED.
+
+### Files Changed
+- `tracking/BUGS.md` — BUG-046 updated with exec #339 findings, BUG-047 added
+- `tracking/PROGRESS.md` — Session 68 log updated
+- `tracking/CHANGELOG.md` — this entry
+
+---
+
 ## 2026-02-23 (Session 67 — Report Generator Handoff Document)
 
 ### Documentation: Report Generator Feature Handoff
