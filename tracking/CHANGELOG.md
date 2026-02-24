@@ -1,24 +1,66 @@
 # Changelog
 
-## 2026-02-23 (Session 72 — Metro Data Audit Cleanup: Portland Report + Toronto Re-trigger)
+## 2026-02-24 (Session 73 — Repo Cleanup for Client Handoff)
 
-### Portland Report Generation
-- Triggered report generator (workflow `SL9RrJBYnZjJ8LI6`) for Portland, OR via `n8n_test_workflow`
-- Exec #385: SUCCESS (1.9s) — all 7 nodes passed
-- Report uploaded: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`
-- `report_url` populated in `pipeline_runs` for run_id `5ee09a9b-9dc1-4175-873b-449e1017f7ba`
+### Archive Moves
+- Archived 14 tracked files to `_archive/` via `git rm` + physical copy
+- Archived gitignored files: cleanup-repo.sh, _cleanup.ps1, .cursor/rules, tmp/ contents
+- Archived untracked files: temp-report-code.json, report-backfill.js, report-generator-bug044.md, sample xlsx
+- Removed already-deleted `projects/new_metro-tablev1/` files from tracking
+- Removed empty directories: screenshots/, workflows/backups/
 
-### Toronto, ON — Pending Re-trigger
-- Exec #382 failed with transient Apify 502 Bad Gateway (3s execution)
-- Pre-flight check: safe to re-trigger (no running executions)
-- User to re-trigger from dashboard for proper run_id tracking + auto-report
+### Documentation Rewrites
+- `README.md` — Complete rewrite: architecture diagram, file reading order, env vars, common changes, repo structure
+- `CLAUDE.md` — Removed investigation rules, added architecture summary with workflow IDs/webhooks
+- `dashboard/CLAUDE.md` — Updated state, node counts (23+7), find-contacts.js 968 lines, report generator refs
+
+### Verification
+- Dashboard build: clean (17.5s, 0 errors)
+- All file references in README.md, CLAUDE.md, dashboard/CLAUDE.md verified to exist
+- No active guidance doc references archived files
+
+### Files Changed
+- `README.md` — REWRITTEN
+- `CLAUDE.md` — REWRITTEN
+- `dashboard/CLAUDE.md` — REWRITTEN
+- 14 tracked files archived (removed from git)
+- 2 deleted files staged for removal
+- `tracking/PROGRESS.md` — Session 73 entry
+- `tracking/TODO.md` — Repo cleanup marked complete
+- `tracking/CHANGELOG.md` — this entry
+
+---
+
+## 2026-02-23/24 (Session 72 — Metro Data Audit + Full 13-Metro Diagnostic)
+
+### Report Generation
+- **Portland report:** Triggered via `n8n_test_workflow`. Exec #385 SUCCESS (1.9s). File: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`
+- **Sedona report:** Triggered via `n8n_test_workflow`. Exec #393 SUCCESS (4.5s). Run_id `ebc0c9ef-0c6f-45bd-871a-30f1e85e342c`
+- All 13 metros now have reports
+
+### Toronto, ON — Re-triggered from Dashboard
+- Exec #384: SUCCESS (5.8 min). 131 companies discovered, 6 batches dispatched
+- Sub-workflow execs #386-#391: all SUCCESS (79-179s each)
+- Report auto-generated: exec #392 SUCCESS. 28 Tier 1a, 5 Tier 1b, 77 Tier 2b (110 sendable)
+- NamSor confirmed working (BUG-040 recovery validated with diverse cultural results)
+- Hunter Domain Search: 30/34 contacts (88%), 27.3% hit rate on 110 domains
+
+### Full 13-Metro Diagnostic
+- 6 SQL diagnostic queries run across all metros
+- **Totals:** 2,469 companies, 645 contacts, 13 metros (Boston, MA = intentional 13th metro)
+- **Clean:** 0 stuck companies, 0 duplicate google_place_ids, 0 NULL discovery_metro
+- **Blocked domains:** 6 false positives (legit businesses with "mindbody" in domain name)
+- **Unverified contacts cleanup:** 516 contacts with `email_status='unverified'` but no email → set to NULL
+- **NamSor gaps identified:** Scottsdale (0%), Nashville (8%), San Diego (4%) — from BUG-040 era
+- **Email gaps identified:** San Diego (0%), Tampa (0%) — from pre-Hunter-Domain-Search era
+- **Tier 2a analysis:** Only Austin (25) and San Diego (22) have Tier 2a. 0 Tier 2a elsewhere is expected (requires contact phone + no name, which is rare with Hunter DS)
 
 ### Bug Tracking
 - Added BUG-048: Sedona 11x duplicate companies (fixed via SQL dedup in prior session)
-- Added BUG-049: Toronto exec #382 transient Apify 502
+- Added BUG-049: Toronto exec #382 transient Apify 502 → resolved by dashboard re-trigger (exec #384)
 
 ### Files Changed
-- `tracking/PROGRESS.md` — Session 72 entry, Portland re-run marked complete
+- `tracking/PROGRESS.md` — Session 72 entry
 - `tracking/TODO.md` — Portland tasks marked complete
 - `tracking/BUGS.md` — BUG-048, BUG-049 added
 - `tracking/CHANGELOG.md` — this entry

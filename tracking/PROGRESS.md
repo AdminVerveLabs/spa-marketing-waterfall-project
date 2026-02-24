@@ -50,11 +50,29 @@
 
 ## Session Log
 
-### Session 72 — 2026-02-23 (Metro Data Audit Cleanup — Portland Report + Toronto Re-trigger)
-- **Portland report generated** — Exec #385 SUCCESS (1.9s). Report Generator triggered via `n8n_test_workflow` with `run_id: 5ee09a9b-9dc1-4175-873b-449e1017f7ba`, `metro: Portland, OR`. Report uploaded to Supabase Storage, `report_url` populated in pipeline_runs. File: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`.
-- **Toronto, ON** — Exec #382 failed (Apify 502 Bad Gateway, transient 3s execution). Needs re-trigger from dashboard by user. Pre-flight safe (last main exec #382 was error status, no running executions).
-- **Metro audit status (12/12):** All metros have completed pipeline runs. Portland now has report. Toronto pending re-trigger.
-- Updated tracking files for Session 72.
+### Session 73 — 2026-02-24 (Repo Cleanup for Client Handoff)
+- **Archived 14 files** to `_archive/`: 4 session handoff docs (pipeline-recovery, austin-rerun, namsor-nashville, dashboard-integration), 3 one-off scripts (deploy-pipeline-recovery.py, backfill-pipeline-runs.sql, sedona-data-quality.sql), 2 workflow backups, 2 screenshots, 1 dashboard prototype (vervelabs-run-manager.jsx), 1 bug doc, 1 report backfill script.
+- **Removed 2 already-deleted files** from tracking: `projects/new_metro-tablev1/` (spec + jsx).
+- **Moved gitignored files** to `_archive/`: cleanup-repo.sh, _cleanup.ps1, .cursor/rules, tmp/ contents, temp-report-code.json, sample xlsx.
+- **Rewrote `README.md`** — architecture diagram, file reading order, env vars table, common changes guide, full repo structure tree.
+- **Updated `CLAUDE.md`** — removed investigation phase rules (Rule 2), added architecture summary with workflow IDs and webhook paths, updated file conventions and testing approach.
+- **Updated `dashboard/CLAUDE.md`** — current state (12 metros, 5/6 APIs), corrected node counts (23+7), updated find-contacts.js to 968 lines, added report generator references.
+- **Verified:** Dashboard builds clean, all file references in active guidance docs valid.
+- **Commits:** `1ea4e5b` (main cleanup, 22 files, +356/-4901), `f1bcdb4` (archive dashboard integration handoff).
+
+### Session 72 — 2026-02-23/24 (Metro Data Audit + Full 13-Metro Diagnostic)
+- **Portland report generated** — Exec #385 SUCCESS (1.9s). Triggered via `n8n_test_workflow` with `run_id: 5ee09a9b-...`. File: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`.
+- **Toronto, ON re-triggered by user from dashboard** — Exec #384 SUCCESS (5.8 min). 131 companies, 6 batches, all 6 sub-workflows (#386-#391) SUCCESS. Report auto-generated (exec #392). Tier: 28×1a, 5×1b, 0×2a, 77×2b, 21×Other (110 sendable). NamSor confirmed working (BUG-040 recovery). Hunter DS dominant (30/34 contacts).
+- **Full 13-metro diagnostic** — 6 SQL queries across all metros:
+  - **2,469 companies, 645 contacts, 13 metros** (Boston, MA discovered as intentional 13th metro)
+  - 0 stuck companies, 0 duplicate google_place_ids, 0 NULL discovery_metro
+  - 6 "blocked domain" hits were false positives (legit businesses with "mindbody" in domain)
+  - 517 contacts with `email_status = 'unverified'` but no email → 516 cleaned to NULL via SQL
+  - NamSor gaps in BUG-040-era metros (Scottsdale 0%, Nashville 8%, San Diego 4%)
+  - Email gaps in pre-Hunter-DS metros (San Diego 0%, Tampa 0%)
+  - Tier 2a analysis: only Austin (25) and San Diego (22) have Tier 2a — expected pattern
+- **Sedona report generated** — Exec #393 SUCCESS (4.5s). Run_id `ebc0c9ef-...`.
+- **All 13 metros now have completed pipeline runs with reports.**
 
 ### Session 71 — 2026-02-23 (Help Center Handoff Doc Update)
 - **Updated `projects/help_center/help-center-task.md`** — Fixed bucket SQL from `public: false` to `public: true`, removed unnecessary RLS policy. Updated video detection description from `.list()` check to `getPublicUrl()` + `onError` fallback. Matches deployed BUG-044 fix in `HelpCenterPage.tsx`.

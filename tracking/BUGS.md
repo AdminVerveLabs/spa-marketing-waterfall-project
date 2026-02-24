@@ -7,8 +7,8 @@
 - **Location:** Main workflow → Start Apify Run (HTTP Request node)
 - **Symptom:** Exec #382 (Toronto, ON) failed in 3 seconds. Apify returned 502 Bad Gateway.
 - **Root cause:** Transient Apify server error. Not related to account limits or configuration.
-- **Fix:** Re-trigger from dashboard. Pre-flight check passed — no running executions.
-- **Status:** OPEN — awaiting user re-trigger from dashboard
+- **Fix:** User re-triggered from dashboard. Exec #384 SUCCESS (131 companies, 6 batches, all sub-workflows succeeded). Report auto-generated (exec #392).
+- **Status:** FIXED (Session 72)
 
 ### BUG-048: Sedona 11x duplicate companies from pre-dedup pipeline runs
 - **Severity:** MEDIUM (data quality — affects Sedona counts and lead scoring)

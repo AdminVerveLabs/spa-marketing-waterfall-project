@@ -104,6 +104,10 @@
 
 - [x] **Outreach CSV export** — Created `exports/outreach-ready.sql` for Supabase SQL Editor export. Deleted temp n8n workflow. (2026-02-18, Session 19)
 
+## Repo Maintenance — COMPLETE (Session 73)
+
+- [x] **Repo cleanup for client handoff** — Archived 14 files, rewrote README.md + CLAUDE.md + dashboard/CLAUDE.md. Verified all references. (2026-02-24, Session 73)
+
 ## Priority: LOW (Future enhancements)
 
 - [ ] **Search query generator** — Multiple terms per metro for 1000+ businesses
