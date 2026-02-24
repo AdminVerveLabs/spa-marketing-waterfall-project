@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronDown, ChevronRight, Video } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -260,25 +260,11 @@ const helpSections: HelpSection[] = [
 
 export function HelpCenterPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoChecked, setVideoChecked] = useState(false);
-
-  useEffect(() => {
-    supabase.storage
-      .from('help-assets')
-      .list('', { limit: 100 })
-      .then(({ data }) => {
-        const found = data?.some((f) => f.name === HELP_VIDEO_PATH);
-        if (found) {
-          const { data: urlData } = supabase.storage
-            .from('help-assets')
-            .getPublicUrl(HELP_VIDEO_PATH);
-          setVideoUrl(urlData.publicUrl);
-        }
-        setVideoChecked(true);
-      })
-      .catch(() => setVideoChecked(true));
-  }, []);
+  const [videoUrl] = useState<string | null>(() => {
+    const { data } = supabase.storage.from('help-assets').getPublicUrl(HELP_VIDEO_PATH);
+    return data.publicUrl;
+  });
+  const [videoError, setVideoError] = useState(false);
 
   const toggle = (index: number) => {
     setExpanded((prev) => {
@@ -301,7 +287,7 @@ export function HelpCenterPage() {
 
       {/* Video Section */}
       <div className="mb-8">
-        {videoChecked && !videoUrl && (
+        {videoError && (
           <div
             className="rounded-xl flex flex-col items-center justify-center py-16 px-8"
             style={{
@@ -313,11 +299,12 @@ export function HelpCenterPage() {
             <p className="text-slate-500 text-sm">Walkthrough video coming soon</p>
           </div>
         )}
-        {videoUrl && (
+        {!videoError && videoUrl && (
           <div className="flex justify-center">
             <video
               src={videoUrl}
               controls
+              onError={() => setVideoError(true)}
               className="rounded-xl"
               style={{ maxWidth: 800, width: '100%', border: '1px solid rgba(255,255,255,0.06)' }}
             />

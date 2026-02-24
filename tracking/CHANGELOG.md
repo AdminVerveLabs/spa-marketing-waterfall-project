@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-02-23 (Session 72 — Metro Data Audit Cleanup: Portland Report + Toronto Re-trigger)
+
+### Portland Report Generation
+- Triggered report generator (workflow `SL9RrJBYnZjJ8LI6`) for Portland, OR via `n8n_test_workflow`
+- Exec #385: SUCCESS (1.9s) — all 7 nodes passed
+- Report uploaded: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`
+- `report_url` populated in `pipeline_runs` for run_id `5ee09a9b-9dc1-4175-873b-449e1017f7ba`
+
+### Toronto, ON — Pending Re-trigger
+- Exec #382 failed with transient Apify 502 Bad Gateway (3s execution)
+- Pre-flight check: safe to re-trigger (no running executions)
+- User to re-trigger from dashboard for proper run_id tracking + auto-report
+
+### Bug Tracking
+- Added BUG-048: Sedona 11x duplicate companies (fixed via SQL dedup in prior session)
+- Added BUG-049: Toronto exec #382 transient Apify 502
+
+### Files Changed
+- `tracking/PROGRESS.md` — Session 72 entry, Portland re-run marked complete
+- `tracking/TODO.md` — Portland tasks marked complete
+- `tracking/BUGS.md` — BUG-048, BUG-049 added
+- `tracking/CHANGELOG.md` — this entry
+
+---
+
 ## 2026-02-23 (Session 71 — Help Center Handoff Doc Update)
 
 ### Documentation: Help Center Task Fix

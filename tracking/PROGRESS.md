@@ -39,7 +39,7 @@
 - [ ] **Enable Facebook Page** — Set `SKIP_FACEBOOK = false`. Test.
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name ones). Likely expired API key or service down. Code fix is correct but unverifiable.
 - [ ] **Investigate Enrich Companies update_errors (27.5%)** — Nashville #227: 89 errors across 324 companies. Up from ~13% in Sedona. Needs Supabase error response investigation.
-- [ ] Re-run Portland, OR after SQL cleanup
+- [x] Re-run Portland, OR after SQL cleanup — Exec #357 SUCCESS (Session 70s). Report generated exec #385 (Session 72).
 - [ ] Set up Snov.io account and API key
 - [ ] Add email-domain mismatch detection (ISSUE-012)
 - [ ] Re-run Asheville, NC (exec #165 timed out pre-fix)
@@ -49,6 +49,12 @@
 - [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 72 — 2026-02-23 (Metro Data Audit Cleanup — Portland Report + Toronto Re-trigger)
+- **Portland report generated** — Exec #385 SUCCESS (1.9s). Report Generator triggered via `n8n_test_workflow` with `run_id: 5ee09a9b-9dc1-4175-873b-449e1017f7ba`, `metro: Portland, OR`. Report uploaded to Supabase Storage, `report_url` populated in pipeline_runs. File: `VerveLabs_Sales_Leads_Portland_OR_2026-02-23.xlsx`.
+- **Toronto, ON** — Exec #382 failed (Apify 502 Bad Gateway, transient 3s execution). Needs re-trigger from dashboard by user. Pre-flight safe (last main exec #382 was error status, no running executions).
+- **Metro audit status (12/12):** All metros have completed pipeline runs. Portland now has report. Toronto pending re-trigger.
+- Updated tracking files for Session 72.
 
 ### Session 71 — 2026-02-23 (Help Center Handoff Doc Update)
 - **Updated `projects/help_center/help-center-task.md`** — Fixed bucket SQL from `public: false` to `public: true`, removed unnecessary RLS policy. Updated video detection description from `.list()` check to `getPublicUrl()` + `onError` fallback. Matches deployed BUG-044 fix in `HelpCenterPage.tsx`.

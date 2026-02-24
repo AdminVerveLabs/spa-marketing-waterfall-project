@@ -2,7 +2,46 @@
 
 ## Identity
 
-You are working on the Spa Marketing Waterfall project — an n8n workflow pipeline that discovers and enriches massage therapy business leads. The codebase is n8n workflow JSON files connected to Supabase.
+You are working on the Spa Marketing Waterfall project — an n8n workflow pipeline that discovers and enriches massage therapy business leads. The codebase is n8n workflow JSON files connected to Supabase, with a React dashboard for triggering runs and viewing results.
+
+## Architecture
+
+```
+Main Workflow (23 nodes, yxvQst30sWlNIeZq):
+  Webhook (POST) → Metro Config → Mark Running → Google Places → Yelp (Apify)
+  → Normalize → Dedupe → Prepare for Supabase → Insert to Supabase
+  → Batch Dispatcher (dispatches batches of 25 to sub-workflow)
+  → Calculate Lead Scores → Run Summary
+
+Sub-Workflow (7 nodes, fGm4IP0rWxgHptN8):
+  Webhook → Respond → Enrich Companies → Find Contacts
+  → Enrich Contacts → Mark Fully Enriched → Track Batch Completion
+
+Report Generator (7 nodes, SL9RrJBYnZjJ8LI6):
+  Webhook → Fetch Data → Generate xlsx → Upload to Storage → Send Email → Mark Complete
+
+Error Handler (2 nodes, ovArmKkj1bs5Af3G):
+  Error Trigger → Mark Failed
+```
+
+### Webhook Paths
+- **Main:** `001b878c-b5af-4c3c-8b78-d41e526049f4` (POST only)
+- **Sub-workflow:** `batch-enrichment-v1` (POST, internal)
+- **Report Generator:** `report-generator-v1` (POST, internal)
+
+### Key Files
+| File | Lines | Purpose |
+|------|-------|---------|
+| `scripts/nodes/enrich-companies.js` | 545 | Google Details, website scrape, booking detection, email extraction |
+| `scripts/nodes/find-contacts.js` | 968 | 6 contact sources: Apollo, solo detection, about page, Hunter Domain Search, Google Reviews, Yelp Owner |
+| `scripts/nodes/enrich-contacts.js` | 613 | Hunter email finder/verifier, NamSor origin, Telnyx phone verify |
+| `scripts/nodes/batch-dispatcher.js` | 176 | Polls Supabase for discovered companies, dispatches batches to sub-workflow |
+| `scripts/nodes/track-batch-completion.js` | 127 | Increments completed_batches, triggers report on last batch |
+| `scripts/nodes/mark-running.js` | 43 | PATCHes pipeline_runs to 'running' |
+| `scripts/nodes/metro-config.js` | 84 | Metro configuration from webhook POST body |
+| `scripts/nodes/run-summary4.js` | 146 | Execution summary stats |
+| `scripts/nodes/mark-fully-enriched.js` | 41 | PATCHes companies to fully_enriched |
+| `scripts/nodes/report-generator/*.js` | 855 | Report generation (4 files: fetch, generate, send, complete) |
 
 ## Critical Rules
 
@@ -16,13 +55,7 @@ You are working on the Spa Marketing Waterfall project — an n8n workflow pipel
   - `docs/decisions/DECISIONS.md` — Any architectural decisions made
 - **NEVER** skip tracking updates. This is how continuity works across sessions.
 
-### 2. Investigation Before Implementation
-- **NEVER** generate fixed workflow JSON without completing the investigation phases first
-- The investigation phases exist in `docs/investigation/INVESTIGATION-PLAN.md`
-- Each phase produces a deliverable document that MUST be written before proceeding
-- Phase outputs are cumulative — later phases reference earlier ones
-
-### 3. n8n Workflow JSON Rules
+### 2. n8n Workflow JSON Rules
 - n8n workflows are JSON files with `nodes[]` and `connections{}` objects
 - Every node has: `id` (UUID), `name` (unique string), `type`, `typeVersion`, `position[x,y]`, `parameters`
 - Connections reference nodes BY NAME, not by ID
@@ -31,7 +64,7 @@ You are working on the Spa Marketing Waterfall project — an n8n workflow pipel
 - IF nodes route: first output = condition TRUE, second output = condition FALSE
 - HTTP Request nodes with `onError: "continueRegularOutput"` won't break on failures
 
-### 4. Known n8n Batching Issue (THE CORE BUG)
+### 3. Known n8n Batching Issue (THE CORE BUG)
 When multiple paths converge on one node WITHOUT a proper merge strategy:
 - n8n creates separate "execution batches" per upstream path
 - `$('NodeName').item.json` pairs with wrong items across batches
@@ -39,13 +72,13 @@ When multiple paths converge on one node WITHOUT a proper merge strategy:
 - Merge (Append) nodes fire per-batch, not after all batches complete
 - **Solution:** Either avoid multi-path convergence entirely OR use Code nodes in `runOnceForAllItems` mode with explicit deduplication by contact ID
 
-### 5. Code Node Patterns
+### 4. Code Node Patterns
 ```javascript
 // runOnceForEachItem — for per-item transforms
 // Access current item:
 const item = $input.item.json;
 // Access paired upstream item:
-const upstream = $('NodeName').item.json;  // ⚠️ BREAKS with multi-path convergence
+const upstream = $('NodeName').item.json;  // BREAKS with multi-path convergence
 // Return single object:
 return { json: { ...item, newField: value } };
 
@@ -53,42 +86,42 @@ return { json: { ...item, newField: value } };
 // Access all items:
 const items = $input.all();
 // Or from a specific node:
-const items = $('NodeName').all();  // ⚠️ May duplicate across batches
+const items = $('NodeName').all();  // May duplicate across batches
 // Return array:
 return items.map(i => ({ json: i.json }));
 ```
 
-### 6. Supabase Access Pattern
+### 5. Supabase Access Pattern
 - Always use HTTP Request nodes (NOT the n8n Supabase connector)
 - Auth: `apikey` header + `Authorization: Bearer {service_key}`
 - Upserts: Include `Prefer: resolution=merge-duplicates` header
 - Updates (PATCH): Include `Prefer: return=minimal` header
 - Base URL: `$env.SUPABASE_URL` + `/rest/v1/{table}`
 
-### 7. File Conventions
-- Workflow JSONs go in `workflows/current/` (as-is) or `workflows/generated/` (fixed)
-- Always backup to `workflows/backups/` with timestamp before modifying
-- Investigation outputs go in `docs/investigation/` with the prescribed filenames
+### 6. File Conventions
+- Workflow snapshots go in `workflows/current/`
+- Generated workflows go in `workflows/generated/`
+- Code node source goes in `scripts/nodes/`
 - Decision records go in `docs/decisions/DECISIONS.md`
+- Feature handoff docs go in `projects/{feature_name}/`
 
-### 8. No Secrets in Code
+### 7. No Secrets in Code
 - All API keys, URLs, tokens are n8n environment variables
 - Reference as `$env.VARIABLE_NAME` in workflow JSON
 - Never hardcode credentials anywhere
 
-### 9. Testing Approach
-- After generating a workflow JSON, validate structure with `scripts/validate-workflow.js`
-- Document test cases in `tests/workflow-tests.md`
+### 8. Testing Approach
 - Test with `skip_*` toggles set to `"true"` first (zero API credits)
 - Then enable one API at a time with small batch sizes (5-10)
+- Use `scripts/diagnostic.sql` for per-metro health checks
 
-### 10. Communication Style
+### 9. Communication Style
 - Be direct. State what you're doing and why.
 - When you find a bug, log it immediately in `tracking/BUGS.md`
 - When you make a decision, log it in `docs/decisions/DECISIONS.md` with reasoning
 - If something is ambiguous, document the ambiguity rather than guessing
 
-### 11. Notifications
+### 10. Notifications
 
 You have access to a notification system to communicate with Zack asynchronously. Use it to avoid blocking on approvals and to keep him informed.
 
@@ -153,7 +186,7 @@ curl -s -X POST https://ping-zack.vercel.app/api/notify \
 
 The notification secret is available as `PING_ZACK_SECRET` in the environment.
 
-### 12. Pre-Flight Check Before Pipeline Triggers
+### 11. Pre-Flight Check Before Pipeline Triggers
 - **Before ANY webhook trigger**, check for running executions:
   1. List recent main workflow executions: look for `status: running` or recently-started executions (within last 15 minutes)
   2. List recent sub-workflow executions: new activity means a pipeline is still processing

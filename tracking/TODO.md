@@ -43,9 +43,9 @@
 - [ ] **Investigate NamSor API failure (BUG-040)** — NamSor returning null for ALL contacts (including full-name). Check API key validity, test direct API call, check NamSor account dashboard. Code fix (IMP-014) is correct — this is an API-level issue.
 - [ ] **Investigate 27.5% Enrich Companies update_errors** — 89 errors in 324 companies across Nashville #227 (up from ~13% in Sedona #180). Down from ~50-70% pre-fix but worsening again. Need to check Supabase error responses.
 - [x] **Add Scottsdale, AZ metro** — 11th metro. Exec #189: 196 unique companies, 8 batches, 7/7 sub-workflows SUCCESS. (2026-02-20, Session 44)
-- [ ] **Re-run Portland, OR** — After successful test with new architecture.
+- [x] **Re-run Portland, OR** — Exec #357 SUCCESS. Report generated exec #385 (Session 72). Pipeline_runs backfill SQL executed.
 - [ ] **Re-run Asheville, NC** — Exec #165 timed out at 300s pre-fix. Should work now with 1800s timeout + convergence fix.
-- [ ] **Clean Portland stale data** — Delete companies, contacts, and social_profiles for `discovery_metro = 'Portland, OR'` from failed execs #158/#159. Run in Supabase SQL Editor.
+- [x] **Clean Portland stale data** — SQL cleanup executed (prior session). Portland re-run exec #357 successful with clean data.
 - [ ] **End-to-end email test** — Need contacts with first_name + domain but no email to truly test Hunter Finder discovery
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)

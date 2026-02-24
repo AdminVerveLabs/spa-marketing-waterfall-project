@@ -2,6 +2,22 @@
 
 ## Open
 
+### BUG-049: Toronto exec #382 — Apify 502 Bad Gateway (transient)
+- **Severity:** LOW (transient — just needs retry)
+- **Location:** Main workflow → Start Apify Run (HTTP Request node)
+- **Symptom:** Exec #382 (Toronto, ON) failed in 3 seconds. Apify returned 502 Bad Gateway.
+- **Root cause:** Transient Apify server error. Not related to account limits or configuration.
+- **Fix:** Re-trigger from dashboard. Pre-flight check passed — no running executions.
+- **Status:** OPEN — awaiting user re-trigger from dashboard
+
+### BUG-048: Sedona 11x duplicate companies from pre-dedup pipeline runs
+- **Severity:** MEDIUM (data quality — affects Sedona counts and lead scoring)
+- **Location:** Supabase `companies` table, `discovery_metro = 'Sedona, AZ'`
+- **Symptom:** Sedona had ~11x duplicate companies accumulated from multiple pipeline runs before dedup fixes were deployed (ADR-024, BUG-F014, unique index). Cleaned up via SQL dedup in prior session.
+- **Root cause:** Early pipeline runs (pre-Session 30) had no convergence suppression or company dedup. Each re-run inserted additional copies.
+- **Fix:** SQL dedup executed — kept newest record per `google_place_id`, deleted duplicates. Contacts and social_profiles cleaned accordingly.
+- **Status:** FIXED (prior session SQL cleanup)
+
 ### BUG-046: Sub-workflow webhook deregistration after editor save
 - **Severity:** HIGH (blocks all batch enrichment — pipeline discovers but can't enrich)
 - **Location:** Sub-workflow `fGm4IP0rWxgHptN8` → Webhook node (path: `batch-enrichment-v1`)

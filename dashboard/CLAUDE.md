@@ -6,37 +6,44 @@ You are working on the Spa Marketing Waterfall project — an n8n pipeline that 
 
 ## Current State
 
-The pipeline was simplified from 127 → 27 → 22+6 nodes (main workflow + sub-workflow) across Sessions 34-36. It ran Sedona AZ end-to-end (exec #170) but a diagnostic revealed **all digital signals are zero** — the root cause is 2 HTTP Request nodes that drop 12 fields from the insert payload. See `docs/HANDOFF-pipeline-recovery.md` for the full diagnosis and fix plan.
+The pipeline is fully operational with 12 metros, 5/6 enrichment APIs enabled, and report generation working. The dashboard triggers pipeline runs, tracks batch progress in real-time, and provides xlsx report downloads. Enrichment Enhancement v1 added 4 new contact sources (Hunter Domain Search and Google Reviews enabled, Yelp Owner and Facebook pending).
 
 ## Architecture
 
 ```
-Main Workflow (22 nodes, webhook-triggered):
-  Webhook → Metro Config → Google Places → Yelp (Apify) 
+Main Workflow (23 nodes, webhook-triggered):
+  Webhook → Metro Config → Mark Running → Google Places → Yelp (Apify)
   → Normalize → Dedupe → Prepare for Supabase → Insert to Supabase
   → Batch Dispatcher (polls for discovered companies, dispatches batches of 25)
-
-Sub-Workflow (6 nodes, webhook POST from Batch Dispatcher):
-  Webhook → Respond → Enrich Companies → Find Contacts 
-  → Enrich Contacts → Mark Fully Enriched
-
-Main Workflow (continued after all batches):
   → Calculate Lead Scores → Run Summary
+
+Sub-Workflow (7 nodes, webhook POST from Batch Dispatcher):
+  Webhook → Respond → Enrich Companies → Find Contacts
+  → Enrich Contacts → Mark Fully Enriched → Track Batch Completion
+
+Report Generator (7 nodes, auto-triggered on last batch):
+  Fetch Data → Generate xlsx → Upload to Storage → Send Email → Mark Complete
 ```
 
 ### Key Workflow IDs
 - **Main:** `yxvQst30sWlNIeZq` (webhook: `001b878c-b5af-4c3c-8b78-d41e526049f4`)
 - **Sub:** `fGm4IP0rWxgHptN8` (webhook: `batch-enrichment-v1`)
+- **Report Generator:** `SL9RrJBYnZjJ8LI6` (webhook: `report-generator-v1`)
+- **Error Handler:** `ovArmKkj1bs5Af3G`
 
 ### Key Files
 | File | Lines | Purpose |
 |---|---|---|
-| `scripts/nodes/enrich-companies.js` | 554 | Google Details, website scrape, booking detection, email extraction, PATCH to Supabase |
-| `scripts/nodes/find-contacts.js` | 629 | Apollo search, solo detection, about page scraping, INSERT contacts |
+| `scripts/nodes/enrich-companies.js` | 545 | Google Details, website scrape, booking detection, email extraction, PATCH to Supabase |
+| `scripts/nodes/find-contacts.js` | 968 | 6 sources: Apollo, solo detection, about page, Hunter Domain Search, Google Reviews, Yelp Owner |
 | `scripts/nodes/enrich-contacts.js` | 613 | Hunter email finder/verifier, NamSor, Telnyx phone verify, PATCH contacts |
-| `scripts/nodes/prepare-for-supabase.js` | ~100 | Maps discovery data to 26-field Supabase insert payload |
-| `scripts/nodes/batch-dispatcher.js` | 151 | Polls Supabase for discovered companies, dispatches batches to sub-workflow |
-| `scripts/nodes/mark-fully-enriched.js` | 42 | PATCHes companies to fully_enriched |
+| `scripts/nodes/batch-dispatcher.js` | 176 | Polls Supabase for discovered companies, dispatches batches to sub-workflow |
+| `scripts/nodes/track-batch-completion.js` | 127 | Increments completed_batches, triggers report on last batch |
+| `scripts/nodes/mark-running.js` | 43 | PATCHes pipeline_runs to 'running' + n8n_execution_id |
+| `scripts/nodes/mark-fully-enriched.js` | 41 | PATCHes companies to fully_enriched |
+| `scripts/nodes/metro-config.js` | 84 | Metro configuration from webhook POST body |
+| `scripts/nodes/run-summary4.js` | 146 | Execution summary with total/error counts |
+| `scripts/nodes/report-generator/*.js` | 855 | Report generation (fetch, generate xlsx, send email, mark complete) |
 | `scripts/diagnostic.sql` | 301 | Single-JSON health check per metro |
 | `docs/architecture/schema.sql` | 348 | Full Supabase schema |
 
