@@ -10,7 +10,7 @@ A lightweight internal web dashboard for managing pipeline runs across the Spa M
 
 ## How This Was Built
 
-The initial app was scaffolded in **Lovable** and then extracted into this repo. Claude Code handles all integration work: Supabase wiring, n8n webhook connections, environment config, Docker deployment, and any fixes/refinements. There is also the initial version of the app (a prototype) that was done by claude (before lovable) you can look at both of these - the file is called "vervelabs-run-manager.jsx" and is in the "dashboard" folder. 
+The initial app was scaffolded in **Lovable** and then extracted into this repo. Claude Code handles all integration work: Supabase wiring, n8n webhook connections, environment config, Docker deployment, and any fixes/refinements.
 
 ## Quick Start (for AI Coding Assistants)
 
