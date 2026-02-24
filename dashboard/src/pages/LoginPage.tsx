@@ -33,11 +33,11 @@ export function LoginPage() {
       </div>
 
       <div className="relative w-full max-w-sm mx-4">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <div className="mb-2">
             <img src="/spa-marketing-logo.jpg" alt="SpaMarketing.com" className="h-16 w-auto mx-auto rounded-lg" />
           </div>
-          <p className="text-slate-500 text-sm mt-1">Waterfaller</p>
+          <img src="/meridian-badge.png" alt="Meridian by VerveLabs" className="h-7 w-auto mx-auto mt-3" />
         </div>
 
         <div className="rounded-2xl p-8" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", backdropFilter: "blur(20px)" }}>

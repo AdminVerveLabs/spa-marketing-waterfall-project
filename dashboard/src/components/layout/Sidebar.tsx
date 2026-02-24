@@ -26,7 +26,7 @@ export function Sidebar({ userEmail, onLogout }: SidebarProps) {
       <div className="p-5 pb-4">
         <div className="flex items-center gap-2.5">
           <img src="/spa-marketing-logo.jpg" alt="SpaMarketing.com" className="h-8 w-auto rounded" />
-          <p className="text-slate-600 text-[10px] uppercase tracking-widest">Waterfaller</p>
+          <img src="/meridian-badge.png" alt="Meridian by VerveLabs" className="h-3.5 w-auto" />
         </div>
       </div>
 
