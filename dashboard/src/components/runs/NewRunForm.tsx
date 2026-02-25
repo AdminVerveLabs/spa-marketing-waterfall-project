@@ -433,7 +433,7 @@ export function NewRunForm({ templates, onSubmit, initialData }: NewRunFormProps
             Search Radius
           </h3>
           <div className="flex gap-2">
-            {[5000, 10000, 15000, 25000].map((r) => (
+            {[5000, 10000, 15000, 25000, 40000, 50000].map((r) => (
               <button
                 key={r}
                 onClick={() => setRadius(r)}

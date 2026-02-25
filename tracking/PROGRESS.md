@@ -13,6 +13,7 @@
 **Parallelized Batch Enrichment** ✅ Deployed (ADR-029 — main 22 nodes + sub-workflow 6 nodes)
 **Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
 **Enrichment Enhancement v1** ✅ Merged to master (ADR-035 — 4 new contact sources, Phases 1-3 enabled)
+**10 Rural Metros Added** ✅ (Session 74 — Price, Sterling, Vernal, Riverton, Scottsbluff, Lewistown, Alice, Elko, Durango, Clovis)
 
 ## API STATUS: 5 of 6 APIs Enabled
 - **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)

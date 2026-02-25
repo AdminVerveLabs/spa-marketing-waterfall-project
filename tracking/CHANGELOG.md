@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-24 (Session 74 — Add 10 Rural Metros)
+
+### New Metros Added
+- Added 10 small/rural markets to pipeline configuration:
+  Price UT, Sterling CO, Vernal UT, Riverton WY, Scottsbluff NE,
+  Lewistown MT, Alice TX, Elko NV, Durango CO, Clovis NM
+- All configured with 40km search radius (vs 15km for urban metros)
+
+### Files Changed
+- `dashboard/src/data/metros.ts` — Added 10 cities (4 new states: MT, NE, NM, WY + 6 to existing states)
+- `scripts/nodes/metro-config.js` — Added 10 entries to legacy fallback lookup with radius_meters: '40000'
+- `dashboard/src/components/runs/NewRunForm.tsx` — Added 40km and 50km radius buttons for rural market runs
+- `tracking/CHANGELOG.md` — this entry
+- `tracking/PROGRESS.md` — Session 74 entry
+
 ## 2026-02-24 (Session 73 — Repo Cleanup for Client Handoff)
 
 ### Archive Moves

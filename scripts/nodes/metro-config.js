@@ -20,6 +20,17 @@ const METROS = {
   'Sedona, AZ':     { latitude: '34.8697',  longitude: '-111.7610', yelp_location: 'Sedona, AZ', radius_meters: '15000' },
   'Scottsdale, AZ': { latitude: '33.4942',  longitude: '-111.9261', yelp_location: 'Scottsdale, AZ', radius_meters: '15000' },
   'Tampa, FL':      { latitude: '27.9506',  longitude: '-82.4572',  yelp_location: 'Tampa, FL', radius_meters: '15000' },
+  // Rural / small markets (40km radius)
+  'Price, UT':       { latitude: '39.5994',  longitude: '-110.8107', yelp_location: 'Price, UT', radius_meters: '40000' },
+  'Sterling, CO':    { latitude: '40.6255',  longitude: '-103.2078', yelp_location: 'Sterling, CO', radius_meters: '40000' },
+  'Vernal, UT':      { latitude: '40.4555',  longitude: '-109.5287', yelp_location: 'Vernal, UT', radius_meters: '40000' },
+  'Riverton, WY':    { latitude: '42.8616',  longitude: '-108.3801', yelp_location: 'Riverton, WY', radius_meters: '40000' },
+  'Scottsbluff, NE': { latitude: '41.8666',  longitude: '-103.6672', yelp_location: 'Scottsbluff, NE', radius_meters: '40000' },
+  'Lewistown, MT':   { latitude: '47.0494',  longitude: '-109.4281', yelp_location: 'Lewistown, MT', radius_meters: '40000' },
+  'Alice, TX':       { latitude: '27.7523',  longitude: '-98.0697',  yelp_location: 'Alice, TX', radius_meters: '40000' },
+  'Elko, NV':        { latitude: '40.8324',  longitude: '-115.7631', yelp_location: 'Elko, NV', radius_meters: '40000' },
+  'Durango, CO':     { latitude: '37.2753',  longitude: '-107.8801', yelp_location: 'Durango, CO', radius_meters: '40000' },
+  'Clovis, NM':      { latitude: '34.4048',  longitude: '-103.2052', yelp_location: 'Clovis, NM', radius_meters: '40000' },
 };
 
 const DEFAULT_QUERIES = 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist';

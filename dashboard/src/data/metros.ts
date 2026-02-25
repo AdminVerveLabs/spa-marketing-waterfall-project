@@ -21,6 +21,8 @@ export const METROS: MetroData = {
     CO: { name: "Colorado", cities: [
       { city: "Denver", lat: 39.7392, lng: -104.9903, metro_name: "Denver, CO", yelp_location: "Denver, CO" },
       { city: "Colorado Springs", lat: 38.8339, lng: -104.8214, metro_name: "Colorado Springs, CO", yelp_location: "Colorado Springs, CO" },
+      { city: "Durango", lat: 37.2753, lng: -107.8801, metro_name: "Durango, CO", yelp_location: "Durango, CO" },
+      { city: "Sterling", lat: 40.6255, lng: -103.2078, metro_name: "Sterling, CO", yelp_location: "Sterling, CO" },
     ]},
     CT: { name: "Connecticut", cities: [
       { city: "Hartford", lat: 41.7658, lng: -72.6734, metro_name: "Hartford, CT", yelp_location: "Hartford, CT" },
@@ -69,13 +71,23 @@ export const METROS: MetroData = {
       { city: "Kansas City", lat: 39.0997, lng: -94.5786, metro_name: "Kansas City, MO", yelp_location: "Kansas City, MO" },
       { city: "St. Louis", lat: 38.627, lng: -90.1994, metro_name: "St. Louis, MO", yelp_location: "St. Louis, MO" },
     ]},
+    MT: { name: "Montana", cities: [
+      { city: "Lewistown", lat: 47.0494, lng: -109.4281, metro_name: "Lewistown, MT", yelp_location: "Lewistown, MT" },
+    ]},
     NC: { name: "North Carolina", cities: [
       { city: "Charlotte", lat: 35.2271, lng: -80.8431, metro_name: "Charlotte, NC", yelp_location: "Charlotte, NC" },
       { city: "Raleigh", lat: 35.7796, lng: -78.6382, metro_name: "Raleigh, NC", yelp_location: "Raleigh, NC" },
       { city: "Asheville", lat: 35.5951, lng: -82.5515, metro_name: "Asheville, NC", yelp_location: "Asheville, NC" },
     ]},
+    NE: { name: "Nebraska", cities: [
+      { city: "Scottsbluff", lat: 41.8666, lng: -103.6672, metro_name: "Scottsbluff, NE", yelp_location: "Scottsbluff, NE" },
+    ]},
     NV: { name: "Nevada", cities: [
       { city: "Las Vegas", lat: 36.1699, lng: -115.1398, metro_name: "Las Vegas, NV", yelp_location: "Las Vegas, NV" },
+      { city: "Elko", lat: 40.8324, lng: -115.7631, metro_name: "Elko, NV", yelp_location: "Elko, NV" },
+    ]},
+    NM: { name: "New Mexico", cities: [
+      { city: "Clovis", lat: 34.4048, lng: -103.2052, metro_name: "Clovis, NM", yelp_location: "Clovis, NM" },
     ]},
     NY: { name: "New York", cities: [
       { city: "New York City", lat: 40.7128, lng: -74.006, metro_name: "New York City, NY", yelp_location: "New York, NY" },
@@ -106,9 +118,12 @@ export const METROS: MetroData = {
       { city: "Dallas", lat: 32.7767, lng: -96.797, metro_name: "Dallas, TX", yelp_location: "Dallas, TX" },
       { city: "San Antonio", lat: 29.4241, lng: -98.4936, metro_name: "San Antonio, TX", yelp_location: "San Antonio, TX" },
       { city: "Fort Worth", lat: 32.7555, lng: -97.3308, metro_name: "Fort Worth, TX", yelp_location: "Fort Worth, TX" },
+      { city: "Alice", lat: 27.7523, lng: -98.0697, metro_name: "Alice, TX", yelp_location: "Alice, TX" },
     ]},
     UT: { name: "Utah", cities: [
       { city: "Salt Lake City", lat: 40.7608, lng: -111.891, metro_name: "Salt Lake City, UT", yelp_location: "Salt Lake City, UT" },
+      { city: "Price", lat: 39.5994, lng: -110.8107, metro_name: "Price, UT", yelp_location: "Price, UT" },
+      { city: "Vernal", lat: 40.4555, lng: -109.5287, metro_name: "Vernal, UT", yelp_location: "Vernal, UT" },
     ]},
     VA: { name: "Virginia", cities: [
       { city: "Virginia Beach", lat: 36.8529, lng: -75.978, metro_name: "Virginia Beach, VA", yelp_location: "Virginia Beach, VA" },
@@ -119,6 +134,9 @@ export const METROS: MetroData = {
     ]},
     WI: { name: "Wisconsin", cities: [
       { city: "Milwaukee", lat: 43.0389, lng: -87.9065, metro_name: "Milwaukee, WI", yelp_location: "Milwaukee, WI" },
+    ]},
+    WY: { name: "Wyoming", cities: [
+      { city: "Riverton", lat: 42.8616, lng: -108.3801, metro_name: "Riverton, WY", yelp_location: "Riverton, WY" },
     ]},
     DC: { name: "Washington D.C.", cities: [
       { city: "Washington", lat: 38.9072, lng: -77.0369, metro_name: "Washington, DC", yelp_location: "Washington, DC" },
