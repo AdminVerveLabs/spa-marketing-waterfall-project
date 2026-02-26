@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-02-25 (Session 75 — Apollo Sync Workflow v1)
+
+### New Workflow
+- **Apollo Sync v1** — 11-node n8n workflow that syncs enriched companies + contacts from Supabase to Apollo.io
+  - Schedule Trigger (30 min) → Set Config → Setup Custom Fields → Fetch Unsynced → IF Has Data → SplitInBatches (25) → Upsert Account → Wait (2s) → Upsert Contacts → Mark Synced → Log Summary
+  - 13 account custom fields + 5 contact custom fields (created idempotently)
+  - Account dedup by domain search, contact dedup via `run_dedupe=true`
+  - Rate limiting: 700ms between API calls + 2s wait between phases
+
+### New Files
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Complete workflow (11 nodes, 6 code nodes with full implementations)
+- `projects/apollo_integration_v1/migrations/001_apollo_tracking_columns.sql` — Schema migration for Apollo tracking columns
+- `projects/apollo_integration_v1/utils/get-field-mapping.js` — Diagnostic utility for Apollo custom field key mapping
+- `projects/apollo_integration_v1/README.md` — Setup guide, testing checklist, architecture docs
+
+### Decisions
+- ADR-039: Apollo Sync as standalone workflow (not triggered from report generator)
+
 ## 2026-02-24 (Session 74 — Add 10 Rural Metros)
 
 ### New Metros Added

@@ -486,3 +486,21 @@
   - Safety retained: `isLikelyFirstName()` (~400 common names) + word count (2-4 parts)
 - **Safety analysis:** "Sedona Wellness Center" → 1 word → rejected. "Healing Hands Massage" → "Healing" not in names list → rejected. "Jane Smith Massage" → "Jane" in names → accepted (correct). "Massage by Jane" → "Massage" matched at start → 0 words → rejected.
 - **Status:** Active
+
+## ADR-039: Apollo Sync Workflow — Separate n8n Workflow for Supabase-to-Apollo Push
+- **Date:** 2026-02-25
+- **Decision:** Create a standalone n8n workflow (11 nodes) that syncs enriched companies + contacts from Supabase to Apollo.io. Schedule-triggered every 30 minutes. Uses SplitInBatches (25) with loop for rate limiting.
+- **Reason:** After enrichment and report generation, there's no automated way to push data into Apollo for sales outreach. A separate workflow keeps concerns isolated and can run independently of the main pipeline.
+- **Architecture:**
+  - Schedule Trigger (30 min) → Set Config → Setup Custom Fields → Fetch Unsynced → IF Has Data → SplitInBatches → Upsert Account → Wait (2s) → Upsert Contacts → Mark Synced → [loop back]
+  - SplitInBatches done output → Log Summary
+  - 13 account custom fields + 5 contact custom fields created idempotently
+  - Account dedup: search by domain before create
+  - Contact dedup: `run_dedupe=true` on Apollo create
+  - Supabase tracking: `apollo_account_id`, `apollo_synced_at` on both tables
+- **Alternatives considered:**
+  1. Trigger from report generator webhook → Tighter coupling, can't re-sync independently
+  2. Bulk API endpoints → No account bulk dedup in Apollo, and harder error recovery
+  3. `this.helpers.httpRequest()` instead of `fetch()` → Spec uses `fetch()` which works in Node 18+; fallback to helpers if task runner sandboxes fetch
+- **Risk:** `fetch()` may be blocked by n8n task runner sandbox. If so, convert Code nodes to use `this.helpers.httpRequest()`.
+- **Status:** Active — workflow built, pending deployment and first test

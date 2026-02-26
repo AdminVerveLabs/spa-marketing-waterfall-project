@@ -14,6 +14,7 @@
 **Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
 **Enrichment Enhancement v1** ✅ Merged to master (ADR-035 — 4 new contact sources, Phases 1-3 enabled)
 **10 Rural Metros Added** ✅ (Session 74 — Price, Sterling, Vernal, Riverton, Scottsbluff, Lewistown, Alice, Elko, Durango, Clovis)
+**Apollo Sync Workflow v1** ✅ Built (Session 75 — ADR-039, 11 nodes, pending deployment)
 
 ## API STATUS: 5 of 6 APIs Enabled
 - **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)
@@ -50,6 +51,17 @@
 - [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 75 — 2026-02-25 (Apollo Sync Workflow v1)
+- **Built Apollo Sync Workflow** — 11-node n8n workflow (`projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`) that syncs enriched Supabase data to Apollo.io.
+- **Workflow architecture:** Schedule Trigger (30 min) → Set Config → Setup Custom Fields → Fetch Unsynced → IF Has Data → SplitInBatches (25) → Upsert Account → Wait (2s) → Upsert Contacts → Mark Synced → Log Summary
+- **6 Code nodes** with full spec implementations: custom field setup (13 account + 5 contact fields), Supabase fetch, Apollo account upsert (domain-based dedup), contact upsert (run_dedupe=true), Supabase mark synced, log summary aggregation.
+- **SQL migration** created: `001_apollo_tracking_columns.sql` adds `apollo_account_id`, `apollo_synced_at` to both companies and contacts tables + index.
+- **Diagnostic utility** created: `utils/get-field-mapping.js` for mapping Apollo custom field labels to keys post-first-run.
+- **README** with testing checklist, import instructions, rate limiting notes, error handling guide.
+- **Validated:** JSON parses clean, all 11 nodes present, all connections verified, SplitInBatches output wiring confirmed (done→Log Summary, loop→Upsert Account).
+- **ADR-039:** Standalone workflow (not triggered from report generator) for independent re-sync capability.
+- **Pending:** SQL migration execution, n8n import + first test, `APOLLO_API_KEY` env var setup. `fetch()` may need conversion to `this.helpers.httpRequest()` if task runner sandboxes it.
 
 ### Session 73 — 2026-02-24 (Repo Cleanup for Client Handoff)
 - **Archived 14 files** to `_archive/`: 4 session handoff docs (pipeline-recovery, austin-rerun, namsor-nashville, dashboard-integration), 3 one-off scripts (deploy-pipeline-recovery.py, backfill-pipeline-runs.sql, sedona-data-quality.sql), 2 workflow backups, 2 screenshots, 1 dashboard prototype (vervelabs-run-manager.jsx), 1 bug doc, 1 report backfill script.

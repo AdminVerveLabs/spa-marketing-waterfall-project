@@ -104,6 +104,20 @@
 
 - [x] **Outreach CSV export** — Created `exports/outreach-ready.sql` for Supabase SQL Editor export. Deleted temp n8n workflow. (2026-02-18, Session 19)
 
+## Apollo Sync Workflow v1 — BUILT (Session 75)
+
+- [x] **Build Apollo Sync workflow JSON** — 11 nodes, all code from spec, validated connections (ADR-039)
+- [x] **Write SQL migration** — `001_apollo_tracking_columns.sql` (apollo_account_id, apollo_synced_at on both tables + index)
+- [x] **Write field mapping utility** — `utils/get-field-mapping.js`
+- [x] **Write README** — Setup guide, testing checklist, architecture docs
+- [ ] **Run SQL migration in Supabase** — Execute `projects/apollo_integration_v1/migrations/001_apollo_tracking_columns.sql`
+- [ ] **Set APOLLO_API_KEY env var in n8n** — Master API key from Apollo Settings > Integrations > API
+- [ ] **Import workflow into n8n** — Import from `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`
+- [ ] **Test with small batch (limit=5)** — Verify custom fields created, accounts/contacts appear in Apollo, Supabase tracking updated
+- [ ] **Verify fetch() works in task runner** — If blocked, convert Code nodes to `this.helpers.httpRequest()`
+- [ ] **Idempotency test** — Re-run and confirm no duplicates
+- [ ] **Activate schedule trigger** — Enable after successful manual tests
+
 ## Repo Maintenance — COMPLETE (Session 73)
 
 - [x] **Repo cleanup for client handoff** — Archived 14 files, rewrote README.md + CLAUDE.md + dashboard/CLAUDE.md. Verified all references. (2026-02-24, Session 73)
