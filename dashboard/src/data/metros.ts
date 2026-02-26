@@ -5,6 +5,9 @@ export const METROS: MetroData = {
     AL: { name: "Alabama", cities: [
       { city: "Birmingham", lat: 33.5207, lng: -86.8025, metro_name: "Birmingham, AL", yelp_location: "Birmingham, AL" },
     ]},
+    AR: { name: "Arkansas", cities: [
+      { city: "Hot Springs", lat: 34.5037, lng: -93.0552, metro_name: "Hot Springs, AR", yelp_location: "Hot Springs, AR" },
+    ]},
     AZ: { name: "Arizona", cities: [
       { city: "Phoenix", lat: 33.4484, lng: -112.074, metro_name: "Phoenix, AZ", yelp_location: "Phoenix, AZ" },
       { city: "Tucson", lat: 32.2226, lng: -110.9747, metro_name: "Tucson, AZ", yelp_location: "Tucson, AZ" },
@@ -23,6 +26,7 @@ export const METROS: MetroData = {
       { city: "Colorado Springs", lat: 38.8339, lng: -104.8214, metro_name: "Colorado Springs, CO", yelp_location: "Colorado Springs, CO" },
       { city: "Durango", lat: 37.2753, lng: -107.8801, metro_name: "Durango, CO", yelp_location: "Durango, CO" },
       { city: "Sterling", lat: 40.6255, lng: -103.2078, metro_name: "Sterling, CO", yelp_location: "Sterling, CO" },
+      { city: "Steamboat Springs", lat: 40.4850, lng: -106.8317, metro_name: "Steamboat Springs, CO", yelp_location: "Steamboat Springs, CO" },
     ]},
     CT: { name: "Connecticut", cities: [
       { city: "Hartford", lat: 41.7658, lng: -72.6734, metro_name: "Hartford, CT", yelp_location: "Hartford, CT" },
@@ -88,6 +92,7 @@ export const METROS: MetroData = {
     ]},
     NM: { name: "New Mexico", cities: [
       { city: "Clovis", lat: 34.4048, lng: -103.2052, metro_name: "Clovis, NM", yelp_location: "Clovis, NM" },
+      { city: "Taos", lat: 36.4072, lng: -105.5731, metro_name: "Taos, NM", yelp_location: "Taos, NM" },
     ]},
     NY: { name: "New York", cities: [
       { city: "New York City", lat: 40.7128, lng: -74.006, metro_name: "New York City, NY", yelp_location: "New York, NY" },
@@ -103,6 +108,7 @@ export const METROS: MetroData = {
     ]},
     OR: { name: "Oregon", cities: [
       { city: "Portland", lat: 45.5152, lng: -122.6784, metro_name: "Portland, OR", yelp_location: "Portland, OR" },
+      { city: "Ashland", lat: 42.1946, lng: -122.7095, metro_name: "Ashland, OR", yelp_location: "Ashland, OR" },
     ]},
     PA: { name: "Pennsylvania", cities: [
       { city: "Philadelphia", lat: 39.9526, lng: -75.1652, metro_name: "Philadelphia, PA", yelp_location: "Philadelphia, PA" },
@@ -137,6 +143,7 @@ export const METROS: MetroData = {
     ]},
     WY: { name: "Wyoming", cities: [
       { city: "Riverton", lat: 42.8616, lng: -108.3801, metro_name: "Riverton, WY", yelp_location: "Riverton, WY" },
+      { city: "Jackson", lat: 43.4799, lng: -110.7624, metro_name: "Jackson, WY", yelp_location: "Jackson, WY" },
     ]},
     DC: { name: "Washington D.C.", cities: [
       { city: "Washington", lat: 38.9072, lng: -77.0369, metro_name: "Washington, DC", yelp_location: "Washington, DC" },

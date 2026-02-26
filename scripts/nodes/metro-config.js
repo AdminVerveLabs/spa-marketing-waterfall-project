@@ -31,6 +31,12 @@ const METROS = {
   'Elko, NV':        { latitude: '40.8324',  longitude: '-115.7631', yelp_location: 'Elko, NV', radius_meters: '40000' },
   'Durango, CO':     { latitude: '37.2753',  longitude: '-107.8801', yelp_location: 'Durango, CO', radius_meters: '40000' },
   'Clovis, NM':      { latitude: '34.4048',  longitude: '-103.2052', yelp_location: 'Clovis, NM', radius_meters: '40000' },
+  // Resort / small-town markets (40km radius)
+  'Hot Springs, AR':        { latitude: '34.5037',  longitude: '-93.0552',  yelp_location: 'Hot Springs, AR', radius_meters: '40000' },
+  'Steamboat Springs, CO':  { latitude: '40.4850',  longitude: '-106.8317', yelp_location: 'Steamboat Springs, CO', radius_meters: '40000' },
+  'Jackson, WY':            { latitude: '43.4799',  longitude: '-110.7624', yelp_location: 'Jackson, WY', radius_meters: '40000' },
+  'Taos, NM':               { latitude: '36.4072',  longitude: '-105.5731', yelp_location: 'Taos, NM', radius_meters: '40000' },
+  'Ashland, OR':             { latitude: '42.1946',  longitude: '-122.7095', yelp_location: 'Ashland, OR', radius_meters: '40000' },
 };
 
 const DEFAULT_QUERIES = 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist';
