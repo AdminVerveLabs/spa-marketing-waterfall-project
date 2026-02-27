@@ -50,6 +50,22 @@
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)
 
+## Apollo Sync v1 — In Progress
+
+- [x] **Build workflow (ADR-039, Session 75)** — 11 nodes, schedule trigger → setup fields → fetch → upsert → mark synced
+- [x] **Convert fetch() to httpRequest (Session 76)** — All 5 Code nodes converted, `_config` passthrough for post-Wait
+- [x] **Fix 422/400 errors (Session 77)** — `field_type`→`type`, `text_field`→`string`, PostgREST query fixed
+- [x] **Fix API params (Session 78)** — typed_custom_fields, domain filter, label_names
+- [x] **Fix IF→Code node (Session 79)** — Replaced unreliable IF Has Data with Filter Has Data Code node
+- [x] **Fix field mapping (Session 80)** — Modality filter, f.key vs f.id
+- [x] **Fix Contact Role collision (Session 81)** — Renamed to "Meridian Role", removed debug code, restored production query (limit=50)
+- [x] **Fix duplicate creation (Session 82)** — Immediate Supabase save (Node 7 + Node 9) + name-based account search fallback (Node 7). BUG-053 FIXED.
+- [x] **Expand enriched field coverage (Session 83)** — 20 new custom fields (12 account + 8 contact), social_profiles JOIN, truthy-only mapping, domain cleaning. All 4 nodes deployed.
+- [ ] **First successful production test run** — Activate workflow, verify: new custom fields created in Apollo, social URLs populated, no duplicates
+- [ ] **Clean up existing Apollo duplicates** — Manual cleanup in Apollo UI (or one-off API script) for dupes created before BUG-053 fix
+- [ ] **Set APOLLO_API_KEY env var in Coolify** — Required before test run
+- [ ] **Activate schedule trigger** — After manual test confirmed working
+
 ## Report Generator v0 — COMPLETE (Session 59) — [Handoff Doc](../projects/report_generator/HANDOFF-report-generator.md)
 
 - [x] ~~Run `scripts/supabase/report-schema.sql`~~ — Done by Zack
@@ -104,7 +120,7 @@
 
 - [x] **Outreach CSV export** — Created `exports/outreach-ready.sql` for Supabase SQL Editor export. Deleted temp n8n workflow. (2026-02-18, Session 19)
 
-## Apollo Sync Workflow v1 — BUILT (Session 75)
+## Apollo Sync Workflow v1 — DEPLOYED (Session 75-76)
 
 - [x] **Build Apollo Sync workflow JSON** — 11 nodes, all code from spec, validated connections (ADR-039)
 - [x] **Write SQL migration** — `001_apollo_tracking_columns.sql` (apollo_account_id, apollo_synced_at on both tables + index)
@@ -112,11 +128,11 @@
 - [x] **Write README** — Setup guide, testing checklist, architecture docs
 - [ ] **Run SQL migration in Supabase** — Execute `projects/apollo_integration_v1/migrations/001_apollo_tracking_columns.sql`
 - [ ] **Set APOLLO_API_KEY env var in n8n** — Master API key from Apollo Settings > Integrations > API
-- [ ] **Import workflow into n8n** — Import from `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`
-- [ ] **Test with small batch (limit=5)** — Verify custom fields created, accounts/contacts appear in Apollo, Supabase tracking updated
-- [ ] **Verify fetch() works in task runner** — If blocked, convert Code nodes to `this.helpers.httpRequest()`
+- [x] **Import workflow into n8n** — Deployed as `g9uplPwBAaaVgm4X` (11 nodes, inactive)
+- [x] **Convert fetch() to this.helpers.httpRequest()** — All 5 Code nodes converted (Session 76). Added `_config` passthrough for post-Wait nodes. Validated 0 errors.
+- [ ] **Test with small batch (limit=5)** — Click "Test workflow" in n8n editor. Verify custom fields created, accounts/contacts appear in Apollo, Supabase tracking updated
 - [ ] **Idempotency test** — Re-run and confirm no duplicates
-- [ ] **Activate schedule trigger** — Enable after successful manual tests
+- [ ] **Scale up** — Restore `limit=500`, set schedule to 30 min, activate
 
 ## Repo Maintenance — COMPLETE (Session 73)
 

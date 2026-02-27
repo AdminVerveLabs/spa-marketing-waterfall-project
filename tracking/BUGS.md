@@ -2,6 +2,53 @@
 
 ## Open
 
+### BUG-054: Apollo field mapping — prefixed IDs sent to typed_custom_fields
+- **Severity:** HIGH (all custom fields silently dropped)
+- **Location:** Apollo Sync v1 → Setup Custom Fields (Node 3)
+- **Symptom:** Custom fields created in Apollo but never populated with data. `field_mapping` values show prefixed IDs (`account.69a07511e8341200114bfe85`) instead of raw hex IDs (`69a07511e8341200114bfe85`).
+- **Root cause:** Apollo's `/fields` API returns BOTH `f.id` and `f.key` with modality prefixes (e.g., `account.69a075...`). The `typed_custom_fields` upsert API requires the bare 24-char hex ID without any prefix. All three previous approaches failed: `f.key || f.id` (text keys), `f.id` alone (still prefixed), `f.key` (prefixed text).
+- **Fix (Session 84):** Added `getRawId(val) => val.split('.').pop()` to strip the prefix. Applied: `fieldMapping.account[f.label] = getRawId(f.id) || getRawId(f.key)`
+- **Status:** FIXED (Session 84) — pending verification on next sync run
+- **Lesson:** Apollo returns prefixed IDs everywhere — ALWAYS use `getRawId()` to strip the prefix before passing to `typed_custom_fields`.
+
+### BUG-053: Apollo duplicate accounts and contacts on re-runs
+- **Severity:** HIGH (duplicates accumulate on every sync run)
+- **Location:** Apollo Sync v1 → Upsert Account (Node 7) + Upsert Contacts (Node 9)
+- **Symptom:** Multiple Apollo accounts for same company, multiple contacts for same person after repeated sync runs
+- **Root causes (3):**
+  1. **Ghost loop:** `apollo_synced_at` only written at end (Mark Synced). If anything fails mid-pipeline, company stays `apollo_synced_at=null` → re-processed next run → duplicate created.
+  2. **Domainless account dedup:** Companies with no domain (or platform domain) go straight to `POST /accounts`. Apollo doesn't deduplicate — creates new account every time.
+  3. **Solo contacts bypass dedup:** `run_dedupe: true` needs email/phone to match. Solo detection contacts have neither → new contact each time.
+- **Fix:**
+  1. Node 7 + Node 9 now immediately PATCH Supabase after each successful Apollo create/update (apollo IDs + synced_at timestamp)
+  2. Node 7 adds name-based search fallback (`q_organization_name`, exact case-insensitive match) before creating new accounts
+  3. Root cause 3 solved by fixes 1+2 combined
+- **Status:** FIXED (Session 82)
+
+### BUG-052: Apollo built-in "Contact role" collides with custom "Contact Role"
+- **Severity:** HIGH (custom field silently rejected — can't set arbitrary text on built-in dropdown)
+- **Location:** Apollo Sync v1 → Setup Custom Fields + Upsert Contacts nodes
+- **Symptom:** Exec #470 debug run: "Contact Role" custom field existed in Apollo but `typed_custom_fields` with its key was silently ignored. Apollo's built-in "Contact role" (lowercase r) is a dropdown with preset values — can't accept arbitrary text.
+- **Root cause:** Apollo has a built-in "Contact role" field (dropdown). Our custom "Contact Role" (capital R) matched the same lowercase label in existence checks, so the create was skipped. The built-in field's key only accepts preset dropdown values, not arbitrary strings.
+- **Fix:** Renamed to "Meridian Role" — creates a new custom text field we fully control.
+- **Status:** FIXED (Session 81)
+
+### BUG-051: Wrong field identifier in Apollo custom fields (f.id vs f.key)
+- **Severity:** HIGH (custom fields silently empty on all accounts/contacts)
+- **Location:** Apollo Sync v1 → Setup Custom Fields node
+- **Symptom:** Custom fields empty in Apollo after exec #466. Accounts/contacts created successfully but all custom field values missing.
+- **Root cause:** Code used `f.id` (e.g., `account.699fa9ce...`) as the key in `typed_custom_fields`. Apollo expects `f.key`. Apollo silently ignores unrecognized keys.
+- **Fix:** Changed to `f.key || f.id` in field mapping loop.
+- **Status:** FIXED (Session 80)
+
+### BUG-050: Apollo custom field modality cross-contamination
+- **Severity:** HIGH (custom fields silently empty on all accounts/contacts)
+- **Location:** Apollo Sync v1 → Setup Custom Fields node
+- **Symptom:** `field_mapping.account['VerveLabs Run Tag']` had `contact.699fa9dc...` prefix — wrong modality.
+- **Root cause:** "VerveLabs Run Tag" exists in both account and contact field sets. Mapping loop checked labels without filtering by `f.modality`, so whichever came last in the `GET /fields` response overwrote the other.
+- **Fix:** Added `f.modality === 'account'` / `f.modality === 'contact'` guards to the mapping loop.
+- **Status:** FIXED (Session 80)
+
 ### BUG-049: Toronto exec #382 — Apify 502 Bad Gateway (transient)
 - **Severity:** LOW (transient — just needs retry)
 - **Location:** Main workflow → Start Apify Run (HTTP Request node)

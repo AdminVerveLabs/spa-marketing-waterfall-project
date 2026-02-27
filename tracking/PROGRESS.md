@@ -14,7 +14,7 @@
 **Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
 **Enrichment Enhancement v1** ✅ Merged to master (ADR-035 — 4 new contact sources, Phases 1-3 enabled)
 **10 Rural Metros Added** ✅ (Session 74 — Price, Sterling, Vernal, Riverton, Scottsbluff, Lewistown, Alice, Elko, Durango, Clovis)
-**Apollo Sync Workflow v1** ✅ Built (Session 75 — ADR-039, 11 nodes, pending deployment)
+**Apollo Sync Workflow v1** ✅ Built (Session 75 — ADR-039, 11 nodes) → ✅ fetch() converted (Session 76 — httpRequest, _config passthrough, deployed to n8n) → ✅ 422/400 fixes deployed (Session 77 — field_type→type, PostgREST query fix) → ✅ API param fixes deployed (Session 78 — typed_custom_fields, domain filter, phone→phone, label_names) → ✅ IF→Code node replacement deployed (Session 79 — IF node unreliable, replaced with Filter Has Data Code node) → ✅ Custom field mapping fixes deployed (Session 80 — modality filter, f.key vs f.id, debug output) → ✅ Contact Role→Meridian Role + debug cleanup + production query restored (Session 81) → ✅ Duplicate creation fix deployed (Session 82 — immediate Supabase save, name-based account search fallback) → ✅ Expanded field coverage deployed (Session 83 — 20 new custom fields, social_profiles JOIN, truthy-only mapping, domain cleaning) → ✅ Field mapping prefix fix deployed (Session 84 — getRawId() strips `account.`/`contact.` prefix from f.id) → ✅ Synthetic Front Desk contacts deployed (Session 85 — 0-contact companies get synthetic contact with company phone for Orum dialer) → ✅ Synthetic contact data passthrough (Session 86 — company email/phone metadata copied to Front Desk contacts for Orum email+call)
 
 ## API STATUS: 5 of 6 APIs Enabled
 - **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)
@@ -51,6 +51,23 @@
 - [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 85 — 2026-02-27 (Apollo Sync: Synthetic Front Desk contacts for Orum dialer)
+- **Injected synthetic contacts for 0-contact companies:** Node 4 (Fetch Unsynced) now creates a "Front Desk" contact using the company's main phone number when no real contacts exist. Orum dialer only dials Contact records, so companies without contacts were invisible to sales reps.
+- **Deployed** Node 4 to n8n via MCP `n8n_update_partial_workflow`. Validated: 0 errors, 11 nodes, 11 connections.
+- Local snapshot `apollo-sync-workflow.json` updated.
+
+### Session 82 — 2026-02-26 (Apollo Sync: Fix duplicate creation — 3 root causes)
+- **Fixed ghost loop:** Node 7 (Upsert Account) and Node 9 (Upsert Contacts) now immediately PATCH Supabase with Apollo IDs + `apollo_synced_at` after each successful create/update. Prevents re-processing on crash/retry.
+- **Added name-based account search fallback:** Node 7 now searches Apollo by company name (exact case-insensitive match) when domain search is skipped or finds nothing. Prevents duplicate account creation for domainless companies.
+- **Deployed** both nodes to n8n via MCP `n8n_update_partial_workflow`. Verified 11 nodes, 10 connections intact.
+- Local snapshot `apollo-sync-workflow.json` updated.
+
+### Session 81 — 2026-02-25 (Apollo Sync: Contact Role fix + debug cleanup)
+- **Renamed "Contact Role" → "Meridian Role"** in Setup Custom Fields and Upsert Contacts — Apollo's built-in "Contact role" (lowercase r) has preset dropdown values and can't accept arbitrary text via `typed_custom_fields`.
+- **Removed debug code** from Setup Custom Fields: `_deprecated_fields` (typed_custom_fields endpoint) and `_contact_role_debug` sections. Kept `_debug_fields` for diagnostics.
+- **Reverted Fetch Unsynced to production query** — removed Alice TX debug filter, restored `apollo_synced_at=is.null` filter, limit 5→50.
+- **Deployed** 3 node updates via MCP `n8n_update_partial_workflow`. Workflow inactive, ready for activation + test.
 
 ### Session 75 — 2026-02-25 (Apollo Sync Workflow v1)
 - **Built Apollo Sync Workflow** — 11-node n8n workflow (`projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`) that syncs enriched Supabase data to Apollo.io.

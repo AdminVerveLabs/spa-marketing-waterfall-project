@@ -1,5 +1,198 @@
 # Changelog
 
+## 2026-02-27 (Session 86 — Apollo Sync: Copy company email/phone data to synthetic contacts)
+
+### Enhancement
+- **Synthetic Front Desk contacts now carry company email and phone metadata:** Previously `email_business`, `email_status`, `phone_status`, and `phone_line_type` were hardcoded to empty strings. Now they copy from the parent company record so Orum reps can both call and email from Front Desk contacts.
+  - `phone_direct`: `company.phone || ''` (added `|| ''` fallback for null safety)
+  - `email_business`: `company.email || ''` (was `''`)
+  - `email_status`: `company.email_status || ''` (was `''`)
+  - `phone_status`: `company.phone_status || ''` (was `''`)
+  - `phone_line_type`: `company.phone_line_type || ''` (was `''`)
+- **Downstream impact:** Node 9 (Upsert Contacts) already uses truthy-only checks — company values flow through if present, otherwise skipped. No changes needed to Node 9.
+
+### Deployment
+- Node 4 (Fetch Unsynced, `c0caca9f`) deployed via MCP `n8n_update_partial_workflow`
+- Workflow `g9uplPwBAaaVgm4X` validates: 0 errors, 11 nodes, 11 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — 5 fields updated in synthetic contact object
+
+## 2026-02-27 (Session 85 — Apollo Sync: Synthetic Front Desk contacts for Orum dialer)
+
+### Features
+- **Synthetic contact injection for 0-contact companies:** Companies with no contacts now get a "Front Desk" synthetic contact injected in Node 4 (Fetch Unsynced). Uses the company's main phone number as `phone_direct` so Orum dialer can reach them.
+  - `first_name: 'Front Desk'`, `last_name: company.name`, `role: 'Gatekeeper'`, `source: 'synthetic_fallback'`
+  - All optional fields set to empty strings → skipped by Node 9's truthy-only custom field pattern
+  - Supabase PATCH for synthetic IDs is a harmless no-op (0 rows matched)
+  - No duplicate risk on re-runs: company gets `apollo_synced_at` set by Node 7, excluded from future fetches
+
+### Deployment
+- Node 4 (Fetch Unsynced, `c0caca9f`) deployed via MCP `n8n_update_partial_workflow`
+- Workflow `g9uplPwBAaaVgm4X` validates: 0 errors, 11 nodes, 11 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Node 4 return block updated
+
+## 2026-02-26 (Session 84 — Apollo Sync: Fix field mapping prefix stripping)
+
+### Bug Fixes
+- **BUG-054 take 2: Apollo returns prefixed IDs — `f.id` = `account.69a075...`, not bare hex:** Previous fix (Session 83b) switched from `f.key` to `f.id`, but Apollo's `/fields` API returns `f.id` with a modality prefix (`account.` or `contact.`). The `typed_custom_fields` API requires the **bare 24-char hex ID** without prefix, so prefixed IDs were silently dropped.
+  - **Fix:** Added `getRawId()` helper that strips prefix via `val.split('.').pop()`. Applied to both account and contact mapping lines: `fieldMapping.account[f.label] = getRawId(f.id) || getRawId(f.key)`
+  - Node 3 (Setup Custom Fields, `c5a77d34`) redeployed via MCP
+  - Local JSON snapshot updated
+
+## 2026-02-26 (Session 83 — Apollo Sync: Expand enriched field coverage)
+
+### Features
+- **20 new Apollo custom fields:** 12 account-level (Discovery Metro, Email/Phone Status, Phone Line Type, Yelp Is Claimed, Source URLs, 6 social URLs) + 8 contact-level (Email Personal, Email/Phone Status, Email/Phone Verified At, Phone Line Type, Phone Carrier, LinkedIn URL)
+- **Social profiles JOIN:** Fetch Unsynced (Node 4) now queries `social_profiles(platform,profile_url)` via PostgREST embed and flattens into company-level `facebook_url`, `instagram_url`, etc.
+- **Truthy-only custom field mapping:** All custom fields (existing + new) now use truthy checks — strings/numbers only pushed if non-empty, booleans use `!= null`. Prevents overwriting manual Apollo edits with empty values.
+- **Domain cleaning:** Upsert Account (Node 7) now strips protocol, `www.`, and trailing paths from domains before sending to Apollo (e.g., `https://www.example.com/about` → `example.com`)
+
+### Deployment
+- Node 3 (Setup Custom Fields, `c5a77d34`) — 12 new ACCOUNT_FIELDS + 8 new CONTACT_FIELDS
+- Node 4 (Fetch Unsynced, `c0caca9f`) — social_profiles JOIN + flatten loop
+- Node 7 (Upsert Account, `770aa43d`) — 12 new account custom fields, truthy-only pattern, domain cleaning
+- Node 9 (Upsert Contacts, `a486cf84`) — 8 new contact custom fields, truthy-only pattern
+- All 4 deployed via MCP `n8n_update_partial_workflow`
+- Workflow `g9uplPwBAaaVgm4X` validates: 0 errors, 11 nodes, 10 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — All 4 nodes updated
+
+## 2026-02-26 (Session 82 — Apollo Sync: Fix duplicate creation — 3 root causes)
+
+### Bug Fixes
+- **Ghost loop fix (root cause 1):** `apollo_synced_at` was only written at the end (Mark Synced, Node 10). If anything failed mid-pipeline, companies stayed `apollo_synced_at=null` and got re-processed — creating duplicates in Apollo.
+  - **Fix:** Node 7 (Upsert Account) and Node 9 (Upsert Contacts) now immediately PATCH Supabase with `apollo_account_id`/`apollo_contact_id` + `apollo_synced_at` after each successful Apollo create/update. Mark Synced (Node 10) kept as idempotent safety net.
+- **Domainless account dedup (root cause 2):** Companies with no domain (or platform domains) went straight to `POST /accounts` with no dedup — Apollo created a new account every time.
+  - **Fix:** Added name-based account search fallback in Node 7. After domain search fails/skips, searches Apollo by `q_organization_name` with `per_page: 5` and exact case-insensitive match before creating.
+- **Solo contact dedup (root cause 3):** Solved by fixes 1+2 combined — once IDs are saved immediately and accounts don't duplicate, solo contacts won't be re-created.
+
+### Deployment
+- Node 7 (Upsert Account, `770aa43d`) deployed via MCP `n8n_update_partial_workflow`
+- Node 9 (Upsert Contacts, `a486cf84`) deployed via MCP `n8n_update_partial_workflow`
+- Node 10 (Mark Synced) — no changes needed (idempotent safety net)
+- Workflow `g9uplPwBAaaVgm4X` verified: 11 nodes, 10 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Node 7 + Node 9 changes synced
+
+## 2026-02-25 (Session 81 — Apollo Sync: Fix Contact Role collision + cleanup debug code)
+
+### Bug Fixes
+- **Contact Role → Meridian Role rename:** Apollo's built-in "Contact role" (lowercase r) is a dropdown with preset values — can't accept arbitrary text via `typed_custom_fields`. Renamed to "Meridian Role" to create a new custom text field we fully control.
+  - Updated `CONTACT_FIELDS` array in Setup Custom Fields node
+  - Updated `cfm['Meridian Role']` mapping in Upsert Contacts node
+
+### Cleanup
+- **Removed debug code from Setup Custom Fields:** Removed `_deprecated_fields` section (fetch from `/typed_custom_fields` endpoint) and `_contact_role_debug` section (case-insensitive search). Kept `_debug_fields` for ongoing diagnostics.
+- **Reverted Fetch Unsynced to production query:** Removed Alice TX debug filter (`discovery_metro=eq.Alice, TX`), restored `apollo_synced_at=is.null` filter, increased limit from 5 → 50.
+
+### Deployment
+- All 3 nodes deployed via MCP `n8n_update_partial_workflow` (3 updateNode operations, all succeeded)
+- Nodes updated: Setup Custom Fields (`c5a77d34`), Upsert Contacts (`a486cf84`), Fetch Unsynced (`c0caca9f`)
+- Workflow remains INACTIVE — ready for activation + test
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — All 3 node changes synced to local snapshot
+
+## 2026-02-25 (Session 80 — Apollo Sync: Fix custom fields not appearing in Apollo)
+
+### Bug Fixes
+- **BUG-050: Custom fields empty in Apollo (modality cross-contamination):** "VerveLabs Run Tag" exists in BOTH account and contact field sets — `GET /fields` returns both, and whichever came last overwrote the other in `fieldMapping`. Account mapping got `contact.699fa9dc...` prefix.
+  - **Fix:** Added `f.modality === 'account'` / `f.modality === 'contact'` filter to field mapping loop
+- **BUG-051: Wrong field identifier (`f.id` vs `f.key`):** Code used `f.id` (internal ID with modality prefix like `account.699fa9ce...`) instead of `f.key` (the key Apollo expects in `typed_custom_fields`). Apollo silently ignored unrecognized keys.
+  - **Fix:** Changed to `f.key || f.id` (fallback to `f.id` if `f.key` is absent)
+- **Scoping fix:** Moved `debugFields` declaration outside `try` block to avoid `ReferenceError` in return statement
+- **Debug output:** Added `_debug_fields` array to Setup Custom Fields output — shows `label`, `id`, `key`, and `modality` for each matched field
+
+### Deployment
+- Deployed via MCP `updateNode` on nodeId `c5a77d34` — succeeded (code was within 3KB limit)
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Setup Custom Fields node jsCode updated
+
+## 2026-02-25 (Session 79 — Apollo Sync: Replace IF Has Data with Code node)
+
+### Bug Fix
+- **IF Has Data routes all items to FALSE:** Both `$json.company` (object) and `$json.company.id` (UUID string) failed — n8n IF node expression evaluation is unreliable for this data shape, and editor overwrites API-deployed conditions
+  - **Replaced IF Has Data node entirely** with a Code node (`Filter Has Data`, `runOnceForAllItems`)
+  - JavaScript filter: `items.filter(i => i.json.company && i.json.company.id)` — unambiguous, no type coercion issues
+  - Returns empty array when no valid items → downstream nodes don't execute (same as IF FALSE branch)
+  - Deployed via MCP: removeNode + addNode + 2x addConnection (4 operations, all succeeded)
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — IF Has Data → Filter Has Data Code node + connection updates
+
+## 2026-02-25 (Session 78 — Apollo Sync: Fix API params, custom fields, domain collisions)
+
+### Bug Fixes
+- **Custom fields empty:** Changed `custom_fields` (label names) → `typed_custom_fields` (field IDs) per Apollo API docs
+  - Setup Custom Fields node now fetches all field IDs after creation and outputs `field_mapping`
+  - Fetch Unsynced passes `field_mapping` downstream to all nodes
+  - Upsert Account + Upsert Contacts build `typed_custom_fields: { '<field_id>': value }` from mapping
+- **Platform domain collision:** Companies with `domain: "facebook.com"` were matching/updating Facebook's Apollo account
+  - Added `SKIP_DOMAINS` set (28 platform/social/booking domains) to Upsert Account
+  - Companies with platform domains skip domain search → always create new account, domain set to undefined
+- **Wrong API parameter names (Upsert Account):**
+  - `phone_number` → `phone`
+  - Removed unsupported: `city`, `state`, `country`, `website_url`
+  - `raw_address` now falls back to `city, state, country` when `address` is null
+- **Wrong API parameter (Upsert Contacts):**
+  - Removed `linkedin_url` (not in Apollo API docs)
+  - Added `label_names: [run_tag]` on CREATE for auto-tagging in Apollo lists
+- **IF Has Data node:** Synced local JSON with editor fix (strict→loose, object→string, exists→isNotEmpty)
+
+### Deployment
+- All 5 nodes deployed via MCP `n8n_update_partial_workflow` (1 operation each, all succeeded)
+- Workflow validates clean: 0 errors, 15 cosmetic warnings
+- Workflow remains ACTIVE — ready for re-test
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — All 5 node changes
+
+## 2026-02-25 (Session 77 — Apollo Sync: Fix 422 + 400 errors from first test)
+
+### Bug Fixes
+- **Setup Custom Fields (422 fix):** Apollo API expects `type` not `field_type`, and `string` not `text_field`
+  - Changed all 18 field definitions: `field_type` → `type`, `text_field` → `string`
+  - Updated POST body: `{ label, type, modality }` instead of `{ label, field_type, modality }`
+- **Fetch Unsynced (400 fix):** PostgREST `.gt.` compares against literal values, not columns
+  - Replaced broken `or=(apollo_synced_at.is.null,enriched_at.gt.apollo_synced_at)` with simple `apollo_synced_at=is.null`
+  - Added try/catch around both Supabase queries for better error messages
+  - Re-enrichment detection deferred to Supabase RPC (v2)
+
+### Deployment
+- Both nodes deployed via single MCP `n8n_update_partial_workflow` call (2 operations)
+- Workflow validates clean: 0 errors, 15 cosmetic warnings
+- Workflow remains INACTIVE — awaiting user test in n8n editor
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Local snapshot updated with both fixes
+
+## 2026-02-25 (Session 76 — Apollo Sync: fetch() → httpRequest conversion)
+
+### Bug Fix
+- **Converted all 5 Code nodes from `fetch()` to `this.helpers.httpRequest()`** — n8n 2.x task runner blocks `fetch()`, causing "fetch is not defined" on first execution
+  - Setup Custom Fields: GET fields listing + POST field creation loops
+  - Fetch Unsynced: 2 GET calls to Supabase (companies + contacts), limit=5 for testing
+  - Upsert Account: POST search + POST create + PATCH update to Apollo
+  - Upsert Contacts: POST create + PATCH update to Apollo
+  - Mark Synced: PATCH company + PATCH contacts to Supabase
+- **Added `_config` passthrough for post-Wait nodes** — Upsert Account now passes `apollo_api_key`, `supabase_url`, `supabase_service_key` via `_config` object in output. Upsert Contacts and Mark Synced read from `$input.item.json._config` instead of `$('Set Config').item.json` (which breaks after Wait node)
+- **Restructured error handling** — Nested try/catch per API call (search failure doesn't block create; create failure doesn't block rate limit delay)
+- **Rate limit delay moved after try/catch** — `setTimeout(700)` now fires on both success and error paths
+
+### Deployment
+- All 5 nodes deployed via MCP `n8n_update_partial_workflow` (2 calls: Phase 1 = nodes 1+2, Phase 2 = nodes 3+4+5)
+- Workflow validates clean: 0 errors, 15 cosmetic warnings
+- Workflow remains INACTIVE — awaiting user test in n8n editor
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Updated local snapshot with converted code
+
 ## 2026-02-25 (Session 75 — Apollo Sync Workflow v1)
 
 ### New Workflow
