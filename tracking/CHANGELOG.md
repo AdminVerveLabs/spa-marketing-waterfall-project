@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-02-27 (Session 87 — Apollo Sync: Add "Company Email" Account custom field)
+
+### Enhancement
+- **New Apollo Account custom field "Company Email":** Surfaces `company.email` directly on Account records in Apollo UI, so reps can see the company email without navigating to a contact.
+  - Node 3 (Setup Custom Fields): Added `{ label: 'Company Email', type: 'string' }` to `ACCOUNT_FIELDS` array
+  - Node 7 (Upsert Account): Added truthy-only mapping `if (fm['Company Email'] && company.email) typedCustomFields[fm['Company Email']] = company.email;`
+
+### Deployment
+- Node 3 (`c5a77d34`) deployed via MCP `n8n_update_partial_workflow`
+- Node 7 (`770aa43d`) deployed via MCP `n8n_update_partial_workflow`
+- Workflow `g9uplPwBAaaVgm4X` validates: 0 errors, 11 nodes, 11 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — 2 lines added (1 in ACCOUNT_FIELDS, 1 in typedCustomFields builder)
+
 ## 2026-02-27 (Session 86 — Apollo Sync: Copy company email/phone data to synthetic contacts)
 
 ### Enhancement
