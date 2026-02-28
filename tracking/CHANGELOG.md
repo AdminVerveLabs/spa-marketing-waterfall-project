@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-02-27 (Session 90 — Project Handoff Documentation)
+
+### Documentation
+- **Created `docs/PROJECT-HANDOFF.md`** — comprehensive project handoff document covering architecture, build narrative, challenges/solutions, infrastructure, schema, known issues, and file map
+- **Created `docs/CLAUDE-CODE-BOOTSTRAP-PROMPT.md`** — self-contained Claude Code bootstrap prompt encoding all n8n pipeline patterns and pitfalls from 89 sessions of development
+
+### Files Created
+- `docs/PROJECT-HANDOFF.md` — ~450 lines, human-readable handoff
+- `docs/CLAUDE-CODE-BOOTSTRAP-PROMPT.md` — ~400 lines, CLAUDE.md-format bootstrap prompt
+
+## 2026-02-27 (Session 89 — Apollo Sync: Fix MCP mode-stripping — restore runOnceForEachItem)
+
+### Bug Fix (BUG-055 — corrected root cause)
+- **Root cause:** MCP `n8n_update_partial_workflow` with `updateNode` replaces the entire `parameters` object with just `{ jsCode: "..." }`, stripping the `mode` field. Code node typeVersion 2 defaults to `runOnceForAllItems` when no `mode` is set. Upsert Account requires `runOnceForEachItem` — without it, only 1 item per batch was processed. Sessions 87-88 MCP deployments caused the regression.
+- **Previous diagnosis was wrong:** Session 88 attributed the bug to "n8n Context Trap" (pairedItem chain breaking after Split In Batches). The `_config` backpack fix was a valid safety improvement but the actual problem was the missing `mode` parameter.
+- **Fix:** Restored `mode` on all 5 affected Code nodes via MCP partial update, always including both `jsCode` AND `mode` in the same update:
+  - `770aa43d` (Upsert Account) → `runOnceForEachItem` **(CRITICAL)**
+  - `c5a77d34` (Setup Custom Fields) → `runOnceForAllItems` (safety)
+  - `c0caca9f` (Fetch Unsynced) → `runOnceForAllItems` (safety)
+  - `8b97f8ab` (Filter Has Data) → `runOnceForAllItems` (safety)
+  - `4ebb81b7` (Log Summary) → `runOnceForAllItems` (safety)
+
+### Verification
+- All 7 Code nodes confirmed with explicit `mode` in deployed workflow
+- Workflow validates: 0 errors, 11 nodes, 11 connections intact
+- Upsert Contacts + Mark Synced (never touched by MCP) had `mode` intact — confirms MCP is the culprit
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — full snapshot from deployed workflow
+- `tracking/BUGS.md` — BUG-055 root cause corrected
+- `tracking/CHANGELOG.md` — this entry
+- `tracking/PROGRESS.md` — Session 89 logged
+
+## 2026-02-27 (Session 88 — Apollo Sync: Fix n8n Context Trap — only 1 item per batch processed)
+
+### Bug Fix (BUG-055)
+- **Root cause:** Upsert Account used `$('Set Config').item.json` in `runOnceForEachItem` mode. After Split In Batches, the `pairedItem` chain breaks for all items except index 0 in each batch. This caused 48 of 50 companies to be silently skipped per run.
+- **Fix:** Fetch Unsynced (Node 4) now embeds `_config` (API keys) on each item. Upsert Account (Node 7) reads from `$input.item.json._config` instead of `$('Set Config').item.json`.
+
+### Deployment
+- Node 4 (`c0caca9f`) deployed via MCP — added `APOLLO_API_KEY` read + `_config` in return items
+- Node 7 (`770aa43d`) deployed via MCP — replaced 3x `$('Set Config').item.json` with `$input.item.json._config`
+- Workflow validates: 0 errors, 11 nodes, 11 connections intact
+
+### Files Updated
+- `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json` — Node 4 + Node 7 updated
+- `tracking/BUGS.md` — BUG-055 logged
+
 ## 2026-02-27 (Session 87 — Apollo Sync: Add "Company Email" Account custom field)
 
 ### Enhancement
