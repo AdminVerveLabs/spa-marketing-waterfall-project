@@ -1,0 +1,87 @@
+{
+  "name": "Queue Seed Loader",
+  "nodes": [
+    {
+      "id": "s1-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {}
+    },
+    {
+      "id": "s2-set-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sb-url",
+              "name": "supabase_url",
+              "value": "={{ $env.SUPABASE_URL }}",
+              "type": "string"
+            },
+            {
+              "id": "sb-key",
+              "name": "supabase_key",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "s3-generate-metros",
+      "name": "Generate Metro List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Rural test metros from Q5/Q11 audit\n// Edit this list to add/remove metros before running\nconst metros = [\n  { metro_name: 'Price, UT', state: 'UT', latitude: 39.5994, longitude: -110.8107, radius_meters: 15000, population: 8715, priority: 0 },\n  { metro_name: 'Sterling, CO', state: 'CO', latitude: 40.6255, longitude: -103.2077, radius_meters: 15000, population: 14777, priority: 0 },\n  { metro_name: 'Great Falls, MT', state: 'MT', latitude: 47.5002, longitude: -111.3008, radius_meters: 20000, population: 60442, priority: 1 },\n  { metro_name: 'Helena, MT', state: 'MT', latitude: 46.5958, longitude: -112.0270, radius_meters: 20000, population: 32315, priority: 1 },\n  { metro_name: 'Laramie, WY', state: 'WY', latitude: 41.3114, longitude: -105.5911, radius_meters: 15000, population: 32158, priority: 0 },\n  { metro_name: 'Gillette, WY', state: 'WY', latitude: 44.2911, longitude: -105.5022, radius_meters: 15000, population: 33403, priority: 0 },\n  { metro_name: 'Pocatello, ID', state: 'ID', latitude: 42.8713, longitude: -112.4455, radius_meters: 20000, population: 56264, priority: 1 },\n  { metro_name: 'Twin Falls, ID', state: 'ID', latitude: 42.5558, longitude: -114.4701, radius_meters: 20000, population: 51807, priority: 1 },\n  { metro_name: 'Elko, NV', state: 'NV', latitude: 40.8324, longitude: -115.7631, radius_meters: 15000, population: 20279, priority: 0 },\n  { metro_name: 'Cedar City, UT', state: 'UT', latitude: 37.6775, longitude: -113.0619, radius_meters: 15000, population: 35464, priority: 0 }\n];\n\nconst config = $input.first().json;\nreturn metros.map(m => ({\n  json: { ...m, country: 'US', supabase_url: config.supabase_url, supabase_key: config.supabase_key }\n}));"
+      }
+    },
+    {
+      "id": "s4-upsert-to-queue",
+      "name": "Upsert to Queue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Upsert each metro into pipeline_queue\nconst item = $input.item.json;\nconst url = item.supabase_url;\nconst key = item.supabase_key;\n\nconst row = {\n  metro_name: item.metro_name,\n  state: item.state,\n  country: item.country,\n  latitude: item.latitude,\n  longitude: item.longitude,\n  radius_meters: item.radius_meters,\n  population: item.population,\n  priority: item.priority\n};\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'POST',\n    url: url + '/rest/v1/pipeline_queue',\n    headers: {\n      apikey: key,\n      Authorization: 'Bearer ' + key,\n      'Content-Type': 'application/json',\n      Prefer: 'resolution=merge-duplicates,return=representation'\n    },\n    body: row,\n    json: true\n  });\n  return { json: { metro_name: item.metro_name, status: 'upserted', id: result?.[0]?.id } };\n} catch (err) {\n  return { json: { metro_name: item.metro_name, status: 'error', message: err.message } };\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          { "node": "Set Config", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          { "node": "Generate Metro List", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Generate Metro List": {
+      "main": [
+        [
+          { "node": "Upsert to Queue", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

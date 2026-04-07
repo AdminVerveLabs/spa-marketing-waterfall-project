@@ -26,7 +26,7 @@ const SKIP_APOLLO = false;
 const SKIP_WEBSITE_SCRAPE = false;
 const APOLLO_ENRICH_ENABLED = true;
 const SKIP_HUNTER_DOMAIN_SEARCH = false;  // Phase 1 enabled
-const SKIP_GOOGLE_REVIEWS = false;        // Phase 2 enabled
+const SKIP_GOOGLE_REVIEWS = true;         // Phase 2 DISABLED — 0% yield, duplicates solo_detection (ADR-043)
 const SKIP_YELP_OWNER = false;            // Phase 3 enabled
 const SKIP_FACEBOOK = true;               // Phase 4 — not yet enabled
 

@@ -1,0 +1,144 @@
+[
+  {
+    "phase": "custom_fields_setup",
+    "created": [
+      "Meridian Role"
+    ],
+    "skipped": [
+      "Lead Score",
+      "Has Website",
+      "Has Online Booking",
+      "Booking Platform",
+      "Has Paid Ads",
+      "On Groupon",
+      "On Yelp",
+      "Google Review Count",
+      "Google Rating",
+      "Estimated Size",
+      "Enrichment Status",
+      "Category",
+      "VerveLabs Run Tag",
+      "Cultural Affinity",
+      "Is Owner",
+      "Contact Source",
+      "VerveLabs Run Tag"
+    ],
+    "errors": [],
+    "field_mapping": {
+      "account": {
+        "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+        "Category": "account.699fa9d8093eb500117fb427",
+        "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+        "Estimated Size": "account.699fa9d6f81fe200117f540f",
+        "Google Rating": "account.699fa9d538c2910011bfdb6d",
+        "Google Review Count": "account.699fa9d4d597f90019cd132a",
+        "Has Online Booking": "account.699fa9cff81fe200117f5274",
+        "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+        "Has Website": "account.699fa9ce38c2910011bfda62",
+        "Lead Score": "account.699fa9ce093eb500117fb362",
+        "On Groupon": "account.699fa9d238c2910011bfdb11",
+        "On Yelp": "account.699fa9d39501ed001da93396",
+        "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+      },
+      "contact": {
+        "Contact Source": "contact.699fa9db55aa650021a408db",
+        "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+        "Is Owner": "contact.699fa9da9501ed001945f7fd",
+        "Meridian Role": "contact.699fccf2120fc7000da2e651",
+        "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+      }
+    },
+    "_debug_fields": [
+      {
+        "label": "Contact Source",
+        "id": "contact.699fa9db55aa650021a408db",
+        "modality": "contact"
+      },
+      {
+        "label": "Cultural Affinity",
+        "id": "contact.699fa9d99501ed001945f7e4",
+        "modality": "contact"
+      },
+      {
+        "label": "Is Owner",
+        "id": "contact.699fa9da9501ed001945f7fd",
+        "modality": "contact"
+      },
+      {
+        "label": "Meridian Role",
+        "id": "contact.699fccf2120fc7000da2e651",
+        "modality": "contact"
+      },
+      {
+        "label": "VerveLabs Run Tag",
+        "id": "contact.699fa9dcb6817f001c93b7a6",
+        "modality": "contact"
+      },
+      {
+        "label": "Booking Platform",
+        "id": "account.699fa9d0b6817f001c93b77e",
+        "modality": "account"
+      },
+      {
+        "label": "Category",
+        "id": "account.699fa9d8093eb500117fb427",
+        "modality": "account"
+      },
+      {
+        "label": "Enrichment Status",
+        "id": "account.699fa9d78e56430021cbac8d",
+        "modality": "account"
+      },
+      {
+        "label": "Estimated Size",
+        "id": "account.699fa9d6f81fe200117f540f",
+        "modality": "account"
+      },
+      {
+        "label": "Google Rating",
+        "id": "account.699fa9d538c2910011bfdb6d",
+        "modality": "account"
+      },
+      {
+        "label": "Google Review Count",
+        "id": "account.699fa9d4d597f90019cd132a",
+        "modality": "account"
+      },
+      {
+        "label": "Has Online Booking",
+        "id": "account.699fa9cff81fe200117f5274",
+        "modality": "account"
+      },
+      {
+        "label": "Has Paid Ads",
+        "id": "account.699fa9d138c2910011bfdb0f",
+        "modality": "account"
+      },
+      {
+        "label": "Has Website",
+        "id": "account.699fa9ce38c2910011bfda62",
+        "modality": "account"
+      },
+      {
+        "label": "Lead Score",
+        "id": "account.699fa9ce093eb500117fb362",
+        "modality": "account"
+      },
+      {
+        "label": "On Groupon",
+        "id": "account.699fa9d238c2910011bfdb11",
+        "modality": "account"
+      },
+      {
+        "label": "On Yelp",
+        "id": "account.699fa9d39501ed001da93396",
+        "modality": "account"
+      },
+      {
+        "label": "VerveLabs Run Tag",
+        "id": "account.699fa9d99501ed001da93435",
+        "modality": "account"
+      }
+    ]
+  }
+]

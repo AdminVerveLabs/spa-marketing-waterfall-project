@@ -2,6 +2,46 @@
 
 ## Open
 
+### BUG-058: Google Places radius > 50000 causes pipeline failure
+- **Severity:** MEDIUM (caused 3 main workflow failures on 3/26)
+- **Location:** Main workflow → Metro Config → Google Places - Text Search
+- **Symptom:** Google Places API returns 400 "Invalid circle.radius. Radius must be in the range of [0, 50000] inclusively." Pipeline fails at discovery step.
+- **Root cause:** Some pipeline_queue entries had `radius_meters = 80000` (e.g., Williston ND, Dickinson ND). Metro Config passed the value through without validation.
+- **Fix (Session 102):** Added `Math.min(Number(radiusMeters) || 15000, 50000)` clamp in Metro Config node (POST body path). Deployed to n8n via MCP. Queue data already cleaned (no entries > 50000 remain).
+- **Status:** FIXED — deployed to n8n. Williston and Dickinson successfully retried after queue data was capped at 49999.
+
+### BUG-057: Queue Wrapper failure loop — Schedule Trigger fires despite being disabled
+- **Severity:** CRITICAL (burned through ~30-35 queue metros in 2+ days)
+- **Location:** Queue Wrapper v1 (`7Ix8ajJ5Rp9NyYk8`) → Schedule Trigger
+- **Symptom:** Queue Wrapper executing every 30 min despite Schedule Trigger node being `disabled: true`. Each execution triggers main pipeline, which fails on Apify 403 "Monthly usage hard limit exceeded". Error handler retries 3x per metro then permanently marks as `failed`. 468 failed pipeline_runs from 2026-03-13 21:30 to 2026-03-26 15:00 UTC. 150 unique metros permanently failed, 4 stuck as `running`.
+- **Root cause (2 issues):**
+  1. **n8n bug:** Disabling a Schedule Trigger node does NOT unregister its cron job. The trigger was registered when the workflow was activated. Toggling the node off in the UI only sets `disabled: true` in the saved version but doesn't remove the registration. The entire workflow must be **deactivated** to stop the trigger.
+  2. **No circuit breaker:** Queue wrapper had no mechanism to detect systemic failures (Apify quota) vs. per-metro failures. Kept cycling through all pending metros.
+- **Fix (Session 101):**
+  1. Deactivated entire workflow via MCP (`enableNode` Schedule Trigger + `deactivateWorkflow`, then `disableNode` Schedule Trigger again)
+  2. Added circuit breaker to Fetch Next Pending: checks for 3+ consecutive failures in last 3 hours with no successes. Returns `hasMetro: false` to stop claiming new metros.
+- **Status:** FIXED (deactivation + circuit breaker deployed). Damage: 150 failed metros + 4 stuck running + 468 failed pipeline_runs. Requeue SQL ready (`08-requeue-bug057-metros.sql`). Waiting for Apify quota reset (April 14).
+- **Lesson:** In n8n, disabling a trigger node does not stop it from firing. Always deactivate the workflow itself. Add circuit breakers to automated systems.
+
+### BUG-056: Queue Wrapper "Mark Complete" fails with "Unknown error" — data flow break at Run Cleanup
+- **Severity:** HIGH (queue items stuck at 'running', never marked complete)
+- **Location:** Queue Wrapper v1 (`7Ix8ajJ5Rp9NyYk8`) → Run Cleanup → Mark Complete
+- **Symptom:** Exec #534 — all nodes succeed except Mark Complete. "Unknown error" in task runner. Oro Valley queue item stuck at `status: 'running'`.
+- **Root cause:** Run Cleanup was an HTTP Request node (`n8n-nodes-base.httpRequest`). HTTP Request nodes **replace** item data with the API response body. The Supabase RPC `run_post_discovery_cleanup()` returns `{geo: 0, chain: 0, metro: "Oro Valley town", country: 0, category: 0, total_deleted: 0}`. Mark Complete needs `{supabase_url, supabase_key, queue_id, metro_name}` from upstream. When Mark Complete tried `url + '/rest/v1/companies'` with `url = undefined`, the task runner threw "Unknown error".
+- **Fix (Session 95):** Replaced Run Cleanup from `httpRequest` to `code` node (v2, `runOnceForEachItem`). Code node makes same Supabase RPC via `this.helpers.httpRequest()` and passes through original item data: `return { json: item }`. Cleanup errors are non-fatal (try/catch with log).
+- **Status:** FIXED — deployed via MCP. Oro Valley queue item reset to `pending`. Awaiting test execution.
+- **Lesson:** HTTP Request nodes in n8n replace item data with the response. When downstream nodes need upstream data, use Code nodes that make the HTTP call AND pass through item data.
+
+### BUG-055: Apollo Sync processes only 1 item per Split In Batches batch (MCP mode-stripping)
+- **Severity:** CRITICAL (48 of 50 companies silently skipped per run)
+- **Location:** Apollo Sync v1 → Upsert Account (Node 7)
+- **Symptom:** Fetch Unsynced returns 50 companies, Split In Batches sends 2 batches of 25, but Upsert Account only outputs 2 items total (1 per batch). Log Summary shows `total_items: 2`. Execution time ~2.2s matches exactly 2 items.
+- **Root cause (corrected Session 89):** MCP `n8n_update_partial_workflow` with `updateNode` **replaces the entire `parameters` object** with just `{ jsCode: "..." }`, stripping any other fields like `mode`. Code node typeVersion 2 defaults to `runOnceForAllItems` when no `mode` is set. Upsert Account requires `runOnceForEachItem` — without it, the node runs once for all 25 items but `$input.item.json` only returns the first item. Result: 1 item per batch = 2 items total. The `$('Set Config').item.json` cross-node reference was NOT the problem — it worked correctly in exec 510 (pre-regression). Sessions 87-88 MCP deployments stripped `mode` from 5 of 7 Code nodes.
+- **Previous incorrect diagnosis (Session 88):** Attributed to "n8n Context Trap" (`pairedItem` chain breaking). The `_config` backpack fix was a valid safety improvement but addressed a non-issue — the real problem was the missing `mode` field.
+- **Fix (Session 89):** Restored `mode` on all 5 affected Code nodes via MCP `n8n_update_partial_workflow`, always including both `jsCode` AND `mode` in the update to prevent re-stripping. Critical: `770aa43d` (Upsert Account) → `runOnceForEachItem`. Safety: 4 other nodes → explicit `runOnceForAllItems`.
+- **Status:** FIXED — deployed, all 7 Code nodes verified with explicit `mode`
+- **Lesson:** `n8n_update_partial_workflow updateNode` replaces the entire `parameters` object. ALWAYS include `mode` alongside `jsCode` when updating Code nodes. Never assume defaults are safe.
+
 ### BUG-054: Apollo field mapping — prefixed IDs sent to typed_custom_fields
 - **Severity:** HIGH (all custom fields silently dropped)
 - **Location:** Apollo Sync v1 → Setup Custom Fields (Node 3)

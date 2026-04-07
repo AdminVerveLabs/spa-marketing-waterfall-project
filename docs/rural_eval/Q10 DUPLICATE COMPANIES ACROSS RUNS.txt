@@ -1,0 +1,62 @@
+Q10: DUPLICATE COMPANIES ACROSS RUNS
+-- Same business found by multiple metro runs
+-- (phone-based dedup means these share a phone number)
+
+[
+  {
+    "name": "Massage Therapy",
+    "phone": "+13082504937",
+    "domain": null,
+    "location": "Sidney, NE",
+    "discovery_metro": "Scottsbluff, NE"
+  },
+  {
+    "name": "Massage Therapy",
+    "phone": "+13082504937",
+    "domain": null,
+    "location": "Sidney, NE",
+    "discovery_metro": "Sterling, CO"
+  },
+  {
+    "name": "Studio 23",
+    "phone": "+14357895158",
+    "domain": null,
+    "location": "Vernal, UT",
+    "discovery_metro": "Price, UT"
+  },
+  {
+    "name": "Studio 23",
+    "phone": "+14357895158",
+    "domain": "facebook.com",
+    "location": "Vernal, UT",
+    "discovery_metro": "Vernal, UT"
+  },
+  {
+    "name": "Alicia Marie Lincoln",
+    "phone": "+17142675228",
+    "domain": null,
+    "location": "Fort Collins, CO",
+    "discovery_metro": "Scottsbluff, NE"
+  },
+  {
+    "name": "Alicia Marie Lincoln",
+    "phone": "+17142675228",
+    "domain": null,
+    "location": "Fort Collins, CO",
+    "discovery_metro": "Sterling, CO"
+  },
+  {
+    "name": "Amanda Adams, LMT",
+    "phone": "+18014000061",
+    "domain": null,
+    "location": "Roosevelt, UT",
+    "discovery_metro": "Price, UT"
+  },
+  {
+    "name": "Amanda Adams LMT",
+    "phone": "+18014000061",
+    "domain": "m.facebook.com",
+    "location": "Roosevelt, UT",
+    "discovery_metro": "Vernal, UT"
+  }
+]

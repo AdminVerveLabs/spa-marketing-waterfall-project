@@ -14,14 +14,17 @@
 **Dashboard-Pipeline Integration** ✅ Deployed (ADR-032 — main 23 nodes + sub 7 nodes + error handler 2 nodes)
 **Enrichment Enhancement v1** ✅ Merged to master (ADR-035 — 4 new contact sources, Phases 1-3 enabled)
 **10 Rural Metros Added** ✅ (Session 74 — Price, Sterling, Vernal, Riverton, Scottsbluff, Lewistown, Alice, Elko, Durango, Clovis)
-**Apollo Sync Workflow v1** ✅ Built (Session 75 — ADR-039, 11 nodes) → ✅ fetch() converted (Session 76 — httpRequest, _config passthrough, deployed to n8n) → ✅ 422/400 fixes deployed (Session 77 — field_type→type, PostgREST query fix) → ✅ API param fixes deployed (Session 78 — typed_custom_fields, domain filter, phone→phone, label_names) → ✅ IF→Code node replacement deployed (Session 79 — IF node unreliable, replaced with Filter Has Data Code node) → ✅ Custom field mapping fixes deployed (Session 80 — modality filter, f.key vs f.id, debug output) → ✅ Contact Role→Meridian Role + debug cleanup + production query restored (Session 81) → ✅ Duplicate creation fix deployed (Session 82 — immediate Supabase save, name-based account search fallback) → ✅ Expanded field coverage deployed (Session 83 — 20 new custom fields, social_profiles JOIN, truthy-only mapping, domain cleaning) → ✅ Field mapping prefix fix deployed (Session 84 — getRawId() strips `account.`/`contact.` prefix from f.id) → ✅ Synthetic Front Desk contacts deployed (Session 85 — 0-contact companies get synthetic contact with company phone for Orum dialer) → ✅ Synthetic contact data passthrough (Session 86 — company email/phone metadata copied to Front Desk contacts for Orum email+call) → ✅ Company Email account field (Session 87 — new Account custom field surfaces company.email on Apollo Account pages) → ✅ _config passthrough safety improvement (Session 88) → ✅ **MCP mode-stripping fix (Session 89, BUG-055)** — MCP `updateNode` stripped `mode` from 5 Code nodes. Upsert Account defaulted to `runOnceForAllItems` instead of `runOnceForEachItem`, processing only 1 item/batch. Fixed: restored `mode` on all 5 affected nodes.
+**Queuing System v1** ✅ Built (Session 91) → ✅ Wired up (Session 93) → ✅ Failure resilience (Session 99, ADR-040) → ⚠️ Deactivated (Session 101, BUG-057) → ✅ **Reactivated (Session 101b)** — Queue Wrapper active, 18 metros/day, circuit breaker + cooldown requeue working. 814 complete, 3,183 pending.
+**Lead Scoring v2** ✅ Recalibrated (Session 102, ADR-046) — 3-tier model: business opportunity + market quality + contact quality. Max 40→65, avg 10→18.9, 48 Warm leads (was 0). Added metro_population, contact_count, has_verified_email_contact denormalized columns.
+**Metro Seed List v1** ✅ Generated (Session 92 — 3,987 cities, 8 SQL batch files, schema migration, all 8 verification checks passed)
+**Apollo Sync Workflow v1** ✅ Built (Session 75 — ADR-039, 11 nodes) → ✅ fetch() converted (Session 76 — httpRequest, _config passthrough, deployed to n8n) → ✅ 422/400 fixes deployed (Session 77 — field_type→type, PostgREST query fix) → ✅ API param fixes deployed (Session 78 — typed_custom_fields, domain filter, phone→phone, label_names) → ✅ IF→Code node replacement deployed (Session 79 — IF node unreliable, replaced with Filter Has Data Code node) → ✅ Custom field mapping fixes deployed (Session 80 — modality filter, f.key vs f.id, debug output) → ✅ Contact Role→Meridian Role + debug cleanup + production query restored (Session 81) → ✅ Duplicate creation fix deployed (Session 82 — immediate Supabase save, name-based account search fallback) → ✅ Expanded field coverage deployed (Session 83 — 20 new custom fields, social_profiles JOIN, truthy-only mapping, domain cleaning) → ✅ Field mapping prefix fix deployed (Session 84 — getRawId() strips `account.`/`contact.` prefix from f.id) → ✅ Synthetic Front Desk contacts deployed (Session 85 — 0-contact companies get synthetic contact with company phone for Orum dialer) → ✅ Synthetic contact data passthrough (Session 86 — company email/phone metadata copied to Front Desk contacts for Orum email+call) → ✅ Company Email account field (Session 87 — new Account custom field surfaces company.email on Apollo Account pages) → ✅ _config passthrough safety improvement (Session 88) → ✅ **MCP mode-stripping fix (Session 89, BUG-055)** — MCP `updateNode` stripped `mode` from 5 Code nodes. Upsert Account defaulted to `runOnceForAllItems` instead of `runOnceForEachItem`, processing only 1 item/batch. Fixed: restored `mode` on all 5 affected nodes. → ✅ **Prospect List Assignment node added (Session 96)** — New "Assign to Prospect List" Code node (Phase 4.5) between Upsert Contacts and Mark Synced. 1000-contact cap with auto-rotation. Workflow now 12 nodes. → ✅ **VerveLabs Run Tag uses prospect list name (Session 98)** — Fetch Unsynced reads `active_prospect_list` from `pipeline_config`, passes to Upsert Account/Contacts. Custom field now shows list name (e.g., `VerveLabs-Prospects-002`) instead of timestamp-based run_tag.
 
-## API STATUS: 5 of 6 APIs Enabled
-- **Apollo:** ✅ Enabled and verified (exec 109: 36 searched, 8 contacts created)
-- **NamSor:** ✅ Enabled and verified
-- **Hunter Verifier:** ✅ Enabled and verified
-- **Hunter Finder:** ✅ Enabled and verified (1 email found in exec 106)
-- **Telnyx Phone Verification:** ✅ Enabled and verified — contact phones (exec 129: 9/9 valid) AND company phones (exec 131: 8 verified)
+## API STATUS (updated Session 102, 2026-03-27)
+- **Apollo:** ✅ Working — dominant contact source (64% of contacts)
+- **NamSor:** ✅ Working — 100% cultural affinity coverage on all recent metros
+- **Hunter Verifier:** ✅ Working — 43% of emails verified
+- **Hunter Domain Search:** ⚠️ Working but 0 yield on small metros — data coverage issue, not a bug. Effective for large cities (88% in Toronto) but Hunter DB doesn't index small-town businesses.
+- **Telnyx Phone Verification:** ❌ **403 error** — API key needs renewal. 80% of phones unverified (4,321/5,421). All recent metros get 0 verified phones.
 - **Snov.io:** ⏸ Blocked — no API key/account
 
 ### Current Config (Simplified Pipeline — config embedded in Code nodes)
@@ -51,6 +54,99 @@
 - [x] **Backfill reports for previous pipeline runs** — Generated reports for 6 completed metros (Austin, Nashville, San Diego, Scottsdale, Sedona, Boise). All 6 xlsx files uploaded to Supabase Storage. Backfill workflow deleted.
 
 ## Session Log
+
+### Session 101 — 2026-03-26 (Emergency Queue Wrapper Deactivation + Circuit Breaker)
+- **Discovered Queue Wrapper failure loop (BUG-057):** Schedule Trigger firing every 30 min despite being `disabled: true` (n8n bug: disabling a trigger node doesn't unregister the cron). Apify monthly limit exceeded → every pipeline run fails at Yelp discovery. Running since ~2026-03-24 13:30 UTC — 100+ consecutive failures, ~30-35 metros permanently marked `failed`.
+- **Deactivated Queue Wrapper via MCP** — workaround: enableNode Schedule Trigger → deactivateWorkflow → disableNode Schedule Trigger. Direct deactivation fails when sole trigger is disabled (n8n validation error).
+- **Deployed circuit breaker (ADR-041)** to Fetch Next Pending node: checks `pipeline_runs` for 3+ queue_wrapper failures in last 3 hours with no successes → returns `hasMetro: false` to halt queue. Prevents future systemic failures from burning through queue.
+- **New file:** `scripts/nodes/fetch-next-pending.js` — extracted source with circuit breaker
+- **Updated local** `queue-wrapper-workflow.json` with circuit breaker code
+- **Damage assessment:** 797 metros completed successfully, 150 failed (all retry_count=3), 468 failed pipeline_runs, 4 stuck as 'running'. Queue Wrapper ran successfully for ~797 metros before Apify monthly limit hit.
+- **Requeue SQL ready:** `08-requeue-bug057-metros.sql` — resets 150 failed + 4 stuck metros. Run after Apify quota resets (April 14).
+- **Cooldown requeue deployed (ADR-042):** Queue Error Handler now does 3-tier retry: fast retry (3x) → cooldown requeue (24h delay, up to 3 cycles) → permanent fail (after 12 total attempts). Fetch Next Pending skips cooldown metros. Both deployed to n8n via MCP.
+- **SQL migration ready:** `09-add-retry-after.sql` adds `retry_after` + `cooldown_count` columns. Must run in Supabase before reactivating queue.
+- **Yelp searchLimit reduced (ADR-043):** 100→20 in "Start Apify Run" node. ~80% cost reduction ($70→$14/day). Deployed via MCP.
+- **Queue Wrapper reactivated** with Schedule Trigger enabled. Circuit breaker should keep it idle until Apify renews April 14.
+- **Lead Quality Investigation complete:** 30,193 companies audited. 3,043 (10%) match proposed filters. Category blocklist needs ~15 new patterns. Cultural affinity 97% reliable. Findings doc: `projects/quality_improvements_v1/INVESTIGATION-RESULTS.md`
+- **Google Reviews disabled** (`SKIP_GOOGLE_REVIEWS=true`) — 0% yield, duplicates solo detection
+- **Yelp Owner diagnosed** — Yelp returning 403 (bot detection). Needs headless browser.
+- **Enrichment catalogue written** — `docs/enrichment-pipeline-catalogue.md`
+- **Circuit breaker confirmed working** — Exec #8963 `status: success` (clean no-op)
+- **Lead Quality Phase 2 Priority 1 (ADR-044):** Category blocklist expanded (12→39 patterns), 9 franchise brands added to chain_blocklist, full pipeline cleanup: 30,193→25,434 companies (4,741 deleted, 15.7%)
+- **Lead Quality Phase 2 Priority 2:** Name-pattern filters deployed to both normalization nodes (22 patterns + 5 safe terms). Name-based SQL cleanup: 793 more companies. Mobile practice flag + scoring (-20 pts). `additional_types` JSONB column added. `enrich-companies.js` deployed via MCP (23K chars). `find-contacts.js` deployed via Python deploy script (48K chars, includes SKIP_GOOGLE_REVIEWS=true).
+- **Cumulative cleanup:** Companies 30,193→24,195 (5,998 deleted, 19.9%). Contacts 7,153→5,134 (28.2%). Social profiles 29,389→20,001 (32.0%).
+- **Lead Quality Phase 2 Priority 3:** Language barrier scoring (`is_language_barrier_risk` flag, 740 flagged, -20 pts). Franchise flag + audit log table. Cleanup functions updated with logging + auto-flagging.
+- **Metered Enrollment System deployed:** Daily Enrollment workflow (`mEcwH3Q3fR63ib6g`, 11 nodes, daily 6am, cap 500). Call Activity Webhook (`kgtvLxRsgfd8iuCL`). Schema: sequence_enrolled_at + enrollment_batch + call_activity table + get_pending_enrollment RPC. 381 contacts enrolled in production test. 134 pre-existing actioned excluded. Apollo Sync prospect list node disabled.
+- **Google Places radius fix:** 744 metros capped at 49999 (was 50000-80000).
+- **Full retro:** `docs/SESSION-101-RETRO.md`
+- **Pending:** Apollo cleanup debt, Telnyx/Hunter API renewals, search query refinement
+
+### Session 100 — 2026-03-26 (Post-Freeze Reconciliation + Requeue Investigation)
+- **Verified Session 99 local files** — all match Cursor handoff doc. queue-wrapper-workflow.json, queue-error-handler-workflow.json, workflow-controller-workflow.json, create-pipeline-run.js, poll-pipeline-status.js, api-health-check.js, ADR-040, CHANGELOG all correctly written.
+- **Fixed missing `errorWorkflow`** in local queue-wrapper-workflow.json settings (was deployed to remote but not in local JSON)
+- **Updated stale TRACKER.md** — was describing old 9-node layout. Updated to reflect 10-node ADR-040 architecture with Phase 6 section.
+- **Added Sessions 96-99 to PROGRESS.md** — missing from frozen session
+- **Updated TODO.md** — marked error handler complete, added diagnostic/requeue tasks
+- **Created diagnostic SQL** (`06-diagnose-failed-runs.sql`) — 7 queries to identify ~96 metros falsely marked complete with leads_found=0
+- **Created requeue SQL** (`07-requeue-failed-metros.sql`) — dry-run preview + commented UPDATE statements to reset affected metros to 'pending'
+- **n8n MCP auth failing** — cannot verify remote state. Need manual UI check for: Queue Wrapper errorWorkflow setting, Schedule Trigger state.
+
+### Session 99 — 2026-03-13 (Pipeline Failure Resilience Overhaul — ADR-040)
+- **Overhauled Queue Wrapper** to fix fire-and-forget false completions (~96 metros marked complete with leads_found=0):
+  - **New node: Create Pipeline Run** — INSERTs `pipeline_runs` row, PATCHes `pipeline_queue.run_id` FK
+  - **New node: Poll Pipeline Status** — Polls `pipeline_runs.status` every 30s for up to 45 min. Throws on failure/timeout.
+  - **New workflow: Queue Error Handler** (`Qdwt8jW18uRslMtT`, 2 nodes, ACTIVE) — Error Trigger → Mark Queue Failed with retry logic (up to 3x)
+  - **New workflow: Workflow Controller** (`R28WPY4aopfaIw4O`, 3 nodes, ACTIVE) — Webhook for dashboard to activate/deactivate/check workflow status
+  - **Set sub-workflow errorWorkflow** to Pipeline Error Handler (`ovArmKkj1bs5Af3G`)
+  - Queue Wrapper `errorWorkflow` set to Queue Error Handler
+- **New scripts:** `create-pipeline-run.js`, `poll-pipeline-status.js`, `api-health-check.js` (health check not yet deployed to main workflow)
+- **Queue Wrapper now 10 nodes:** Schedule → Manual → Set Config → Fetch Next → IF → Create Pipeline Run → Trigger Pipeline → Poll Pipeline Status → Run Cleanup → Mark Complete
+- **Terminal froze during final MCP deployment call** — remote state uncertain for Queue Wrapper full update. Local files all written correctly.
+
+### Session 98 — 2026-03-10 (VerveLabs Run Tag uses prospect list name)
+- Changed `VerveLabs Run Tag` custom field from `run_tag` to `prospect_list` across Fetch Unsynced, Upsert Account, Upsert Contacts
+- Apollo accounts/contacts now show prospect list name (e.g., `VerveLabs-Prospects-002`) instead of timestamp-based run_tag
+
+### Session 97 — 2026-03-10 (Remove per-run label_names)
+- Removed `contactPayload.label_names = [run_tag]` from Upsert Contacts — per-run Apollo Lists conflicted with Prospect List assignment node
+
+### Session 96 — 2026-03-10 (Prospect List Assignment Node)
+- **New node: "Assign to Prospect List"** in Apollo Sync v1 between Upsert Contacts and Mark Synced
+- Reads `active_prospect_list` from `pipeline_config`, assigns contacts via Apollo `bulk_update`
+- 1000-contact cap with auto-rotation to next list
+- Apollo Sync workflow now 12 nodes
+
+### Session 95 — 2026-02-28 (Queue Wrapper Mark Complete Fix)
+- **Fixed BUG-056:** Run Cleanup was HTTP Request node that replaced item data with API response. Mark Complete received `{geo: 0, chain: 0}` instead of `{supabase_url, queue_id, metro_name}`. Replaced with Code node that makes same RPC call and passes through item data.
+- **Deployed fix via MCP** (4 ops: removeNode old httpRequest, addNode new code, 2x addConnection)
+- **Reset Oro Valley queue item** from `running` → `pending` (stuck since exec #534)
+- **Updated local JSON:** `projects/queueing-system-v1/n8n/queue-wrapper-workflow.json`
+- **Next:** Refresh n8n editor, click "Test Workflow" to verify all nodes succeed end-to-end
+
+### Session 94 — 2026-02-28 (Post-Discovery Cleanup Execution)
+- **Ran `run_post_discovery_cleanup()` RPC across all 22 metros** via temporary n8n workflow (schedule trigger + paginated Supabase queries)
+- **Result: 0 deletions across all metros** — existing pipeline discovery-time filters (domain blocklist, category filtering in Normalize, business-type keyword blocklist) already catch non-target businesses before they reach Supabase
+- **22 metros found** (13 original minus Toronto + 10 rural): Alice TX, Asheville NC, Austin TX, Boise ID, Boston MA, Clovis NM, Denver CO, Durango CO, Elko NV, Lewistown MT, Nashville TN, Phoenix AZ, Portland OR, Price UT, Riverton WY, San Diego CA, Scottsbluff NE, Scottsdale AZ, Sedona AZ, Sterling CO, Tampa FL, Vernal UT
+- **2,881 total companies** remaining (up from 2,469 pre-rural-metros)
+- **0 non-US companies** in database — country filter had nothing to clean
+- **Verification passed:** All 3 cleanup functions (country, category, chain) returned 0 deletes for every metro
+- Toronto ON absent from companies table (may have been cleaned previously or uses different discovery_metro value)
+- **Lesson learned:** Supabase REST API caps at 1000 rows regardless of `limit` param; must use `Range` header or pagination
+- **Lesson learned:** n8n Schedule Triggers DO register when activated via API (unlike webhook triggers which require UI activation)
+
+### Session 91 — 2026-02-27 (Queuing System v1 — Implementation)
+- **Built complete queuing system** for sequential metro processing with post-discovery cleanup:
+  - `01-pipeline-queue-table.sql` — pipeline_queue table (status/priority/retry tracking, FK to pipeline_runs)
+  - `02-category-blocklist.sql` — 12 blocked categories (dental, nail salon, hair salon, etc.) with safe-term exemption for massage combos
+  - `03-chain-blocklist.sql` — 5 non-massage retail chains (Sally Beauty, Ulta, RMT Supply/Equipment, Arctic Spas)
+  - `04-cleanup-functions.sql` — 5 PL/pgSQL functions: country filter, category blocklist, chain blocklist, geo filter (skeleton), orchestrator RPC
+  - `05-test-cleanup.sql` — dry-run validation queries (SELECT only, shows what WOULD be deleted)
+- **Deployed Queue Wrapper workflow** to n8n (`7Ix8ajJ5Rp9NyYk8`, 9 nodes, INACTIVE):
+  - Schedule Trigger (30min) → Set Config → Fetch Next Pending (atomic claim) → IF Has Metro → Mark Running → Execute Step 1 (NoOp placeholder) → Run Cleanup (Supabase RPC) → Execute Steps 2-4 (NoOp placeholder) → Mark Complete
+  - Error Handler node in local JSON, not deployed (needs connection wiring)
+- **Created seed loader workflow** — Manual Trigger → Generate 10 rural metros → Upsert to pipeline_queue
+- **Created INTEGRATION-NOTES.md** — wiring guide for connecting placeholders to main pipeline, monitoring SQL queries, open questions
+- No existing workflows modified (safety constraint met)
 
 ### Session 90 — 2026-02-27 (Project Handoff Documentation)
 - **Created `docs/PROJECT-HANDOFF.md`** — comprehensive human-readable handoff document covering: project overview, 4-workflow architecture, chronological build narrative (Phases 1-7 through Apollo Sync v1), 8 hard-won challenges/solutions (batching bug, task runner sandbox, binary IPC, MCP mode-stripping, Apollo field prefixing, webhook deregistration, double-triggers, ExcelJS), infrastructure (5 Docker services, 12 env vars, deployment process, API costs), database schema (6 tables, key constraints, RPC functions), known issues/deferred work, and full file map.

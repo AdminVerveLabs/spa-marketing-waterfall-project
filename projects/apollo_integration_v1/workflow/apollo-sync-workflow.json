@@ -1,29 +1,31 @@
 {
+  "id": "g9uplPwBAaaVgm4X",
   "name": "Apollo Sync v1",
+  "description": null,
+  "active": true,
+  "isArchived": false,
   "nodes": [
     {
-      "id": "837b5d8a-a8d1-4c5e-9d78-939aebf1edc3",
-      "name": "Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [0, 0],
       "parameters": {
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 168
+              "field": "minutes",
+              "minutesInterval": 15
             }
           ]
         }
-      }
+      },
+      "id": "837b5d8a-a8d1-4c5e-9d78-939aebf1edc3",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
     },
     {
-      "id": "eb8bc71e-30f2-4971-84e8-aa33bbfe7b61",
-      "name": "Set Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [224, 0],
       "parameters": {
         "assignments": {
           "assignments": [
@@ -54,148 +56,711 @@
           ]
         },
         "options": {}
-      }
+      },
+      "id": "eb8bc71e-30f2-4971-84e8-aa33bbfe7b61",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "// Phase 1: Setup Custom Fields\n// Mode: runOnceForAllItems\n\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\n\nconst ACCOUNT_FIELDS = [\n  { label: 'Lead Score', type: 'number' },\n  { label: 'Has Website', type: 'boolean' },\n  { label: 'Has Online Booking', type: 'boolean' },\n  { label: 'Booking Platform', type: 'string' },\n  { label: 'Has Paid Ads', type: 'boolean' },\n  { label: 'On Groupon', type: 'boolean' },\n  { label: 'On Yelp', type: 'boolean' },\n  { label: 'Google Review Count', type: 'number' },\n  { label: 'Google Rating', type: 'number' },\n  { label: 'Estimated Size', type: 'string' },\n  { label: 'Enrichment Status', type: 'string' },\n  { label: 'Category', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Discovery Metro', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Yelp Is Claimed', type: 'boolean' },\n  { label: 'Source URLs', type: 'string' },\n  { label: 'Facebook URL', type: 'string' },\n  { label: 'Instagram URL', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n  { label: 'TikTok URL', type: 'string' },\n  { label: 'Twitter URL', type: 'string' },\n  { label: 'YouTube URL', type: 'string' },\n  { label: 'Company Email', type: 'string' },\n];\n\nconst CONTACT_FIELDS = [\n  { label: 'Cultural Affinity', type: 'string' },\n  { label: 'Is Owner', type: 'boolean' },\n  { label: 'Meridian Role', type: 'string' },\n  { label: 'Contact Source', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Email Personal', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Email Verified At', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Verified At', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Phone Carrier', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n];\n\n// Fetch existing custom fields\nlet existingFields = [];\ntry {\n  const data = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  existingFields = data.fields || [];\n} catch (e) {\n  // If listing fails, proceed anyway - creates are idempotent\n  console.log('Could not list existing fields:', e.message);\n}\n\nconst existingLabels = new Set(\n  existingFields.map(f => f.label?.toLowerCase())\n);\n\nconst results = { created: [], skipped: [], errors: [] };\n\n// Create account custom fields\nfor (const field of ACCOUNT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'account'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  // Rate limit: wait 700ms between calls (fires on both success and error)\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Create contact custom fields\nfor (const field of CONTACT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'contact'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Fetch all fields to build label-to-ID mapping for typed_custom_fields\nconst ACCOUNT_LABELS = new Set(ACCOUNT_FIELDS.map(f => f.label));\nconst CONTACT_LABELS = new Set(CONTACT_FIELDS.map(f => f.label));\nconst fieldMapping = { account: {}, contact: {} };\nconst debugFields = [];\n\ntry {\n  const allFieldsData = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  const allFields = allFieldsData.fields || [];\n  const getRawId = (val) => val ? val.split('.').pop() : val;\n  for (const f of allFields) {\n    if (ACCOUNT_LABELS.has(f.label) || CONTACT_LABELS.has(f.label)) {\n      debugFields.push({ label: f.label, id: f.id, key: f.key, modality: f.modality });\n    }\n    if (f.modality === 'account' && ACCOUNT_LABELS.has(f.label)) {\n      fieldMapping.account[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n    if (f.modality === 'contact' && CONTACT_LABELS.has(f.label)) {\n      fieldMapping.contact[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n  }\n} catch (e) {\n  results.errors.push(`Field mapping fetch failed: ${e.message}`);\n}\n\nreturn [{\n  json: {\n    phase: 'custom_fields_setup',\n    ...results,\n    field_mapping: fieldMapping,\n    _debug_fields: debugFields\n  }\n}];\n"
+      },
       "id": "c5a77d34-3968-43ea-bdbe-6d40e941610f",
       "name": "Setup Custom Fields",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [448, 0],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Phase 1: Setup Custom Fields\n// Mode: runOnceForAllItems\n\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\n\nconst ACCOUNT_FIELDS = [\n  { label: 'Lead Score', type: 'number' },\n  { label: 'Has Website', type: 'boolean' },\n  { label: 'Has Online Booking', type: 'boolean' },\n  { label: 'Booking Platform', type: 'string' },\n  { label: 'Has Paid Ads', type: 'boolean' },\n  { label: 'On Groupon', type: 'boolean' },\n  { label: 'On Yelp', type: 'boolean' },\n  { label: 'Google Review Count', type: 'number' },\n  { label: 'Google Rating', type: 'number' },\n  { label: 'Estimated Size', type: 'string' },\n  { label: 'Enrichment Status', type: 'string' },\n  { label: 'Category', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Discovery Metro', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Yelp Is Claimed', type: 'boolean' },\n  { label: 'Source URLs', type: 'string' },\n  { label: 'Facebook URL', type: 'string' },\n  { label: 'Instagram URL', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n  { label: 'TikTok URL', type: 'string' },\n  { label: 'Twitter URL', type: 'string' },\n  { label: 'YouTube URL', type: 'string' },\n  { label: 'Company Email', type: 'string' },\n];\n\nconst CONTACT_FIELDS = [\n  { label: 'Cultural Affinity', type: 'string' },\n  { label: 'Is Owner', type: 'boolean' },\n  { label: 'Meridian Role', type: 'string' },\n  { label: 'Contact Source', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Email Personal', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Email Verified At', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Verified At', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Phone Carrier', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n];\n\n// Fetch existing custom fields\nlet existingFields = [];\ntry {\n  const data = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  existingFields = data.fields || [];\n} catch (e) {\n  // If listing fails, proceed anyway - creates are idempotent\n  console.log('Could not list existing fields:', e.message);\n}\n\nconst existingLabels = new Set(\n  existingFields.map(f => f.label?.toLowerCase())\n);\n\nconst results = { created: [], skipped: [], errors: [] };\n\n// Create account custom fields\nfor (const field of ACCOUNT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'account'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  // Rate limit: wait 700ms between calls (fires on both success and error)\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Create contact custom fields\nfor (const field of CONTACT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'contact'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Fetch all fields to build label-to-ID mapping for typed_custom_fields\nconst ACCOUNT_LABELS = new Set(ACCOUNT_FIELDS.map(f => f.label));\nconst CONTACT_LABELS = new Set(CONTACT_FIELDS.map(f => f.label));\nconst fieldMapping = { account: {}, contact: {} };\nconst debugFields = [];\n\ntry {\n  const allFieldsData = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  const allFields = allFieldsData.fields || [];\n  const getRawId = (val) => val ? val.split('.').pop() : val;\n  for (const f of allFields) {\n    if (ACCOUNT_LABELS.has(f.label) || CONTACT_LABELS.has(f.label)) {\n      debugFields.push({ label: f.label, id: f.id, key: f.key, modality: f.modality });\n    }\n    if (f.modality === 'account' && ACCOUNT_LABELS.has(f.label)) {\n      fieldMapping.account[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n    if (f.modality === 'contact' && CONTACT_LABELS.has(f.label)) {\n      fieldMapping.contact[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n  }\n} catch (e) {\n  results.errors.push(`Field mapping fetch failed: ${e.message}`);\n}\n\nreturn [{\n  json: {\n    phase: 'custom_fields_setup',\n    ...results,\n    field_mapping: fieldMapping,\n    _debug_fields: debugFields\n  }\n}];\n"
-      }
+      "position": [
+        448,
+        0
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "// Phase 2: Fetch Unsynced Data from Supabase\n// Mode: runOnceForAllItems\n\nconst SUPABASE_URL = $('Set Config').item.json.supabase_url;\nconst SUPABASE_KEY = $('Set Config').item.json.supabase_service_key;\nconst RUN_TAG = $('Set Config').item.json.run_tag;\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=representation'\n};\n\n// Fetch active prospect list name from pipeline_config\nlet activeProspectList = 'VerveLabs-Prospects-001';\ntry {\n  const plRows = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list&select=value`,\n    headers,\n    json: true\n  });\n  if (plRows && plRows.length > 0 && plRows[0].value) {\n    activeProspectList = plRows[0].value;\n  }\n} catch (e) {\n  console.log(`Failed to fetch active_prospect_list: ${e.message}, using default`);\n}\n\n// Fetch companies needing sync (with social_profiles embedded)\nlet companies;\ntry {\n  companies = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/companies?enrichment_status=eq.fully_enriched&apollo_synced_at=is.null&select=*,social_profiles(platform,profile_url)&order=city,name&limit=30`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch companies failed: ${e.message}`, companies: [] } }];\n}\n\nif (!companies || companies.length === 0) {\n  return [{ json: { phase: 'fetch', companies: [], message: 'No unsynced companies found' } }];\n}\n\n// Flatten social_profiles into company-level URL fields\nfor (const company of companies) {\n  company.facebook_url = null;\n  company.instagram_url = null;\n  company.linkedin_url = null;\n  company.tiktok_url = null;\n  company.twitter_url = null;\n  company.youtube_url = null;\n  if (company.social_profiles && Array.isArray(company.social_profiles)) {\n    for (const profile of company.social_profiles) {\n      const p = profile.platform?.toLowerCase();\n      if (p === 'facebook') company.facebook_url = profile.profile_url;\n      else if (p === 'instagram') company.instagram_url = profile.profile_url;\n      else if (p === 'linkedin') company.linkedin_url = profile.profile_url;\n      else if (p === 'tiktok') company.tiktok_url = profile.profile_url;\n      else if (p === 'x' || p === 'twitter') company.twitter_url = profile.profile_url;\n      else if (p === 'youtube') company.youtube_url = profile.profile_url;\n    }\n    delete company.social_profiles;\n  }\n}\n\n// Fetch contacts for these companies\nconst companyIds = companies.map(c => c.id);\nlet contacts;\ntry {\n  contacts = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/contacts?company_id=in.(${companyIds.join(',')})&select=*`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch contacts failed: ${e.message}`, companies: [] } }];\n}\n\n// Group contacts by company_id\nconst contactsByCompany = {};\nfor (const contact of contacts) {\n  if (!contactsByCompany[contact.company_id]) {\n    contactsByCompany[contact.company_id] = [];\n  }\n  contactsByCompany[contact.company_id].push(contact);\n}\n\n// Get field mapping from upstream Setup Custom Fields node\nconst fieldMapping = $('Setup Custom Fields').first().json.field_mapping || { account: {}, contact: {} };\n\n// Emit one item per company with its contacts attached\nreturn companies.map(company => {\n  let companyContacts = contactsByCompany[company.id] || [];\n\n  // Inject synthetic 'Front Desk' contact for companies with no contacts\n  // so Orum dialer can reach them via their main phone number\n  if (companyContacts.length === 0) {\n    companyContacts = [{\n      id: `synthetic-${company.id}`,\n      first_name: 'Front Desk',\n      last_name: company.name || 'Main Line',\n      phone_direct: company.phone || '',\n      role: 'Gatekeeper',\n      is_owner: false,\n      source: 'synthetic_fallback',\n      email_business: company.email || '',\n      cultural_affinity: '',\n      email_personal: '',\n      phone_carrier: '',\n      email_status: company.email_status || '',\n      phone_status: company.phone_status || '',\n      phone_line_type: company.phone_line_type || '',\n      company_id: company.id\n    }];\n  }\n\n  return {\n    json: {\n      company,\n      contacts: companyContacts,\n      run_tag: RUN_TAG,\n      prospect_list: activeProspectList,\n      field_mapping: fieldMapping,\n      _config: {\n        apollo_api_key: APOLLO_API_KEY,\n        supabase_url: SUPABASE_URL,\n        supabase_service_key: SUPABASE_KEY\n      }\n    }\n  };\n});"
+      },
       "id": "c0caca9f-e5c2-480f-aac3-5cebc61f3f83",
       "name": "Fetch Unsynced",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [672, 0],
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Phase 2: Fetch Unsynced Data from Supabase\n// Mode: runOnceForAllItems\n\nconst SUPABASE_URL = $('Set Config').item.json.supabase_url;\nconst SUPABASE_KEY = $('Set Config').item.json.supabase_service_key;\nconst RUN_TAG = $('Set Config').item.json.run_tag;\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=representation'\n};\n\n// Fetch companies needing sync (with social_profiles embedded)\nlet companies;\ntry {\n  companies = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/companies?enrichment_status=eq.fully_enriched&apollo_synced_at=is.null&select=*,social_profiles(platform,profile_url)&order=city,name&limit=50`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch companies failed: ${e.message}`, companies: [] } }];\n}\n\nif (!companies || companies.length === 0) {\n  return [{ json: { phase: 'fetch', companies: [], message: 'No unsynced companies found' } }];\n}\n\n// Flatten social_profiles into company-level URL fields\nfor (const company of companies) {\n  company.facebook_url = null;\n  company.instagram_url = null;\n  company.linkedin_url = null;\n  company.tiktok_url = null;\n  company.twitter_url = null;\n  company.youtube_url = null;\n  if (company.social_profiles && Array.isArray(company.social_profiles)) {\n    for (const profile of company.social_profiles) {\n      const p = profile.platform?.toLowerCase();\n      if (p === 'facebook') company.facebook_url = profile.profile_url;\n      else if (p === 'instagram') company.instagram_url = profile.profile_url;\n      else if (p === 'linkedin') company.linkedin_url = profile.profile_url;\n      else if (p === 'tiktok') company.tiktok_url = profile.profile_url;\n      else if (p === 'x' || p === 'twitter') company.twitter_url = profile.profile_url;\n      else if (p === 'youtube') company.youtube_url = profile.profile_url;\n    }\n    delete company.social_profiles;\n  }\n}\n\n// Fetch contacts for these companies\nconst companyIds = companies.map(c => c.id);\nlet contacts;\ntry {\n  contacts = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/contacts?company_id=in.(${companyIds.join(',')})&select=*`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch contacts failed: ${e.message}`, companies: [] } }];\n}\n\n// Group contacts by company_id\nconst contactsByCompany = {};\nfor (const contact of contacts) {\n  if (!contactsByCompany[contact.company_id]) {\n    contactsByCompany[contact.company_id] = [];\n  }\n  contactsByCompany[contact.company_id].push(contact);\n}\n\n// Get field mapping from upstream Setup Custom Fields node\nconst fieldMapping = $('Setup Custom Fields').first().json.field_mapping || { account: {}, contact: {} };\n\n// Emit one item per company with its contacts attached\nreturn companies.map(company => {\n  let companyContacts = contactsByCompany[company.id] || [];\n\n  // Inject synthetic 'Front Desk' contact for companies with no contacts\n  // so Orum dialer can reach them via their main phone number\n  if (companyContacts.length === 0) {\n    companyContacts = [{\n      id: `synthetic-${company.id}`,\n      first_name: 'Front Desk',\n      last_name: company.name || 'Main Line',\n      phone_direct: company.phone || '',\n      role: 'Gatekeeper',\n      is_owner: false,\n      source: 'synthetic_fallback',\n      email_business: company.email || '',\n      cultural_affinity: '',\n      email_personal: '',\n      phone_carrier: '',\n      email_status: company.email_status || '',\n      phone_status: company.phone_status || '',\n      phone_line_type: company.phone_line_type || '',\n      company_id: company.id\n    }];\n  }\n\n  return {\n    json: {\n      company,\n      contacts: companyContacts,\n      run_tag: RUN_TAG,\n      field_mapping: fieldMapping\n    }\n  };\n});\n"
-      }
+      "position": [
+        672,
+        0
+      ]
     },
     {
-      "id": "8b97f8ab-75cd-4c65-9a49-711e0fa181d5",
-      "name": "Filter Has Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [880, 0],
       "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// Filter to only items with valid company data\nconst items = $input.all();\nconst valid = items.filter(i => i.json.company && i.json.company.id);\nif (valid.length === 0) return [];\nreturn valid.map(i => ({ json: i.json }));\n"
-      }
-    },
-    {
+        "batchSize": 25,
+        "options": {}
+      },
       "id": "c495095d-48be-4b2e-a42b-ff9a66faca2d",
       "name": "Split In Batches",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [1104, 0],
-      "parameters": {
-        "batchSize": 25,
-        "options": {}
-      }
+      "position": [
+        1104,
+        0
+      ]
     },
     {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Phase 3: Upsert Account in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save + name-based account search fallback\n\nconst _cfg = $input.item.json._config || {};\nconst APOLLO_API_KEY = _cfg.apollo_api_key;\nconst SUPABASE_URL = _cfg.supabase_url;\nconst SUPABASE_KEY = _cfg.supabase_service_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst prospect_list = $input.item.json.prospect_list;\nconst fieldMapping = $input.item.json.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\n// Platform/social domains - skip domain search (would match wrong accounts)\nconst SKIP_DOMAINS = new Set([\n  'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com',\n  'youtube.com', 'tiktok.com', 'yelp.com', 'nextdoor.com',\n  'wixsite.com', 'wix.com', 'square.site', 'squarespace.com',\n  'setmore.com', 'schedulista.com', 'glossgenius.com',\n  'genbook.com', 'jane.app', 'acuityscheduling.com',\n  'mindbodyonline.com', 'mindbody.io', 'vagaro.com',\n  'fresha.com', 'schedulicity.com', 'booksy.com',\n  'massagebook.com', 'noterro.com', 'clinicsense.com', 'calendly.com'\n]);\n\n// Build typed_custom_fields using field IDs from mapping\n// Truthy-only for strings/numbers to avoid overwriting manual Apollo edits\n// != null for booleans since false is a valid value we want to push\nconst fm = fieldMapping.account;\nconst typedCustomFields = {};\n// Existing fields — upgraded to truthy-only\nif (fm['Lead Score'] && company.lead_score) typedCustomFields[fm['Lead Score']] = company.lead_score;\nif (fm['Has Website'] && company.has_website != null) typedCustomFields[fm['Has Website']] = company.has_website;\nif (fm['Has Online Booking'] && company.has_online_booking != null) typedCustomFields[fm['Has Online Booking']] = company.has_online_booking;\nif (fm['Booking Platform'] && company.booking_platform) typedCustomFields[fm['Booking Platform']] = company.booking_platform;\nif (fm['Has Paid Ads'] && company.has_paid_ads != null) typedCustomFields[fm['Has Paid Ads']] = company.has_paid_ads;\nif (fm['On Groupon'] && company.on_groupon != null) typedCustomFields[fm['On Groupon']] = company.on_groupon;\nif (fm['On Yelp'] && company.on_yelp != null) typedCustomFields[fm['On Yelp']] = company.on_yelp;\nif (fm['Google Review Count'] && company.google_review_count) typedCustomFields[fm['Google Review Count']] = company.google_review_count;\nif (fm['Google Rating'] && company.google_rating) typedCustomFields[fm['Google Rating']] = parseFloat(company.google_rating);\nif (fm['Estimated Size'] && company.estimated_size) typedCustomFields[fm['Estimated Size']] = company.estimated_size;\nif (fm['Enrichment Status'] && company.enrichment_status) typedCustomFields[fm['Enrichment Status']] = company.enrichment_status;\nif (fm['Category'] && company.category) typedCustomFields[fm['Category']] = company.category;\nif (fm['VerveLabs Run Tag']) typedCustomFields[fm['VerveLabs Run Tag']] = prospect_list || run_tag;\n// v2: New core fields\nif (fm['Discovery Metro'] && company.discovery_metro) typedCustomFields[fm['Discovery Metro']] = company.discovery_metro;\nif (fm['Email Status'] && company.email_status) typedCustomFields[fm['Email Status']] = company.email_status;\nif (fm['Phone Status'] && company.phone_status) typedCustomFields[fm['Phone Status']] = company.phone_status;\nif (fm['Phone Line Type'] && company.phone_line_type) typedCustomFields[fm['Phone Line Type']] = company.phone_line_type;\nif (fm['Yelp Is Claimed'] && company.yelp_is_claimed != null) typedCustomFields[fm['Yelp Is Claimed']] = company.yelp_is_claimed;\nif (fm['Source URLs'] && company.source_urls) typedCustomFields[fm['Source URLs']] = JSON.stringify(company.source_urls);\n// v2: Social URLs (flattened from social_profiles in Fetch Unsynced)\nif (fm['Facebook URL'] && company.facebook_url) typedCustomFields[fm['Facebook URL']] = company.facebook_url;\nif (fm['Instagram URL'] && company.instagram_url) typedCustomFields[fm['Instagram URL']] = company.instagram_url;\nif (fm['LinkedIn URL'] && company.linkedin_url) typedCustomFields[fm['LinkedIn URL']] = company.linkedin_url;\nif (fm['TikTok URL'] && company.tiktok_url) typedCustomFields[fm['TikTok URL']] = company.tiktok_url;\nif (fm['Twitter URL'] && company.twitter_url) typedCustomFields[fm['Twitter URL']] = company.twitter_url;\nif (fm['YouTube URL'] && company.youtube_url) typedCustomFields[fm['YouTube URL']] = company.youtube_url;\nif (fm['Company Email'] && company.email) typedCustomFields[fm['Company Email']] = company.email;\n\nlet apolloAccountId = company.apollo_account_id;\nlet action = 'skipped';\nconst isSkipDomain = company.domain && SKIP_DOMAINS.has(company.domain);\n\ntry {\n  // Step 1a: Search for existing account by domain (skip platform domains)\n  if (company.domain && !isSkipDomain && !apolloAccountId) {\n    try {\n      const searchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_domains: company.domain,\n          page: 1,\n          per_page: 1\n        },\n        json: true\n      });\n      if (searchData.accounts && searchData.accounts.length > 0) {\n        apolloAccountId = searchData.accounts[0].id;\n      }\n    } catch (e) {\n      console.log(`Domain search failed for ${company.domain}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 1b: Fallback — search by company name if domain search was skipped or found nothing\n  if (!apolloAccountId) {\n    try {\n      const nameSearchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_name: company.name,\n          page: 1,\n          per_page: 5\n        },\n        json: true\n      });\n      if (nameSearchData.accounts && nameSearchData.accounts.length > 0) {\n        const exactMatch = nameSearchData.accounts.find(\n          a => a.name?.toLowerCase() === company.name?.toLowerCase()\n        );\n        if (exactMatch) {\n          apolloAccountId = exactMatch.id;\n        }\n      }\n    } catch (e) {\n      console.log(`Name search failed for ${company.name}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 2: Build account payload (API-compliant params only)\n  const rawAddr = company.address || [company.city, company.state, company.country || 'US'].filter(Boolean).join(', ');\n  const accountPayload = {\n    name: company.name,\n    domain: (!isSkipDomain && company.domain)\n      ? company.domain.replace(/^(?:https?:\\/\\/)?(?:www\\.)?/i, '').split('/')[0]\n      : undefined,\n    phone: company.phone || undefined,\n    raw_address: rawAddr || undefined,\n    typed_custom_fields: typedCustomFields\n  };\n\n  // Step 3: Update or Create\n  if (apolloAccountId) {\n    // UPDATE existing account\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${BASE_URL}/accounts/${apolloAccountId}`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      action = 'updated';\n      // Immediately save to Supabase\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n          headers: supabaseHeaders,\n          body: {\n            apollo_account_id: apolloAccountId,\n            apollo_synced_at: new Date().toISOString()\n          },\n          json: true\n        });\n      } catch (e) {\n        console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n      }\n    } catch (e) {\n      action = `update_error: ${e.message}`;\n    }\n  } else {\n    // CREATE new account\n    try {\n      const createData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      if (createData.account) {\n        apolloAccountId = createData.account.id;\n        action = 'created';\n        // Immediately save to Supabase so this company is never re-fetched\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_account_id: apolloAccountId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n        }\n      } else {\n        action = 'create_error: no account in response';\n      }\n    } catch (e) {\n      action = `create_error: ${e.message}`;\n    }\n  }\n\n  // Rate limit pause\n  await new Promise(r => setTimeout(r, 700));\n\n} catch (e) {\n  action = `exception: ${e.message}`;\n}\n\nreturn {\n  json: {\n    company,\n    contacts,\n    run_tag,\n    prospect_list,\n    apollo_account_id: apolloAccountId,\n    account_action: action,\n    _config: {\n      apollo_api_key: APOLLO_API_KEY,\n      supabase_url: SUPABASE_URL,\n      supabase_service_key: SUPABASE_KEY,\n      field_mapping: fieldMapping\n    }\n  }\n};"
+      },
       "id": "770aa43d-6729-4888-96a2-d55b697a1fab",
       "name": "Upsert Account",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1328, 0],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Phase 3: Upsert Account in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save + name-based account search fallback\n\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\nconst SUPABASE_URL = $('Set Config').item.json.supabase_url;\nconst SUPABASE_KEY = $('Set Config').item.json.supabase_service_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst fieldMapping = $input.item.json.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\n// Platform/social domains - skip domain search (would match wrong accounts)\nconst SKIP_DOMAINS = new Set([\n  'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com',\n  'youtube.com', 'tiktok.com', 'yelp.com', 'nextdoor.com',\n  'wixsite.com', 'wix.com', 'square.site', 'squarespace.com',\n  'setmore.com', 'schedulista.com', 'glossgenius.com',\n  'genbook.com', 'jane.app', 'acuityscheduling.com',\n  'mindbodyonline.com', 'mindbody.io', 'vagaro.com',\n  'fresha.com', 'schedulicity.com', 'booksy.com',\n  'massagebook.com', 'noterro.com', 'clinicsense.com', 'calendly.com'\n]);\n\n// Build typed_custom_fields using field IDs from mapping\n// Truthy-only for strings/numbers to avoid overwriting manual Apollo edits\n// != null for booleans since false is a valid value we want to push\nconst fm = fieldMapping.account;\nconst typedCustomFields = {};\n// Existing fields — upgraded to truthy-only\nif (fm['Lead Score'] && company.lead_score) typedCustomFields[fm['Lead Score']] = company.lead_score;\nif (fm['Has Website'] && company.has_website != null) typedCustomFields[fm['Has Website']] = company.has_website;\nif (fm['Has Online Booking'] && company.has_online_booking != null) typedCustomFields[fm['Has Online Booking']] = company.has_online_booking;\nif (fm['Booking Platform'] && company.booking_platform) typedCustomFields[fm['Booking Platform']] = company.booking_platform;\nif (fm['Has Paid Ads'] && company.has_paid_ads != null) typedCustomFields[fm['Has Paid Ads']] = company.has_paid_ads;\nif (fm['On Groupon'] && company.on_groupon != null) typedCustomFields[fm['On Groupon']] = company.on_groupon;\nif (fm['On Yelp'] && company.on_yelp != null) typedCustomFields[fm['On Yelp']] = company.on_yelp;\nif (fm['Google Review Count'] && company.google_review_count) typedCustomFields[fm['Google Review Count']] = company.google_review_count;\nif (fm['Google Rating'] && company.google_rating) typedCustomFields[fm['Google Rating']] = parseFloat(company.google_rating);\nif (fm['Estimated Size'] && company.estimated_size) typedCustomFields[fm['Estimated Size']] = company.estimated_size;\nif (fm['Enrichment Status'] && company.enrichment_status) typedCustomFields[fm['Enrichment Status']] = company.enrichment_status;\nif (fm['Category'] && company.category) typedCustomFields[fm['Category']] = company.category;\nif (fm['VerveLabs Run Tag']) typedCustomFields[fm['VerveLabs Run Tag']] = run_tag;\n// v2: New core fields\nif (fm['Discovery Metro'] && company.discovery_metro) typedCustomFields[fm['Discovery Metro']] = company.discovery_metro;\nif (fm['Email Status'] && company.email_status) typedCustomFields[fm['Email Status']] = company.email_status;\nif (fm['Phone Status'] && company.phone_status) typedCustomFields[fm['Phone Status']] = company.phone_status;\nif (fm['Phone Line Type'] && company.phone_line_type) typedCustomFields[fm['Phone Line Type']] = company.phone_line_type;\nif (fm['Yelp Is Claimed'] && company.yelp_is_claimed != null) typedCustomFields[fm['Yelp Is Claimed']] = company.yelp_is_claimed;\nif (fm['Source URLs'] && company.source_urls) typedCustomFields[fm['Source URLs']] = JSON.stringify(company.source_urls);\n// v2: Social URLs (flattened from social_profiles in Fetch Unsynced)\nif (fm['Facebook URL'] && company.facebook_url) typedCustomFields[fm['Facebook URL']] = company.facebook_url;\nif (fm['Instagram URL'] && company.instagram_url) typedCustomFields[fm['Instagram URL']] = company.instagram_url;\nif (fm['LinkedIn URL'] && company.linkedin_url) typedCustomFields[fm['LinkedIn URL']] = company.linkedin_url;\nif (fm['TikTok URL'] && company.tiktok_url) typedCustomFields[fm['TikTok URL']] = company.tiktok_url;\nif (fm['Twitter URL'] && company.twitter_url) typedCustomFields[fm['Twitter URL']] = company.twitter_url;\nif (fm['YouTube URL'] && company.youtube_url) typedCustomFields[fm['YouTube URL']] = company.youtube_url;\nif (fm['Company Email'] && company.email) typedCustomFields[fm['Company Email']] = company.email;\n\nlet apolloAccountId = company.apollo_account_id;\nlet action = 'skipped';\nconst isSkipDomain = company.domain && SKIP_DOMAINS.has(company.domain);\n\ntry {\n  // Step 1a: Search for existing account by domain (skip platform domains)\n  if (company.domain && !isSkipDomain && !apolloAccountId) {\n    try {\n      const searchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_domains: company.domain,\n          page: 1,\n          per_page: 1\n        },\n        json: true\n      });\n      if (searchData.accounts && searchData.accounts.length > 0) {\n        apolloAccountId = searchData.accounts[0].id;\n      }\n    } catch (e) {\n      console.log(`Domain search failed for ${company.domain}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 1b: Fallback — search by company name if domain search was skipped or found nothing\n  if (!apolloAccountId) {\n    try {\n      const nameSearchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_name: company.name,\n          page: 1,\n          per_page: 5\n        },\n        json: true\n      });\n      if (nameSearchData.accounts && nameSearchData.accounts.length > 0) {\n        const exactMatch = nameSearchData.accounts.find(\n          a => a.name?.toLowerCase() === company.name?.toLowerCase()\n        );\n        if (exactMatch) {\n          apolloAccountId = exactMatch.id;\n        }\n      }\n    } catch (e) {\n      console.log(`Name search failed for ${company.name}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 2: Build account payload (API-compliant params only)\n  const rawAddr = company.address || [company.city, company.state, company.country || 'US'].filter(Boolean).join(', ');\n  const accountPayload = {\n    name: company.name,\n    domain: (!isSkipDomain && company.domain)\n      ? company.domain.replace(/^(?:https?:\\/\\/)?(?:www\\.)?/i, '').split('/')[0]\n      : undefined,\n    phone: company.phone || undefined,\n    raw_address: rawAddr || undefined,\n    typed_custom_fields: typedCustomFields\n  };\n\n  // Step 3: Update or Create\n  if (apolloAccountId) {\n    // UPDATE existing account\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${BASE_URL}/accounts/${apolloAccountId}`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      action = 'updated';\n      // Immediately save to Supabase\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n          headers: supabaseHeaders,\n          body: {\n            apollo_account_id: apolloAccountId,\n            apollo_synced_at: new Date().toISOString()\n          },\n          json: true\n        });\n      } catch (e) {\n        console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n      }\n    } catch (e) {\n      action = `update_error: ${e.message}`;\n    }\n  } else {\n    // CREATE new account\n    try {\n      const createData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      if (createData.account) {\n        apolloAccountId = createData.account.id;\n        action = 'created';\n        // Immediately save to Supabase so this company is never re-fetched\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_account_id: apolloAccountId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n        }\n      } else {\n        action = 'create_error: no account in response';\n      }\n    } catch (e) {\n      action = `create_error: ${e.message}`;\n    }\n  }\n\n  // Rate limit pause\n  await new Promise(r => setTimeout(r, 700));\n\n} catch (e) {\n  action = `exception: ${e.message}`;\n}\n\nreturn {\n  json: {\n    company,\n    contacts,\n    run_tag,\n    apollo_account_id: apolloAccountId,\n    account_action: action,\n    _config: {\n      apollo_api_key: APOLLO_API_KEY,\n      supabase_url: SUPABASE_URL,\n      supabase_service_key: SUPABASE_KEY,\n      field_mapping: fieldMapping\n    }\n  }\n};\n"
-      }
+      "position": [
+        1328,
+        0
+      ]
     },
     {
+      "parameters": {
+        "amount": 2
+      },
       "id": "ebba9ee1-ab2c-456d-b222-7c011507429d",
       "name": "Wait",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
-      "position": [1552, 0],
-      "parameters": {
-        "amount": 2
-      }
+      "position": [
+        1552,
+        0
+      ],
+      "webhookId": "bd976851-7563-4932-baed-db2b16213f8f"
     },
     {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Phase 4: Upsert Contacts in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save after each contact create/update\n\nconst config = $input.item.json._config;\nconst APOLLO_API_KEY = config.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst prospect_list = $input.item.json.prospect_list;\nconst apolloAccountId = $input.item.json.apollo_account_id;\nconst fieldMapping = config.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': config.supabase_service_key,\n  'Authorization': `Bearer ${config.supabase_service_key}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst contactResults = [];\n\nfor (const contact of contacts) {\n  try {\n    let apolloContactId = contact.apollo_contact_id;\n    let action = 'skipped';\n\n    // Build typed_custom_fields using field IDs from mapping\n    // Truthy-only for strings to avoid overwriting manual Apollo edits\n    // != null for booleans since false is a valid value\n    const cfm = fieldMapping.contact;\n    const typedContactFields = {};\n    if (cfm['Cultural Affinity'] && contact.cultural_affinity) typedContactFields[cfm['Cultural Affinity']] = contact.cultural_affinity;\n    if (cfm['Is Owner'] && contact.is_owner != null) typedContactFields[cfm['Is Owner']] = contact.is_owner;\n    if (cfm['Meridian Role'] && contact.role) typedContactFields[cfm['Meridian Role']] = contact.role;\n    if (cfm['Contact Source'] && contact.source) typedContactFields[cfm['Contact Source']] = contact.source;\n    if (cfm['VerveLabs Run Tag']) typedContactFields[cfm['VerveLabs Run Tag']] = prospect_list || run_tag;\n    if (cfm['Email Personal'] && contact.email_personal) typedContactFields[cfm['Email Personal']] = contact.email_personal;\n    if (cfm['Email Status'] && contact.email_status) typedContactFields[cfm['Email Status']] = contact.email_status;\n    if (cfm['Email Verified At'] && contact.email_verified_at) typedContactFields[cfm['Email Verified At']] = contact.email_verified_at;\n    if (cfm['Phone Status'] && contact.phone_status) typedContactFields[cfm['Phone Status']] = contact.phone_status;\n    if (cfm['Phone Verified At'] && contact.phone_verified_at) typedContactFields[cfm['Phone Verified At']] = contact.phone_verified_at;\n    if (cfm['Phone Line Type'] && contact.phone_line_type) typedContactFields[cfm['Phone Line Type']] = contact.phone_line_type;\n    if (cfm['Phone Carrier'] && contact.phone_carrier) typedContactFields[cfm['Phone Carrier']] = contact.phone_carrier;\n    if (cfm['LinkedIn URL'] && contact.linkedin_url) typedContactFields[cfm['LinkedIn URL']] = contact.linkedin_url;\n\n    const contactPayload = {\n      first_name: contact.first_name || '',\n      last_name: contact.last_name || '',\n      organization_name: company.name,\n      account_id: apolloAccountId || undefined,\n      title: contact.role === 'owner' ? 'Owner'\n        : contact.role === 'manager' ? 'Manager'\n        : contact.role === 'practitioner'\n          ? 'Practitioner' : undefined,\n      email: contact.email_business\n        || contact.email_personal || undefined,\n      direct_phone: contact.phone_direct || undefined,\n      corporate_phone: company.phone || undefined,\n      present_raw_address: contact.location\n        || company.address || undefined,\n      typed_custom_fields: typedContactFields\n    };\n\n    if (apolloContactId) {\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${BASE_URL}/contacts/${apolloContactId}`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        action = 'updated';\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_contact_id: apolloContactId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n        }\n      } catch (e) {\n        action = `update_error: ${e.message}`;\n      }\n    } else {\n      contactPayload.run_dedupe = true;\n      try {\n        const createData = await this.helpers.httpRequest({\n          method: 'POST',\n          url: `${BASE_URL}/contacts`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        if (createData.contact) {\n          apolloContactId = createData.contact.id;\n          action = 'created';\n          try {\n            await this.helpers.httpRequest({\n              method: 'PATCH',\n              url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n              headers: supabaseHeaders,\n              body: {\n                apollo_contact_id: apolloContactId,\n                apollo_synced_at: new Date().toISOString()\n              },\n              json: true\n            });\n          } catch (e) {\n            console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n          }\n        } else {\n          action = 'create_error: no contact in response';\n        }\n      } catch (e) {\n        action = `create_error: ${e.message}`;\n      }\n    }\n\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      apollo_contact_id: apolloContactId,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action\n    });\n\n    await new Promise(r => setTimeout(r, 700));\n\n  } catch (e) {\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action: `exception: ${e.message}`\n    });\n  }\n}\n\nreturn {\n  json: {\n    company_id: company.id,\n    company_name: company.name,\n    apollo_account_id: apolloAccountId,\n    account_action: $input.item.json.account_action,\n    contact_results: contactResults,\n    _config: config\n  }\n};"
+      },
       "id": "a486cf84-01e7-433f-8f50-86796f97de16",
       "name": "Upsert Contacts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1760, 0],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Phase 4: Upsert Contacts in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save after each contact create/update\n\nconst config = $input.item.json._config;\nconst APOLLO_API_KEY = config.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst apolloAccountId = $input.item.json.apollo_account_id;\nconst fieldMapping = config.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': config.supabase_service_key,\n  'Authorization': `Bearer ${config.supabase_service_key}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst contactResults = [];\n\nfor (const contact of contacts) {\n  try {\n    let apolloContactId = contact.apollo_contact_id;\n    let action = 'skipped';\n\n    // Build typed_custom_fields using field IDs from mapping\n    // Truthy-only for strings to avoid overwriting manual Apollo edits\n    // != null for booleans since false is a valid value\n    const cfm = fieldMapping.contact;\n    const typedContactFields = {};\n    // Existing fields — upgraded to truthy-only\n    if (cfm['Cultural Affinity'] && contact.cultural_affinity) typedContactFields[cfm['Cultural Affinity']] = contact.cultural_affinity;\n    if (cfm['Is Owner'] && contact.is_owner != null) typedContactFields[cfm['Is Owner']] = contact.is_owner;\n    if (cfm['Meridian Role'] && contact.role) typedContactFields[cfm['Meridian Role']] = contact.role;\n    if (cfm['Contact Source'] && contact.source) typedContactFields[cfm['Contact Source']] = contact.source;\n    if (cfm['VerveLabs Run Tag']) typedContactFields[cfm['VerveLabs Run Tag']] = run_tag;\n    // v2: New fields\n    if (cfm['Email Personal'] && contact.email_personal) typedContactFields[cfm['Email Personal']] = contact.email_personal;\n    if (cfm['Email Status'] && contact.email_status) typedContactFields[cfm['Email Status']] = contact.email_status;\n    if (cfm['Email Verified At'] && contact.email_verified_at) typedContactFields[cfm['Email Verified At']] = contact.email_verified_at;\n    if (cfm['Phone Status'] && contact.phone_status) typedContactFields[cfm['Phone Status']] = contact.phone_status;\n    if (cfm['Phone Verified At'] && contact.phone_verified_at) typedContactFields[cfm['Phone Verified At']] = contact.phone_verified_at;\n    if (cfm['Phone Line Type'] && contact.phone_line_type) typedContactFields[cfm['Phone Line Type']] = contact.phone_line_type;\n    if (cfm['Phone Carrier'] && contact.phone_carrier) typedContactFields[cfm['Phone Carrier']] = contact.phone_carrier;\n    if (cfm['LinkedIn URL'] && contact.linkedin_url) typedContactFields[cfm['LinkedIn URL']] = contact.linkedin_url;\n\n    const contactPayload = {\n      first_name: contact.first_name || '',\n      last_name: contact.last_name || '',\n      organization_name: company.name,\n      account_id: apolloAccountId || undefined,\n      title: contact.role === 'owner' ? 'Owner'\n        : contact.role === 'manager' ? 'Manager'\n        : contact.role === 'practitioner'\n          ? 'Practitioner' : undefined,\n      email: contact.email_business\n        || contact.email_personal || undefined,\n      direct_phone: contact.phone_direct || undefined,\n      corporate_phone: company.phone || undefined,\n      present_raw_address: contact.location\n        || company.address || undefined,\n      typed_custom_fields: typedContactFields\n    };\n\n    if (apolloContactId) {\n      // UPDATE existing contact\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${BASE_URL}/contacts/${apolloContactId}`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        action = 'updated';\n        // Immediately save to Supabase\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_contact_id: apolloContactId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n        }\n      } catch (e) {\n        action = `update_error: ${e.message}`;\n      }\n    } else {\n      // CREATE with dedup enabled + label tagging\n      contactPayload.run_dedupe = true;\n      contactPayload.label_names = [run_tag];\n      try {\n        const createData = await this.helpers.httpRequest({\n          method: 'POST',\n          url: `${BASE_URL}/contacts`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        if (createData.contact) {\n          apolloContactId = createData.contact.id;\n          action = 'created';\n          // Immediately save to Supabase\n          try {\n            await this.helpers.httpRequest({\n              method: 'PATCH',\n              url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n              headers: supabaseHeaders,\n              body: {\n                apollo_contact_id: apolloContactId,\n                apollo_synced_at: new Date().toISOString()\n              },\n              json: true\n            });\n          } catch (e) {\n            console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n          }\n        } else {\n          action = 'create_error: no contact in response';\n        }\n      } catch (e) {\n        action = `create_error: ${e.message}`;\n      }\n    }\n\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      apollo_contact_id: apolloContactId,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action\n    });\n\n    // Rate limit: 700ms between API calls\n    await new Promise(r => setTimeout(r, 700));\n\n  } catch (e) {\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action: `exception: ${e.message}`\n    });\n  }\n}\n\nreturn {\n  json: {\n    company_id: company.id,\n    company_name: company.name,\n    apollo_account_id: apolloAccountId,\n    account_action: $input.item.json.account_action,\n    contact_results: contactResults,\n    _config: config\n  }\n};\n"
-      }
+      "position": [
+        1760,
+        0
+      ]
     },
     {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Phase 5: Mark Synced in Supabase\n// Mode: runOnceForEachItem\n\nconst config = $input.item.json._config;\nconst SUPABASE_URL = config.supabase_url;\nconst SUPABASE_KEY = config.supabase_service_key;\nconst item = $input.item.json;\nconst now = new Date().toISOString();\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst results = { company: null, contacts: [] };\n\ntry {\n  // Update company apollo_account_id + apollo_synced_at\n  if (item.apollo_account_id) {\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${item.company_id}`,\n        headers,\n        body: {\n          apollo_account_id: item.apollo_account_id,\n          apollo_synced_at: now\n        },\n        json: true\n      });\n      results.company = 'synced';\n    } catch (e) {\n      results.company = `error: ${e.message}`;\n    }\n  }\n\n  // Update each contact's apollo_contact_id + apollo_synced_at\n  for (const cr of (item.contact_results || [])) {\n    if (cr.apollo_contact_id && cr.supabase_contact_id) {\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/contacts?id=eq.${cr.supabase_contact_id}`,\n          headers,\n          body: {\n            apollo_contact_id: cr.apollo_contact_id,\n            apollo_synced_at: now\n          },\n          json: true\n        });\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: 'synced'\n        });\n      } catch (e) {\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: `error: ${e.message}`\n        });\n      }\n    }\n  }\n} catch (e) {\n  results.error = e.message;\n}\n\nreturn {\n  json: {\n    company_id: item.company_id,\n    company_name: item.company_name,\n    apollo_account_id: item.apollo_account_id,\n    account_action: item.account_action,\n    contact_results: item.contact_results,\n    sync_results: results\n  }\n};\n"
+      },
       "id": "9960486b-970c-4732-a85b-4a079ad49ae2",
       "name": "Mark Synced",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1984, 0],
-      "parameters": {
-        "mode": "runOnceForEachItem",
-        "jsCode": "// Phase 5: Mark Synced in Supabase\n// Mode: runOnceForEachItem\n\nconst config = $input.item.json._config;\nconst SUPABASE_URL = config.supabase_url;\nconst SUPABASE_KEY = config.supabase_service_key;\nconst item = $input.item.json;\nconst now = new Date().toISOString();\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst results = { company: null, contacts: [] };\n\ntry {\n  // Update company apollo_account_id + apollo_synced_at\n  if (item.apollo_account_id) {\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${item.company_id}`,\n        headers,\n        body: {\n          apollo_account_id: item.apollo_account_id,\n          apollo_synced_at: now\n        },\n        json: true\n      });\n      results.company = 'synced';\n    } catch (e) {\n      results.company = `error: ${e.message}`;\n    }\n  }\n\n  // Update each contact's apollo_contact_id + apollo_synced_at\n  for (const cr of (item.contact_results || [])) {\n    if (cr.apollo_contact_id && cr.supabase_contact_id) {\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/contacts?id=eq.${cr.supabase_contact_id}`,\n          headers,\n          body: {\n            apollo_contact_id: cr.apollo_contact_id,\n            apollo_synced_at: now\n          },\n          json: true\n        });\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: 'synced'\n        });\n      } catch (e) {\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: `error: ${e.message}`\n        });\n      }\n    }\n  }\n} catch (e) {\n  results.error = e.message;\n}\n\nreturn {\n  json: {\n    company_id: item.company_id,\n    company_name: item.company_name,\n    apollo_account_id: item.apollo_account_id,\n    account_action: item.account_action,\n    contact_results: item.contact_results,\n    sync_results: results\n  }\n};\n"
-      }
+      "position": [
+        2208,
+        0
+      ]
     },
     {
+      "parameters": {
+        "jsCode": "// Log Summary — aggregate sync results from all batches\n// Mode: runOnceForAllItems\n// Receives all items from the SplitInBatches \"done\" output,\n// which aggregates every item that passed through the loop.\n\nconst items = $input.all();\nconst summary = {\n  accounts_created: 0,\n  accounts_updated: 0,\n  accounts_error: 0,\n  contacts_created: 0,\n  contacts_updated: 0,\n  contacts_error: 0,\n  companies_synced: 0\n};\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Count company sync results\n  if (d.sync_results?.company === 'synced') summary.companies_synced++;\n\n  // Count account actions\n  if (d.account_action === 'created') summary.accounts_created++;\n  else if (d.account_action === 'updated') summary.accounts_updated++;\n  else if (d.account_action?.includes('error')) summary.accounts_error++;\n\n  // Count contact results\n  for (const cr of (d.contact_results || [])) {\n    if (cr.action === 'created') summary.contacts_created++;\n    else if (cr.action === 'updated') summary.contacts_updated++;\n    else if (cr.action?.includes('error')) summary.contacts_error++;\n  }\n}\n\nsummary.total_items = items.length;\nconsole.log('Apollo Sync Summary:', JSON.stringify(summary));\nreturn [{ json: summary }];\n"
+      },
       "id": "4ebb81b7-9cba-456b-9b13-904960684afe",
       "name": "Log Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1104, 224],
+      "position": [
+        1104,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter to only items with valid company data\nconst items = $input.all();\nconst valid = items.filter(i => i.json.company && i.json.company.id);\nif (valid.length === 0) return [];\nreturn valid.map(i => ({ json: i.json }));\n"
+      },
+      "id": "8b97f8ab-75cd-4c65-9a49-711e0fa181d5",
+      "name": "Filter Has Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "id": "b7f3a1d2-4e5c-6f78-9a0b-1c2d3e4f5a6b",
+      "name": "Assign to Prospect List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        0
+      ],
       "parameters": {
         "mode": "runOnceForAllItems",
-        "jsCode": "// Log Summary — aggregate sync results from all batches\n// Mode: runOnceForAllItems\n// Receives all items from the SplitInBatches \"done\" output,\n// which aggregates every item that passed through the loop.\n\nconst items = $input.all();\nconst summary = {\n  accounts_created: 0,\n  accounts_updated: 0,\n  accounts_error: 0,\n  contacts_created: 0,\n  contacts_updated: 0,\n  contacts_error: 0,\n  companies_synced: 0\n};\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Count company sync results\n  if (d.sync_results?.company === 'synced') summary.companies_synced++;\n\n  // Count account actions\n  if (d.account_action === 'created') summary.accounts_created++;\n  else if (d.account_action === 'updated') summary.accounts_updated++;\n  else if (d.account_action?.includes('error')) summary.accounts_error++;\n\n  // Count contact results\n  for (const cr of (d.contact_results || [])) {\n    if (cr.action === 'created') summary.contacts_created++;\n    else if (cr.action === 'updated') summary.contacts_updated++;\n    else if (cr.action?.includes('error')) summary.contacts_error++;\n  }\n}\n\nsummary.total_items = items.length;\nconsole.log('Apollo Sync Summary:', JSON.stringify(summary));\nreturn [{ json: summary }];\n"
+        "jsCode": "// Phase 4.5: Assign Contacts to Prospect List with 1000-cap rotation\n// Mode: runOnceForAllItems\n\nconst items = $input.all();\nconst cfg = items[0].json._config;\nif (!cfg) throw new Error('_config missing from input items');\n\nconst APOLLO_API_KEY = cfg.apollo_api_key;\nconst SUPABASE_URL = cfg.supabase_url;\nconst SUPABASE_KEY = cfg.supabase_service_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst apolloHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\n// Helper: increment list name (VerveLabs-Prospects-001 -> VerveLabs-Prospects-002)\nfunction getNextListName(current) {\n  const match = current.match(/^(.*-)(\\d+)$/);\n  if (!match) return current + '-002';\n  const prefix = match[1];\n  const num = parseInt(match[2], 10) + 1;\n  return prefix + String(num).padStart(3, '0');\n}\n\n// Step 1: Get active list name from Supabase config\nconst configData = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list&select=value`,\n  headers: supabaseHeaders,\n  json: true\n});\nlet activeList = configData?.[0]?.value || 'VerveLabs-Prospects-001';\n\n// Step 2: Count contacts currently in that list via Apollo search\nlet currentCount = 0;\ntry {\n  const countData = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${BASE_URL}/contacts/search`,\n    headers: apolloHeaders,\n    body: {\n      label_names: [activeList],\n      page: 1,\n      per_page: 1\n    },\n    json: true\n  });\n  currentCount = countData?.pagination?.total_entries || 0;\n} catch (e) {\n  // If search fails, proceed with count=0 (safe: won't rotate)\n}\n\nawait new Promise(r => setTimeout(r, 700));\n\n// Step 3: Rotate list if at or over 1000\nlet rotated = false;\nif (currentCount >= 1000) {\n  activeList = getNextListName(activeList);\n  rotated = true;\n\n  // Update Supabase config with new list name\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list`,\n    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },\n    body: { value: activeList, updated_at: new Date().toISOString() },\n    json: true\n  });\n}\n\n// Step 4: Collect all Apollo contact IDs from this batch\nconst apolloContactIds = [];\nfor (const item of items) {\n  const contactResults = item.json.contact_results || [];\n  for (const cr of contactResults) {\n    if (cr.apollo_contact_id) {\n      apolloContactIds.push(cr.apollo_contact_id);\n    }\n  }\n}\n\nconst summary = {\n  phase: 'list_assignment',\n  active_list: activeList,\n  list_count_before: currentCount,\n  rotated,\n  contacts_found: apolloContactIds.length,\n  contacts_added: 0,\n  errors: []\n};\n\n// Step 5: Add contacts to active list in batches of 25\nif (apolloContactIds.length > 0) {\n  const BATCH_SIZE = 25;\n  for (let i = 0; i < apolloContactIds.length; i += BATCH_SIZE) {\n    const batch = apolloContactIds.slice(i, i + BATCH_SIZE);\n    try {\n      await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/contacts/bulk_update`,\n        headers: apolloHeaders,\n        body: {\n          contact_ids: batch,\n          label_names: [activeList]\n        },\n        json: true\n      });\n      summary.contacts_added += batch.length;\n    } catch (e) {\n      summary.errors.push(`Batch ${i}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n}\n\n// Return ALL original items with _config intact for Mark Synced\n// Attach list assignment summary to first item for logging\nreturn items.map((item, idx) => ({\n  json: {\n    ...item.json,\n    ...(idx === 0 ? { _listAssignment: summary } : {})\n  }\n}));"
       }
     }
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[{"node": "Set Config", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Set Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Set Config": {
-      "main": [[{"node": "Setup Custom Fields", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Setup Custom Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Setup Custom Fields": {
-      "main": [[{"node": "Fetch Unsynced", "type": "main", "index": 0}]]
-    },
-    "Fetch Unsynced": {
-      "main": [[{"node": "Filter Has Data", "type": "main", "index": 0}]]
-    },
-    "Filter Has Data": {
       "main": [
-        [{"node": "Split In Batches", "type": "main", "index": 0}]
+        [
+          {
+            "node": "Fetch Unsynced",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Split In Batches": {
       "main": [
-        [{"node": "Log Summary", "type": "main", "index": 0}],
-        [{"node": "Upsert Account", "type": "main", "index": 0}]
+        [
+          {
+            "node": "Log Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Upsert Account": {
-      "main": [[{"node": "Wait", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Wait": {
-      "main": [[{"node": "Upsert Contacts", "type": "main", "index": 0}]]
-    },
-    "Upsert Contacts": {
-      "main": [[{"node": "Mark Synced", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Upsert Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Mark Synced": {
-      "main": [[{"node": "Split In Batches", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Unsynced": {
+      "main": [
+        [
+          {
+            "node": "Filter Has Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Has Data": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Contacts": {
+      "main": [
+        [
+          {
+            "node": "Assign to Prospect List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign to Prospect List": {
+      "main": [
+        [
+          {
+            "node": "Mark Synced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "saveManualExecutions": true,
-    "saveDataErrorExecution": "all",
-    "saveDataSuccessExecution": "all"
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        23
+      ]
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "376f5547-ab5e-4fc2-9f65-5da15b6ff237",
+  "activeVersionId": "376f5547-ab5e-4fc2-9f65-5da15b6ff237",
+  "versionCounter": 165,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-02-26T01:20:12.906Z",
+      "createdAt": "2026-02-26T01:20:12.906Z",
+      "role": "workflow:owner",
+      "workflowId": "g9uplPwBAaaVgm4X",
+      "projectId": "333cvByoNUNJEvRJ",
+      "project": {
+        "updatedAt": "2026-02-14T18:27:04.985Z",
+        "createdAt": "2026-02-14T18:04:34.656Z",
+        "id": "333cvByoNUNJEvRJ",
+        "name": "Phillip Schuman <2fa@spamarketing.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+        "projectRelations": [
+          {
+            "updatedAt": "2026-02-14T18:04:34.656Z",
+            "createdAt": "2026-02-14T18:04:34.656Z",
+            "userId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+            "projectId": "333cvByoNUNJEvRJ",
+            "user": {
+              "updatedAt": "2026-03-10T21:23:44.545Z",
+              "createdAt": "2026-02-14T18:04:33.805Z",
+              "id": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06",
+              "email": "2fa@spamarketing.com",
+              "firstName": "Phillip",
+              "lastName": "Schuman",
+              "personalizationAnswers": {
+                "version": "v4",
+                "personalization_survey_submitted_at": "2026-02-14T18:27:56.226Z",
+                "personalization_survey_n8n_version": "2.1.5",
+                "companyIndustryExtended": [
+                  "other"
+                ],
+                "otherCompanyIndustryExtended": "Agency - Massage Clinics",
+                "companySize": "<20",
+                "companyType": "other",
+                "role": "business-owner",
+                "reportedSource": "friend"
+              },
+              "settings": {
+                "userActivated": true,
+                "firstSuccessfulWorkflowId": "7Ix8ajJ5Rp9NyYk8",
+                "userActivatedAt": 1772253042018,
+                "npsSurvey": {
+                  "waitingForResponse": true,
+                  "ignoredCount": 1,
+                  "lastShownAt": 1772068813704
+                }
+              },
+              "disabled": false,
+              "mfaEnabled": false,
+              "lastActiveAt": "2026-03-10",
+              "isPending": false
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-10T23:45:20.759Z",
+    "createdAt": "2026-03-10T23:45:20.759Z",
+    "versionId": "376f5547-ab5e-4fc2-9f65-5da15b6ff237",
+    "workflowId": "g9uplPwBAaaVgm4X",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "837b5d8a-a8d1-4c5e-9d78-939aebf1edc3",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "apollo-key",
+                "name": "apollo_api_key",
+                "value": "={{ $env.APOLLO_API_KEY }}",
+                "type": "string"
+              },
+              {
+                "id": "supabase-url",
+                "name": "supabase_url",
+                "value": "={{ $env.SUPABASE_URL }}",
+                "type": "string"
+              },
+              {
+                "id": "supabase-key",
+                "name": "supabase_service_key",
+                "value": "={{ $env.SUPABASE_SERVICE_KEY }}",
+                "type": "string"
+              },
+              {
+                "id": "run-tag",
+                "name": "run_tag",
+                "value": "=vervelabs-{{ $now.format('yyyy-MM-dd-HHmm') }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "eb8bc71e-30f2-4971-84e8-aa33bbfe7b61",
+        "name": "Set Config",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          224,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Phase 1: Setup Custom Fields\n// Mode: runOnceForAllItems\n\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\n\nconst ACCOUNT_FIELDS = [\n  { label: 'Lead Score', type: 'number' },\n  { label: 'Has Website', type: 'boolean' },\n  { label: 'Has Online Booking', type: 'boolean' },\n  { label: 'Booking Platform', type: 'string' },\n  { label: 'Has Paid Ads', type: 'boolean' },\n  { label: 'On Groupon', type: 'boolean' },\n  { label: 'On Yelp', type: 'boolean' },\n  { label: 'Google Review Count', type: 'number' },\n  { label: 'Google Rating', type: 'number' },\n  { label: 'Estimated Size', type: 'string' },\n  { label: 'Enrichment Status', type: 'string' },\n  { label: 'Category', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Discovery Metro', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Yelp Is Claimed', type: 'boolean' },\n  { label: 'Source URLs', type: 'string' },\n  { label: 'Facebook URL', type: 'string' },\n  { label: 'Instagram URL', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n  { label: 'TikTok URL', type: 'string' },\n  { label: 'Twitter URL', type: 'string' },\n  { label: 'YouTube URL', type: 'string' },\n  { label: 'Company Email', type: 'string' },\n];\n\nconst CONTACT_FIELDS = [\n  { label: 'Cultural Affinity', type: 'string' },\n  { label: 'Is Owner', type: 'boolean' },\n  { label: 'Meridian Role', type: 'string' },\n  { label: 'Contact Source', type: 'string' },\n  { label: 'VerveLabs Run Tag', type: 'string' },\n  // v2: Expanded fields\n  { label: 'Email Personal', type: 'string' },\n  { label: 'Email Status', type: 'string' },\n  { label: 'Email Verified At', type: 'string' },\n  { label: 'Phone Status', type: 'string' },\n  { label: 'Phone Verified At', type: 'string' },\n  { label: 'Phone Line Type', type: 'string' },\n  { label: 'Phone Carrier', type: 'string' },\n  { label: 'LinkedIn URL', type: 'string' },\n];\n\n// Fetch existing custom fields\nlet existingFields = [];\ntry {\n  const data = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  existingFields = data.fields || [];\n} catch (e) {\n  // If listing fails, proceed anyway - creates are idempotent\n  console.log('Could not list existing fields:', e.message);\n}\n\nconst existingLabels = new Set(\n  existingFields.map(f => f.label?.toLowerCase())\n);\n\nconst results = { created: [], skipped: [], errors: [] };\n\n// Create account custom fields\nfor (const field of ACCOUNT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'account'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  // Rate limit: wait 700ms between calls (fires on both success and error)\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Create contact custom fields\nfor (const field of CONTACT_FIELDS) {\n  if (existingLabels.has(field.label.toLowerCase())) {\n    results.skipped.push(field.label);\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: `${BASE_URL}/fields`,\n      headers: {\n        'Content-Type': 'application/json',\n        'x-api-key': APOLLO_API_KEY\n      },\n      body: {\n        label: field.label,\n        type: field.type,\n        modality: 'contact'\n      },\n      json: true\n    });\n    results.created.push(field.label);\n  } catch (e) {\n    results.errors.push(`${field.label}: ${e.message}`);\n  }\n  await new Promise(r => setTimeout(r, 700));\n}\n\n// Fetch all fields to build label-to-ID mapping for typed_custom_fields\nconst ACCOUNT_LABELS = new Set(ACCOUNT_FIELDS.map(f => f.label));\nconst CONTACT_LABELS = new Set(CONTACT_FIELDS.map(f => f.label));\nconst fieldMapping = { account: {}, contact: {} };\nconst debugFields = [];\n\ntry {\n  const allFieldsData = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${BASE_URL}/fields`,\n    headers: {\n      'Content-Type': 'application/json',\n      'x-api-key': APOLLO_API_KEY,\n      'Cache-Control': 'no-cache'\n    },\n    json: true\n  });\n  const allFields = allFieldsData.fields || [];\n  const getRawId = (val) => val ? val.split('.').pop() : val;\n  for (const f of allFields) {\n    if (ACCOUNT_LABELS.has(f.label) || CONTACT_LABELS.has(f.label)) {\n      debugFields.push({ label: f.label, id: f.id, key: f.key, modality: f.modality });\n    }\n    if (f.modality === 'account' && ACCOUNT_LABELS.has(f.label)) {\n      fieldMapping.account[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n    if (f.modality === 'contact' && CONTACT_LABELS.has(f.label)) {\n      fieldMapping.contact[f.label] = getRawId(f.id) || getRawId(f.key);\n    }\n  }\n} catch (e) {\n  results.errors.push(`Field mapping fetch failed: ${e.message}`);\n}\n\nreturn [{\n  json: {\n    phase: 'custom_fields_setup',\n    ...results,\n    field_mapping: fieldMapping,\n    _debug_fields: debugFields\n  }\n}];\n"
+        },
+        "id": "c5a77d34-3968-43ea-bdbe-6d40e941610f",
+        "name": "Setup Custom Fields",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Phase 2: Fetch Unsynced Data from Supabase\n// Mode: runOnceForAllItems\n\nconst SUPABASE_URL = $('Set Config').item.json.supabase_url;\nconst SUPABASE_KEY = $('Set Config').item.json.supabase_service_key;\nconst RUN_TAG = $('Set Config').item.json.run_tag;\nconst APOLLO_API_KEY = $('Set Config').item.json.apollo_api_key;\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=representation'\n};\n\n// Fetch active prospect list name from pipeline_config\nlet activeProspectList = 'VerveLabs-Prospects-001';\ntry {\n  const plRows = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list&select=value`,\n    headers,\n    json: true\n  });\n  if (plRows && plRows.length > 0 && plRows[0].value) {\n    activeProspectList = plRows[0].value;\n  }\n} catch (e) {\n  console.log(`Failed to fetch active_prospect_list: ${e.message}, using default`);\n}\n\n// Fetch companies needing sync (with social_profiles embedded)\nlet companies;\ntry {\n  companies = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/companies?enrichment_status=eq.fully_enriched&apollo_synced_at=is.null&select=*,social_profiles(platform,profile_url)&order=city,name&limit=30`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch companies failed: ${e.message}`, companies: [] } }];\n}\n\nif (!companies || companies.length === 0) {\n  return [{ json: { phase: 'fetch', companies: [], message: 'No unsynced companies found' } }];\n}\n\n// Flatten social_profiles into company-level URL fields\nfor (const company of companies) {\n  company.facebook_url = null;\n  company.instagram_url = null;\n  company.linkedin_url = null;\n  company.tiktok_url = null;\n  company.twitter_url = null;\n  company.youtube_url = null;\n  if (company.social_profiles && Array.isArray(company.social_profiles)) {\n    for (const profile of company.social_profiles) {\n      const p = profile.platform?.toLowerCase();\n      if (p === 'facebook') company.facebook_url = profile.profile_url;\n      else if (p === 'instagram') company.instagram_url = profile.profile_url;\n      else if (p === 'linkedin') company.linkedin_url = profile.profile_url;\n      else if (p === 'tiktok') company.tiktok_url = profile.profile_url;\n      else if (p === 'x' || p === 'twitter') company.twitter_url = profile.profile_url;\n      else if (p === 'youtube') company.youtube_url = profile.profile_url;\n    }\n    delete company.social_profiles;\n  }\n}\n\n// Fetch contacts for these companies\nconst companyIds = companies.map(c => c.id);\nlet contacts;\ntry {\n  contacts = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `${SUPABASE_URL}/rest/v1/contacts?company_id=in.(${companyIds.join(',')})&select=*`,\n    headers,\n    json: true\n  });\n} catch (e) {\n  return [{ json: { phase: 'fetch', error: `Fetch contacts failed: ${e.message}`, companies: [] } }];\n}\n\n// Group contacts by company_id\nconst contactsByCompany = {};\nfor (const contact of contacts) {\n  if (!contactsByCompany[contact.company_id]) {\n    contactsByCompany[contact.company_id] = [];\n  }\n  contactsByCompany[contact.company_id].push(contact);\n}\n\n// Get field mapping from upstream Setup Custom Fields node\nconst fieldMapping = $('Setup Custom Fields').first().json.field_mapping || { account: {}, contact: {} };\n\n// Emit one item per company with its contacts attached\nreturn companies.map(company => {\n  let companyContacts = contactsByCompany[company.id] || [];\n\n  // Inject synthetic 'Front Desk' contact for companies with no contacts\n  // so Orum dialer can reach them via their main phone number\n  if (companyContacts.length === 0) {\n    companyContacts = [{\n      id: `synthetic-${company.id}`,\n      first_name: 'Front Desk',\n      last_name: company.name || 'Main Line',\n      phone_direct: company.phone || '',\n      role: 'Gatekeeper',\n      is_owner: false,\n      source: 'synthetic_fallback',\n      email_business: company.email || '',\n      cultural_affinity: '',\n      email_personal: '',\n      phone_carrier: '',\n      email_status: company.email_status || '',\n      phone_status: company.phone_status || '',\n      phone_line_type: company.phone_line_type || '',\n      company_id: company.id\n    }];\n  }\n\n  return {\n    json: {\n      company,\n      contacts: companyContacts,\n      run_tag: RUN_TAG,\n      prospect_list: activeProspectList,\n      field_mapping: fieldMapping,\n      _config: {\n        apollo_api_key: APOLLO_API_KEY,\n        supabase_url: SUPABASE_URL,\n        supabase_service_key: SUPABASE_KEY\n      }\n    }\n  };\n});"
+        },
+        "id": "c0caca9f-e5c2-480f-aac3-5cebc61f3f83",
+        "name": "Fetch Unsynced",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "batchSize": 25,
+          "options": {}
+        },
+        "id": "c495095d-48be-4b2e-a42b-ff9a66faca2d",
+        "name": "Split In Batches",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          1104,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Phase 3: Upsert Account in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save + name-based account search fallback\n\nconst _cfg = $input.item.json._config || {};\nconst APOLLO_API_KEY = _cfg.apollo_api_key;\nconst SUPABASE_URL = _cfg.supabase_url;\nconst SUPABASE_KEY = _cfg.supabase_service_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst prospect_list = $input.item.json.prospect_list;\nconst fieldMapping = $input.item.json.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\n// Platform/social domains - skip domain search (would match wrong accounts)\nconst SKIP_DOMAINS = new Set([\n  'facebook.com', 'instagram.com', 'twitter.com', 'linkedin.com',\n  'youtube.com', 'tiktok.com', 'yelp.com', 'nextdoor.com',\n  'wixsite.com', 'wix.com', 'square.site', 'squarespace.com',\n  'setmore.com', 'schedulista.com', 'glossgenius.com',\n  'genbook.com', 'jane.app', 'acuityscheduling.com',\n  'mindbodyonline.com', 'mindbody.io', 'vagaro.com',\n  'fresha.com', 'schedulicity.com', 'booksy.com',\n  'massagebook.com', 'noterro.com', 'clinicsense.com', 'calendly.com'\n]);\n\n// Build typed_custom_fields using field IDs from mapping\n// Truthy-only for strings/numbers to avoid overwriting manual Apollo edits\n// != null for booleans since false is a valid value we want to push\nconst fm = fieldMapping.account;\nconst typedCustomFields = {};\n// Existing fields — upgraded to truthy-only\nif (fm['Lead Score'] && company.lead_score) typedCustomFields[fm['Lead Score']] = company.lead_score;\nif (fm['Has Website'] && company.has_website != null) typedCustomFields[fm['Has Website']] = company.has_website;\nif (fm['Has Online Booking'] && company.has_online_booking != null) typedCustomFields[fm['Has Online Booking']] = company.has_online_booking;\nif (fm['Booking Platform'] && company.booking_platform) typedCustomFields[fm['Booking Platform']] = company.booking_platform;\nif (fm['Has Paid Ads'] && company.has_paid_ads != null) typedCustomFields[fm['Has Paid Ads']] = company.has_paid_ads;\nif (fm['On Groupon'] && company.on_groupon != null) typedCustomFields[fm['On Groupon']] = company.on_groupon;\nif (fm['On Yelp'] && company.on_yelp != null) typedCustomFields[fm['On Yelp']] = company.on_yelp;\nif (fm['Google Review Count'] && company.google_review_count) typedCustomFields[fm['Google Review Count']] = company.google_review_count;\nif (fm['Google Rating'] && company.google_rating) typedCustomFields[fm['Google Rating']] = parseFloat(company.google_rating);\nif (fm['Estimated Size'] && company.estimated_size) typedCustomFields[fm['Estimated Size']] = company.estimated_size;\nif (fm['Enrichment Status'] && company.enrichment_status) typedCustomFields[fm['Enrichment Status']] = company.enrichment_status;\nif (fm['Category'] && company.category) typedCustomFields[fm['Category']] = company.category;\nif (fm['VerveLabs Run Tag']) typedCustomFields[fm['VerveLabs Run Tag']] = prospect_list || run_tag;\n// v2: New core fields\nif (fm['Discovery Metro'] && company.discovery_metro) typedCustomFields[fm['Discovery Metro']] = company.discovery_metro;\nif (fm['Email Status'] && company.email_status) typedCustomFields[fm['Email Status']] = company.email_status;\nif (fm['Phone Status'] && company.phone_status) typedCustomFields[fm['Phone Status']] = company.phone_status;\nif (fm['Phone Line Type'] && company.phone_line_type) typedCustomFields[fm['Phone Line Type']] = company.phone_line_type;\nif (fm['Yelp Is Claimed'] && company.yelp_is_claimed != null) typedCustomFields[fm['Yelp Is Claimed']] = company.yelp_is_claimed;\nif (fm['Source URLs'] && company.source_urls) typedCustomFields[fm['Source URLs']] = JSON.stringify(company.source_urls);\n// v2: Social URLs (flattened from social_profiles in Fetch Unsynced)\nif (fm['Facebook URL'] && company.facebook_url) typedCustomFields[fm['Facebook URL']] = company.facebook_url;\nif (fm['Instagram URL'] && company.instagram_url) typedCustomFields[fm['Instagram URL']] = company.instagram_url;\nif (fm['LinkedIn URL'] && company.linkedin_url) typedCustomFields[fm['LinkedIn URL']] = company.linkedin_url;\nif (fm['TikTok URL'] && company.tiktok_url) typedCustomFields[fm['TikTok URL']] = company.tiktok_url;\nif (fm['Twitter URL'] && company.twitter_url) typedCustomFields[fm['Twitter URL']] = company.twitter_url;\nif (fm['YouTube URL'] && company.youtube_url) typedCustomFields[fm['YouTube URL']] = company.youtube_url;\nif (fm['Company Email'] && company.email) typedCustomFields[fm['Company Email']] = company.email;\n\nlet apolloAccountId = company.apollo_account_id;\nlet action = 'skipped';\nconst isSkipDomain = company.domain && SKIP_DOMAINS.has(company.domain);\n\ntry {\n  // Step 1a: Search for existing account by domain (skip platform domains)\n  if (company.domain && !isSkipDomain && !apolloAccountId) {\n    try {\n      const searchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_domains: company.domain,\n          page: 1,\n          per_page: 1\n        },\n        json: true\n      });\n      if (searchData.accounts && searchData.accounts.length > 0) {\n        apolloAccountId = searchData.accounts[0].id;\n      }\n    } catch (e) {\n      console.log(`Domain search failed for ${company.domain}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 1b: Fallback — search by company name if domain search was skipped or found nothing\n  if (!apolloAccountId) {\n    try {\n      const nameSearchData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts/search`,\n        headers: apiHeaders,\n        body: {\n          q_organization_name: company.name,\n          page: 1,\n          per_page: 5\n        },\n        json: true\n      });\n      if (nameSearchData.accounts && nameSearchData.accounts.length > 0) {\n        const exactMatch = nameSearchData.accounts.find(\n          a => a.name?.toLowerCase() === company.name?.toLowerCase()\n        );\n        if (exactMatch) {\n          apolloAccountId = exactMatch.id;\n        }\n      }\n    } catch (e) {\n      console.log(`Name search failed for ${company.name}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n\n  // Step 2: Build account payload (API-compliant params only)\n  const rawAddr = company.address || [company.city, company.state, company.country || 'US'].filter(Boolean).join(', ');\n  const accountPayload = {\n    name: company.name,\n    domain: (!isSkipDomain && company.domain)\n      ? company.domain.replace(/^(?:https?:\\/\\/)?(?:www\\.)?/i, '').split('/')[0]\n      : undefined,\n    phone: company.phone || undefined,\n    raw_address: rawAddr || undefined,\n    typed_custom_fields: typedCustomFields\n  };\n\n  // Step 3: Update or Create\n  if (apolloAccountId) {\n    // UPDATE existing account\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${BASE_URL}/accounts/${apolloAccountId}`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      action = 'updated';\n      // Immediately save to Supabase\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n          headers: supabaseHeaders,\n          body: {\n            apollo_account_id: apolloAccountId,\n            apollo_synced_at: new Date().toISOString()\n          },\n          json: true\n        });\n      } catch (e) {\n        console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n      }\n    } catch (e) {\n      action = `update_error: ${e.message}`;\n    }\n  } else {\n    // CREATE new account\n    try {\n      const createData = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/accounts`,\n        headers: apiHeaders,\n        body: accountPayload,\n        json: true\n      });\n      if (createData.account) {\n        apolloAccountId = createData.account.id;\n        action = 'created';\n        // Immediately save to Supabase so this company is never re-fetched\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${company.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_account_id: apolloAccountId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate Supabase save failed for ${company.id}: ${e.message}`);\n        }\n      } else {\n        action = 'create_error: no account in response';\n      }\n    } catch (e) {\n      action = `create_error: ${e.message}`;\n    }\n  }\n\n  // Rate limit pause\n  await new Promise(r => setTimeout(r, 700));\n\n} catch (e) {\n  action = `exception: ${e.message}`;\n}\n\nreturn {\n  json: {\n    company,\n    contacts,\n    run_tag,\n    prospect_list,\n    apollo_account_id: apolloAccountId,\n    account_action: action,\n    _config: {\n      apollo_api_key: APOLLO_API_KEY,\n      supabase_url: SUPABASE_URL,\n      supabase_service_key: SUPABASE_KEY,\n      field_mapping: fieldMapping\n    }\n  }\n};"
+        },
+        "id": "770aa43d-6729-4888-96a2-d55b697a1fab",
+        "name": "Upsert Account",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1328,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "amount": 2
+        },
+        "id": "ebba9ee1-ab2c-456d-b222-7c011507429d",
+        "name": "Wait",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          1552,
+          0
+        ],
+        "webhookId": "bd976851-7563-4932-baed-db2b16213f8f"
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Phase 4: Upsert Contacts in Apollo\n// Mode: runOnceForEachItem\n// v2: Immediate Supabase save after each contact create/update\n\nconst config = $input.item.json._config;\nconst APOLLO_API_KEY = config.apollo_api_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\nconst company = $input.item.json.company;\nconst contacts = $input.item.json.contacts;\nconst run_tag = $input.item.json.run_tag;\nconst prospect_list = $input.item.json.prospect_list;\nconst apolloAccountId = $input.item.json.apollo_account_id;\nconst fieldMapping = config.field_mapping || { account: {}, contact: {} };\n\nconst apiHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\nconst supabaseHeaders = {\n  'apikey': config.supabase_service_key,\n  'Authorization': `Bearer ${config.supabase_service_key}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst contactResults = [];\n\nfor (const contact of contacts) {\n  try {\n    let apolloContactId = contact.apollo_contact_id;\n    let action = 'skipped';\n\n    // Build typed_custom_fields using field IDs from mapping\n    // Truthy-only for strings to avoid overwriting manual Apollo edits\n    // != null for booleans since false is a valid value\n    const cfm = fieldMapping.contact;\n    const typedContactFields = {};\n    if (cfm['Cultural Affinity'] && contact.cultural_affinity) typedContactFields[cfm['Cultural Affinity']] = contact.cultural_affinity;\n    if (cfm['Is Owner'] && contact.is_owner != null) typedContactFields[cfm['Is Owner']] = contact.is_owner;\n    if (cfm['Meridian Role'] && contact.role) typedContactFields[cfm['Meridian Role']] = contact.role;\n    if (cfm['Contact Source'] && contact.source) typedContactFields[cfm['Contact Source']] = contact.source;\n    if (cfm['VerveLabs Run Tag']) typedContactFields[cfm['VerveLabs Run Tag']] = prospect_list || run_tag;\n    if (cfm['Email Personal'] && contact.email_personal) typedContactFields[cfm['Email Personal']] = contact.email_personal;\n    if (cfm['Email Status'] && contact.email_status) typedContactFields[cfm['Email Status']] = contact.email_status;\n    if (cfm['Email Verified At'] && contact.email_verified_at) typedContactFields[cfm['Email Verified At']] = contact.email_verified_at;\n    if (cfm['Phone Status'] && contact.phone_status) typedContactFields[cfm['Phone Status']] = contact.phone_status;\n    if (cfm['Phone Verified At'] && contact.phone_verified_at) typedContactFields[cfm['Phone Verified At']] = contact.phone_verified_at;\n    if (cfm['Phone Line Type'] && contact.phone_line_type) typedContactFields[cfm['Phone Line Type']] = contact.phone_line_type;\n    if (cfm['Phone Carrier'] && contact.phone_carrier) typedContactFields[cfm['Phone Carrier']] = contact.phone_carrier;\n    if (cfm['LinkedIn URL'] && contact.linkedin_url) typedContactFields[cfm['LinkedIn URL']] = contact.linkedin_url;\n\n    const contactPayload = {\n      first_name: contact.first_name || '',\n      last_name: contact.last_name || '',\n      organization_name: company.name,\n      account_id: apolloAccountId || undefined,\n      title: contact.role === 'owner' ? 'Owner'\n        : contact.role === 'manager' ? 'Manager'\n        : contact.role === 'practitioner'\n          ? 'Practitioner' : undefined,\n      email: contact.email_business\n        || contact.email_personal || undefined,\n      direct_phone: contact.phone_direct || undefined,\n      corporate_phone: company.phone || undefined,\n      present_raw_address: contact.location\n        || company.address || undefined,\n      typed_custom_fields: typedContactFields\n    };\n\n    if (apolloContactId) {\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${BASE_URL}/contacts/${apolloContactId}`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        action = 'updated';\n        try {\n          await this.helpers.httpRequest({\n            method: 'PATCH',\n            url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n            headers: supabaseHeaders,\n            body: {\n              apollo_contact_id: apolloContactId,\n              apollo_synced_at: new Date().toISOString()\n            },\n            json: true\n          });\n        } catch (e) {\n          console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n        }\n      } catch (e) {\n        action = `update_error: ${e.message}`;\n      }\n    } else {\n      contactPayload.run_dedupe = true;\n      try {\n        const createData = await this.helpers.httpRequest({\n          method: 'POST',\n          url: `${BASE_URL}/contacts`,\n          headers: apiHeaders,\n          body: contactPayload,\n          json: true\n        });\n        if (createData.contact) {\n          apolloContactId = createData.contact.id;\n          action = 'created';\n          try {\n            await this.helpers.httpRequest({\n              method: 'PATCH',\n              url: `${config.supabase_url}/rest/v1/contacts?id=eq.${contact.id}`,\n              headers: supabaseHeaders,\n              body: {\n                apollo_contact_id: apolloContactId,\n                apollo_synced_at: new Date().toISOString()\n              },\n              json: true\n            });\n          } catch (e) {\n            console.log(`Immediate contact save failed for ${contact.id}: ${e.message}`);\n          }\n        } else {\n          action = 'create_error: no contact in response';\n        }\n      } catch (e) {\n        action = `create_error: ${e.message}`;\n      }\n    }\n\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      apollo_contact_id: apolloContactId,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action\n    });\n\n    await new Promise(r => setTimeout(r, 700));\n\n  } catch (e) {\n    contactResults.push({\n      supabase_contact_id: contact.id,\n      name: `${contact.first_name} ${contact.last_name}`,\n      action: `exception: ${e.message}`\n    });\n  }\n}\n\nreturn {\n  json: {\n    company_id: company.id,\n    company_name: company.name,\n    apollo_account_id: apolloAccountId,\n    account_action: $input.item.json.account_action,\n    contact_results: contactResults,\n    _config: config\n  }\n};"
+        },
+        "id": "a486cf84-01e7-433f-8f50-86796f97de16",
+        "name": "Upsert Contacts",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1760,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Phase 5: Mark Synced in Supabase\n// Mode: runOnceForEachItem\n\nconst config = $input.item.json._config;\nconst SUPABASE_URL = config.supabase_url;\nconst SUPABASE_KEY = config.supabase_service_key;\nconst item = $input.item.json;\nconst now = new Date().toISOString();\n\nconst headers = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nconst results = { company: null, contacts: [] };\n\ntry {\n  // Update company apollo_account_id + apollo_synced_at\n  if (item.apollo_account_id) {\n    try {\n      await this.helpers.httpRequest({\n        method: 'PATCH',\n        url: `${SUPABASE_URL}/rest/v1/companies?id=eq.${item.company_id}`,\n        headers,\n        body: {\n          apollo_account_id: item.apollo_account_id,\n          apollo_synced_at: now\n        },\n        json: true\n      });\n      results.company = 'synced';\n    } catch (e) {\n      results.company = `error: ${e.message}`;\n    }\n  }\n\n  // Update each contact's apollo_contact_id + apollo_synced_at\n  for (const cr of (item.contact_results || [])) {\n    if (cr.apollo_contact_id && cr.supabase_contact_id) {\n      try {\n        await this.helpers.httpRequest({\n          method: 'PATCH',\n          url: `${SUPABASE_URL}/rest/v1/contacts?id=eq.${cr.supabase_contact_id}`,\n          headers,\n          body: {\n            apollo_contact_id: cr.apollo_contact_id,\n            apollo_synced_at: now\n          },\n          json: true\n        });\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: 'synced'\n        });\n      } catch (e) {\n        results.contacts.push({\n          id: cr.supabase_contact_id,\n          status: `error: ${e.message}`\n        });\n      }\n    }\n  }\n} catch (e) {\n  results.error = e.message;\n}\n\nreturn {\n  json: {\n    company_id: item.company_id,\n    company_name: item.company_name,\n    apollo_account_id: item.apollo_account_id,\n    account_action: item.account_action,\n    contact_results: item.contact_results,\n    sync_results: results\n  }\n};\n"
+        },
+        "id": "9960486b-970c-4732-a85b-4a079ad49ae2",
+        "name": "Mark Synced",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2208,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Log Summary — aggregate sync results from all batches\n// Mode: runOnceForAllItems\n// Receives all items from the SplitInBatches \"done\" output,\n// which aggregates every item that passed through the loop.\n\nconst items = $input.all();\nconst summary = {\n  accounts_created: 0,\n  accounts_updated: 0,\n  accounts_error: 0,\n  contacts_created: 0,\n  contacts_updated: 0,\n  contacts_error: 0,\n  companies_synced: 0\n};\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Count company sync results\n  if (d.sync_results?.company === 'synced') summary.companies_synced++;\n\n  // Count account actions\n  if (d.account_action === 'created') summary.accounts_created++;\n  else if (d.account_action === 'updated') summary.accounts_updated++;\n  else if (d.account_action?.includes('error')) summary.accounts_error++;\n\n  // Count contact results\n  for (const cr of (d.contact_results || [])) {\n    if (cr.action === 'created') summary.contacts_created++;\n    else if (cr.action === 'updated') summary.contacts_updated++;\n    else if (cr.action?.includes('error')) summary.contacts_error++;\n  }\n}\n\nsummary.total_items = items.length;\nconsole.log('Apollo Sync Summary:', JSON.stringify(summary));\nreturn [{ json: summary }];\n"
+        },
+        "id": "4ebb81b7-9cba-456b-9b13-904960684afe",
+        "name": "Log Summary",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1104,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Filter to only items with valid company data\nconst items = $input.all();\nconst valid = items.filter(i => i.json.company && i.json.company.id);\nif (valid.length === 0) return [];\nreturn valid.map(i => ({ json: i.json }));\n"
+        },
+        "id": "8b97f8ab-75cd-4c65-9a49-711e0fa181d5",
+        "name": "Filter Has Data",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          0
+        ]
+      },
+      {
+        "id": "b7f3a1d2-4e5c-6f78-9a0b-1c2d3e4f5a6b",
+        "name": "Assign to Prospect List",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1984,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Phase 4.5: Assign Contacts to Prospect List with 1000-cap rotation\n// Mode: runOnceForAllItems\n\nconst items = $input.all();\nconst cfg = items[0].json._config;\nif (!cfg) throw new Error('_config missing from input items');\n\nconst APOLLO_API_KEY = cfg.apollo_api_key;\nconst SUPABASE_URL = cfg.supabase_url;\nconst SUPABASE_KEY = cfg.supabase_service_key;\nconst BASE_URL = 'https://api.apollo.io/api/v1';\n\nconst supabaseHeaders = {\n  'apikey': SUPABASE_KEY,\n  'Authorization': `Bearer ${SUPABASE_KEY}`,\n  'Content-Type': 'application/json'\n};\n\nconst apolloHeaders = {\n  'Content-Type': 'application/json',\n  'x-api-key': APOLLO_API_KEY,\n  'Cache-Control': 'no-cache'\n};\n\n// Helper: increment list name (VerveLabs-Prospects-001 -> VerveLabs-Prospects-002)\nfunction getNextListName(current) {\n  const match = current.match(/^(.*-)(\\d+)$/);\n  if (!match) return current + '-002';\n  const prefix = match[1];\n  const num = parseInt(match[2], 10) + 1;\n  return prefix + String(num).padStart(3, '0');\n}\n\n// Step 1: Get active list name from Supabase config\nconst configData = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list&select=value`,\n  headers: supabaseHeaders,\n  json: true\n});\nlet activeList = configData?.[0]?.value || 'VerveLabs-Prospects-001';\n\n// Step 2: Count contacts currently in that list via Apollo search\nlet currentCount = 0;\ntry {\n  const countData = await this.helpers.httpRequest({\n    method: 'POST',\n    url: `${BASE_URL}/contacts/search`,\n    headers: apolloHeaders,\n    body: {\n      label_names: [activeList],\n      page: 1,\n      per_page: 1\n    },\n    json: true\n  });\n  currentCount = countData?.pagination?.total_entries || 0;\n} catch (e) {\n  // If search fails, proceed with count=0 (safe: won't rotate)\n}\n\nawait new Promise(r => setTimeout(r, 700));\n\n// Step 3: Rotate list if at or over 1000\nlet rotated = false;\nif (currentCount >= 1000) {\n  activeList = getNextListName(activeList);\n  rotated = true;\n\n  // Update Supabase config with new list name\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: `${SUPABASE_URL}/rest/v1/pipeline_config?key=eq.active_prospect_list`,\n    headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },\n    body: { value: activeList, updated_at: new Date().toISOString() },\n    json: true\n  });\n}\n\n// Step 4: Collect all Apollo contact IDs from this batch\nconst apolloContactIds = [];\nfor (const item of items) {\n  const contactResults = item.json.contact_results || [];\n  for (const cr of contactResults) {\n    if (cr.apollo_contact_id) {\n      apolloContactIds.push(cr.apollo_contact_id);\n    }\n  }\n}\n\nconst summary = {\n  phase: 'list_assignment',\n  active_list: activeList,\n  list_count_before: currentCount,\n  rotated,\n  contacts_found: apolloContactIds.length,\n  contacts_added: 0,\n  errors: []\n};\n\n// Step 5: Add contacts to active list in batches of 25\nif (apolloContactIds.length > 0) {\n  const BATCH_SIZE = 25;\n  for (let i = 0; i < apolloContactIds.length; i += BATCH_SIZE) {\n    const batch = apolloContactIds.slice(i, i + BATCH_SIZE);\n    try {\n      await this.helpers.httpRequest({\n        method: 'POST',\n        url: `${BASE_URL}/contacts/bulk_update`,\n        headers: apolloHeaders,\n        body: {\n          contact_ids: batch,\n          label_names: [activeList]\n        },\n        json: true\n      });\n      summary.contacts_added += batch.length;\n    } catch (e) {\n      summary.errors.push(`Batch ${i}: ${e.message}`);\n    }\n    await new Promise(r => setTimeout(r, 700));\n  }\n}\n\n// Return ALL original items with _config intact for Mark Synced\n// Attach list assignment summary to first item for logging\nreturn items.map((item, idx) => ({\n  json: {\n    ...item.json,\n    ...(idx === 0 ? { _listAssignment: summary } : {})\n  }\n}));"
+        }
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Set Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Config": {
+        "main": [
+          [
+            {
+              "node": "Setup Custom Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Setup Custom Fields": {
+        "main": [
+          [
+            {
+              "node": "Fetch Unsynced",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Split In Batches": {
+        "main": [
+          [
+            {
+              "node": "Log Summary",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Upsert Account",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert Account": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Upsert Contacts",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Mark Synced": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Unsynced": {
+        "main": [
+          [
+            {
+              "node": "Filter Has Data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter Has Data": {
+        "main": [
+          [
+            {
+              "node": "Split In Batches",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert Contacts": {
+        "main": [
+          [
+            {
+              "node": "Assign to Prospect List",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Assign to Prospect List": {
+        "main": [
+          [
+            {
+              "node": "Mark Synced",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Phillip Schuman",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-10T23:45:20.824Z",
+        "id": 221,
+        "workflowId": "g9uplPwBAaaVgm4X",
+        "versionId": "376f5547-ab5e-4fc2-9f65-5da15b6ff237",
+        "event": "activated",
+        "userId": "a0f6ea10-aac2-4dd7-a7bc-df1184531a06"
+      }
+    ]
   }
 }

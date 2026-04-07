@@ -1,0 +1,38 @@
+{
+  "name": "Queue Error Handler",
+  "nodes": [
+    {
+      "id": "qerr-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "parameters": {}
+    },
+    {
+      "id": "qerr-mark-failed",
+      "name": "Mark Queue Failed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [400, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Queue Error Handler — marks the currently-running queue item as failed/retry/cooldown\n// Receives error context from Error Trigger (execution.id, execution.error)\n// ADR-042: Cooldown requeue — after max_retries, delay 24h instead of permanent fail.\n// Permanent fail only after MAX_COOLDOWN_CYCLES (3) cooldown cycles = 12 total attempts.\n\nconst errorData = $input.first().json;\nconst executionId = errorData.execution && errorData.execution.id;\nconst errorMessage = (errorData.execution && errorData.execution.error && errorData.execution.error.message) || 'Unknown error';\n\nconst url = $env.SUPABASE_URL;\nconst key = $env.SUPABASE_SERVICE_KEY;\nconst headers = {\n  apikey: key,\n  Authorization: 'Bearer ' + key,\n  'Content-Type': 'application/json'\n};\n\nconst MAX_COOLDOWN_CYCLES = 3;\nconst COOLDOWN_HOURS = 24;\n\nconsole.log('Queue Error Handler: execution ' + executionId + ' failed: ' + errorMessage);\n\nconst cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();\nconst running = await this.helpers.httpRequest({\n  method: 'GET',\n  url: url + '/rest/v1/pipeline_queue',\n  qs: {\n    status: 'eq.running',\n    started_at: 'gte.' + cutoff,\n    select: 'id,metro_name,retry_count,max_retries,run_id,cooldown_count',\n    order: 'started_at.desc',\n    limit: 1\n  },\n  headers: { apikey: key, Authorization: 'Bearer ' + key },\n  json: true\n});\n\nif (!running || running.length === 0) {\n  console.log('Queue Error Handler: no running queue items found');\n  return [{ json: { step: 'queue_error_handler', status: 'no_running_items', error: errorMessage } }];\n}\n\nconst item = running[0];\nconst newRetryCount = (item.retry_count || 0) + 1;\nconst maxRetries = item.max_retries || 3;\nconst cooldownCount = item.cooldown_count || 0;\n\nvar updateBody = { error_message: errorMessage };\nvar logStatus = '';\n\nif (newRetryCount < maxRetries) {\n  // Fast retry — try again on next schedule cycle\n  updateBody.status = 'pending';\n  updateBody.retry_count = newRetryCount;\n  updateBody.started_at = null;\n  logStatus = 'pending (retry ' + newRetryCount + '/' + maxRetries + ')';\n} else if (cooldownCount < MAX_COOLDOWN_CYCLES) {\n  // Cooldown requeue — reset retry count, wait 24h, then retry\n  var retryAfter = new Date(Date.now() + COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();\n  updateBody.status = 'pending';\n  updateBody.retry_count = 0;\n  updateBody.cooldown_count = cooldownCount + 1;\n  updateBody.retry_after = retryAfter;\n  updateBody.started_at = null;\n  logStatus = 'pending (cooldown ' + (cooldownCount + 1) + '/' + MAX_COOLDOWN_CYCLES + ', retry_after: ' + retryAfter + ')';\n} else {\n  // Permanent failure — exhausted all retries and cooldown cycles\n  updateBody.status = 'failed';\n  updateBody.retry_count = newRetryCount;\n  updateBody.completed_at = new Date().toISOString();\n  logStatus = 'failed (exhausted ' + MAX_COOLDOWN_CYCLES + ' cooldown cycles)';\n}\n\nawait this.helpers.httpRequest({\n  method: 'PATCH',\n  url: url + '/rest/v1/pipeline_queue',\n  qs: { id: 'eq.' + item.id },\n  headers: { ...headers, Prefer: 'return=minimal' },\n  body: updateBody,\n  json: true\n});\n\nconsole.log('Queue Error Handler: ' + item.metro_name + ' -> ' + logStatus);\n\nif (item.run_id) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: url + '/rest/v1/pipeline_runs',\n      qs: { id: 'eq.' + item.run_id },\n      headers: { ...headers, Prefer: 'return=minimal' },\n      body: {\n        status: 'failed',\n        completed_at: new Date().toISOString(),\n        errors: [errorMessage]\n      },\n      json: true\n    });\n    console.log('  pipeline_runs ' + item.run_id + ' -> failed');\n  } catch(e) {\n    console.log('  WARNING: failed to mark pipeline_runs: ' + e.message);\n  }\n}\n\nreturn [{ json: {\n  step: 'queue_error_handler',\n  metro_name: item.metro_name,\n  queue_id: item.id,\n  run_id: item.run_id,\n  new_status: updateBody.status,\n  retry_count: updateBody.retry_count,\n  max_retries: maxRetries,\n  cooldown_count: updateBody.cooldown_count || cooldownCount,\n  retry_after: updateBody.retry_after || null,\n  error: errorMessage\n} }];"
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          { "node": "Mark Queue Failed", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all"
+  }
+}

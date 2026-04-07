@@ -1,0 +1,85 @@
+Q8: TIERING SIMULATION
+-- Mimics the Excel report tier logic from SQL
+-- ============================================================
+[
+  {
+    "discovery_metro": "Durango, CO",
+    "total_companies": 113,
+    "tier_1a": 10,
+    "tier_1b": 10,
+    "tier_2a": 0,
+    "total_sendable": 109
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "total_companies": 67,
+    "tier_1a": 7,
+    "tier_1b": 7,
+    "tier_2a": 0,
+    "total_sendable": 66
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "total_companies": 64,
+    "tier_1a": 5,
+    "tier_1b": 7,
+    "tier_2a": 0,
+    "total_sendable": 63
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "total_companies": 61,
+    "tier_1a": 5,
+    "tier_1b": 9,
+    "tier_2a": 0,
+    "total_sendable": 61
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "total_companies": 63,
+    "tier_1a": 1,
+    "tier_1b": 2,
+    "tier_2a": 0,
+    "total_sendable": 59
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "total_companies": 59,
+    "tier_1a": 4,
+    "tier_1b": 4,
+    "tier_2a": 0,
+    "total_sendable": 58
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "total_companies": 56,
+    "tier_1a": 0,
+    "tier_1b": 2,
+    "tier_2a": 0,
+    "total_sendable": 56
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "total_companies": 58,
+    "tier_1a": 2,
+    "tier_1b": 8,
+    "tier_2a": 0,
+    "total_sendable": 54
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "total_companies": 54,
+    "tier_1a": 4,
+    "tier_1b": 2,
+    "tier_2a": 0,
+    "total_sendable": 53
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "total_companies": 37,
+    "tier_1a": 4,
+    "tier_1b": 1,
+    "tier_2a": 0,
+    "total_sendable": 35
+  }
+]

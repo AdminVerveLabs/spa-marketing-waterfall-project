@@ -1,0 +1,136 @@
+Q12: CONTACT SOURCE BREAKDOWN
+-- Where are contacts coming from in rural markets?
+-- (solo_detection, apollo, hunter, website, etc.)
+-- ============================================================
+[
+  {
+    "discovery_metro": "Alice, TX",
+    "source": "solo_detection",
+    "contacts": 9
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "source": "hunter",
+    "contacts": 6
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "source": "hunter",
+    "contacts": 4
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "source": "solo_detection",
+    "contacts": 3
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "source": "apollo",
+    "contacts": 3
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "source": "website",
+    "contacts": 2
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "source": "hunter",
+    "contacts": 10
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "source": "solo_detection",
+    "contacts": 9
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "source": "google_reviews",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "source": "apollo",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "source": "solo_detection",
+    "contacts": 2
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "source": "solo_detection",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "source": "manual",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "source": "hunter",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "source": "hunter",
+    "contacts": 4
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "source": "solo_detection",
+    "contacts": 4
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "source": "hunter",
+    "contacts": 5
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "source": "solo_detection",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "source": "solo_detection",
+    "contacts": 7
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "source": "hunter",
+    "contacts": 6
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "source": "apollo",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "source": "solo_detection",
+    "contacts": 7
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "source": "hunter",
+    "contacts": 2
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "source": "apollo",
+    "contacts": 1
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "source": "solo_detection",
+    "contacts": 3
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "source": "hunter",
+    "contacts": 3
+  }
+]

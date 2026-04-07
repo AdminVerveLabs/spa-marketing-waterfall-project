@@ -1,0 +1,224 @@
+{
+  "name": "Queue Wrapper v1",
+  "nodes": [
+    {
+      "id": "q1-schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 0],
+      "disabled": true,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "q0-manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 208],
+      "parameters": {}
+    },
+    {
+      "id": "q2-set-config",
+      "name": "Set Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [224, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sb-url",
+              "name": "supabase_url",
+              "value": "={{ $env.SUPABASE_URL }}",
+              "type": "string"
+            },
+            {
+              "id": "sb-key",
+              "name": "supabase_key",
+              "value": "={{ $env.SUPABASE_SERVICE_KEY }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "q3-fetch-next",
+      "name": "Fetch Next Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [448, 0],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const { supabase_url: url, supabase_key: key } = $input.first().json;\nconst headers = {\n  apikey: key,\n  Authorization: 'Bearer ' + key,\n  'Content-Type': 'application/json'\n};\n\n// Circuit breaker: stop if too many recent failures\nconst CIRCUIT_BREAKER_THRESHOLD = 3;\nconst CIRCUIT_BREAKER_WINDOW_MS = 3 * 60 * 60 * 1000;\n\nconst recentFailures = await this.helpers.httpRequest({\n  method: 'GET',\n  url: url + '/rest/v1/pipeline_runs',\n  qs: {\n    triggered_by: 'eq.queue_wrapper',\n    status: 'eq.failed',\n    created_at: 'gte.' + new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MS).toISOString(),\n    select: 'id',\n    order: 'created_at.desc',\n    limit: CIRCUIT_BREAKER_THRESHOLD\n  },\n  headers: { apikey: key, Authorization: 'Bearer ' + key },\n  json: true\n});\n\nif (recentFailures && recentFailures.length >= CIRCUIT_BREAKER_THRESHOLD) {\n  const recentSuccess = await this.helpers.httpRequest({\n    method: 'GET',\n    url: url + '/rest/v1/pipeline_runs',\n    qs: {\n      triggered_by: 'eq.queue_wrapper',\n      status: 'eq.completed',\n      created_at: 'gte.' + new Date(Date.now() - CIRCUIT_BREAKER_WINDOW_MS).toISOString(),\n      select: 'id',\n      limit: 1\n    },\n    headers: { apikey: key, Authorization: 'Bearer ' + key },\n    json: true\n  });\n\n  if (!recentSuccess || recentSuccess.length === 0) {\n    console.log('CIRCUIT BREAKER TRIPPED: ' + recentFailures.length + ' consecutive failures in last 3 hours with no successes. Pausing queue.');\n    return [{ json: { hasMetro: false, message: 'Circuit breaker tripped: ' + recentFailures.length + ' consecutive failures in last 3 hours' } }];\n  }\n}\n\n// Step 1: Find the oldest, highest-priority pending metro\nconst pending = await this.helpers.httpRequest({\n  method: 'GET',\n  url: url + '/rest/v1/pipeline_queue',\n  qs: {\n    status: 'eq.pending',\n    or: '(retry_after.is.null,retry_after.lte.' + new Date().toISOString() + ')',\n    order: 'priority.desc,queued_at.asc',\n    limit: 1\n  },\n  headers: { apikey: key, Authorization: 'Bearer ' + key },\n  json: true\n});\n\nif (!pending || pending.length === 0) {\n  return [{ json: { hasMetro: false, message: 'No pending metros in queue' } }];\n}\n\nconst metro = pending[0];\n\n// Step 2: Atomically claim it (PATCH only succeeds if still pending)\nconst claimed = await this.helpers.httpRequest({\n  method: 'PATCH',\n  url: url + '/rest/v1/pipeline_queue',\n  qs: {\n    id: 'eq.' + metro.id,\n    status: 'eq.pending'\n  },\n  headers: { ...headers, Prefer: 'return=representation' },\n  body: {\n    status: 'running',\n    started_at: new Date().toISOString()\n  },\n  json: true\n});\n\nif (!claimed || claimed.length === 0) {\n  return [{ json: { hasMetro: false, message: 'Metro claimed by another execution' } }];\n}\n\nconst item = claimed[0];\nreturn [{\n  json: {\n    hasMetro: true,\n    queue_id: item.id,\n    metro_name: item.metro_name,\n    state: item.state,\n    country: item.country,\n    latitude: Number(item.latitude),\n    longitude: Number(item.longitude),\n    radius_meters: item.radius_meters,\n    population: item.population,\n    run_id: item.run_id,\n    supabase_url: url,\n    supabase_key: key\n  }\n}];"
+      }
+    },
+    {
+      "id": "q4-if-has-metro",
+      "name": "IF Has Metro",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [672, 0],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-metro-check",
+              "leftValue": "={{ $json.hasMetro }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "q5-create-pipeline-run",
+      "name": "Create Pipeline Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Create Pipeline Run — inserts pipeline_runs row, stores run_id on queue item\n// This enables the main workflow to track status via run_id lifecycle\n\nconst item = $input.item.json;\nconst url = item.supabase_url;\nconst key = item.supabase_key;\nconst headers = {\n  apikey: key,\n  Authorization: 'Bearer ' + key,\n  'Content-Type': 'application/json'\n};\n\nconst DEFAULT_QUERIES = 'massage therapy,massage clinic,massage therapist,spa massage,therapeutic massage,deep tissue massage,sports massage,bodywork,day spa,wellness spa,relaxation massage,licensed massage therapist';\n\n// Parse city from metro_name (e.g., \"Price, UT\" -> \"Price\")\nconst city = item.metro_name.split(',')[0].trim();\n\nconsole.log('Create Pipeline Run: ' + item.metro_name + ' (queue_id: ' + item.queue_id + ')');\n\n// Step 1: INSERT pipeline_runs row\nconst runRow = await this.helpers.httpRequest({\n  method: 'POST',\n  url: url + '/rest/v1/pipeline_runs',\n  headers: { ...headers, Prefer: 'return=representation' },\n  body: {\n    metro_name: item.metro_name,\n    country: item.country || 'US',\n    state: item.state,\n    city: city,\n    latitude: item.latitude,\n    longitude: item.longitude,\n    radius_meters: item.radius_meters || 15000,\n    search_queries: DEFAULT_QUERIES.split(','),\n    status: 'queued',\n    triggered_by: 'queue_wrapper'\n  },\n  json: true\n});\n\nconst runId = runRow[0].id;\nconsole.log('  Created pipeline_runs: ' + runId);\n\n// Step 2: PATCH pipeline_queue to store run_id FK\nawait this.helpers.httpRequest({\n  method: 'PATCH',\n  url: url + '/rest/v1/pipeline_queue',\n  qs: { id: 'eq.' + item.queue_id },\n  headers: { ...headers, Prefer: 'return=minimal' },\n  body: { run_id: runId },\n  json: true\n});\n\nconsole.log('  Linked queue_id ' + item.queue_id + ' -> run_id ' + runId);\n\nreturn { json: { ...item, run_id: runId } };"
+      }
+    },
+    {
+      "id": "q6-trigger-pipeline",
+      "name": "Trigger Pipeline",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Trigger the main pipeline webhook with metro config + run_id\n// Pipeline runs async; Poll Pipeline Status node watches for completion\n\nconst item = $input.item.json;\nconst webhookUrl = $env.MAIN_WORKFLOW_WEBHOOK_URL;\n\nif (!webhookUrl) {\n  throw new Error('MAIN_WORKFLOW_WEBHOOK_URL env var not set. Add it in Coolify.');\n}\n\nconst payload = {\n  metro_name: item.metro_name,\n  latitude: item.latitude,\n  longitude: item.longitude,\n  radius_meters: item.radius_meters,\n  yelp_location: item.metro_name,\n  run_id: item.run_id\n};\n\nconsole.log('Triggering pipeline for: ' + item.metro_name + ' (run_id: ' + item.run_id + ')');\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: webhookUrl,\n    headers: { 'Content-Type': 'application/json' },\n    body: payload,\n    json: true,\n    timeout: 10000\n  });\n  console.log('Pipeline responded for ' + item.metro_name);\n} catch (err) {\n  // Timeout is EXPECTED — pipeline accepted the webhook but takes 10-30 min to complete\n  // n8n webhooks don't respond until the workflow finishes (no Respond to Webhook node)\n  var msg = err.message || '';\n  if (msg.includes('timeout') || msg.includes('ETIMEDOUT') || msg.includes('ESOCKETTIMEDOUT') || msg.includes('ECONNRESET')) {\n    console.log('Pipeline trigger accepted (timeout is normal): ' + item.metro_name);\n  } else {\n    throw new Error('Pipeline trigger FAILED for ' + item.metro_name + ': ' + msg);\n  }\n}\n\nreturn { json: item };"
+      }
+    },
+    {
+      "id": "q8-poll-pipeline-status",
+      "name": "Poll Pipeline Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1344, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Poll Pipeline Status — waits for pipeline_runs to reach terminal state\n// Polls every 30s for up to 45 minutes. Throws on failure/timeout.\n\nconst item = $input.item.json;\nconst url = item.supabase_url;\nconst key = item.supabase_key;\nconst runId = item.run_id;\n\nif (!runId) {\n  console.log('Poll Pipeline Status: no run_id, skipping');\n  return { json: item };\n}\n\nconst MAX_POLLS = 90;       // 90 x 30s = 45 minutes max\nconst POLL_INTERVAL = 30000; // 30 seconds\nconst delay = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };\n\nconsole.log('Poll Pipeline Status: watching run_id ' + runId + ' for ' + item.metro_name);\n\nfor (var i = 0; i < MAX_POLLS; i++) {\n  var rows = await this.helpers.httpRequest({\n    method: 'GET',\n    url: url + '/rest/v1/pipeline_runs',\n    qs: { id: 'eq.' + runId, select: 'status,completed_batches,total_batches' },\n    headers: { apikey: key, Authorization: 'Bearer ' + key },\n    json: true\n  });\n\n  var run = rows && rows[0];\n  if (!run) {\n    console.log('  Poll ' + (i+1) + ': run_id not found, waiting...');\n    await delay(POLL_INTERVAL);\n    continue;\n  }\n\n  console.log('  Poll ' + (i+1) + ': status=' + run.status + ', batches=' + (run.completed_batches || 0) + '/' + (run.total_batches || '?'));\n\n  if (run.status === 'completed') {\n    return {\n      json: {\n        ...item,\n        pipeline_status: 'completed',\n        completed_batches: run.completed_batches,\n        total_batches: run.total_batches\n      }\n    };\n  }\n\n  if (run.status === 'failed') {\n    throw new Error('Pipeline failed for ' + item.metro_name + ' (run_id: ' + runId + ')');\n  }\n\n  await delay(POLL_INTERVAL);\n}\n\nthrow new Error('Pipeline timed out for ' + item.metro_name + ' after 45 minutes (run_id: ' + runId + ')');"
+      }
+    },
+    {
+      "id": "q7-run-cleanup",
+      "name": "Run Cleanup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Run post-discovery cleanup, then pass through item data\nconst item = $input.item.json;\nconst url = item.supabase_url;\nconst key = item.supabase_key;\n\ntry {\n  const result = await this.helpers.httpRequest({\n    method: 'POST',\n    url: url + '/rest/v1/rpc/run_post_discovery_cleanup',\n    headers: {\n      apikey: key,\n      Authorization: 'Bearer ' + key,\n      'Content-Type': 'application/json'\n    },\n    body: {\n      p_metro: item.metro_name,\n      p_lat: item.latitude,\n      p_lon: item.longitude,\n      p_radius_km: item.radius_meters / 1000\n    },\n    json: true\n  });\n  console.log('Cleanup for ' + item.metro_name + ': ' + JSON.stringify(result));\n} catch (err) {\n  console.log('Cleanup warning for ' + item.metro_name + ': ' + err.message);\n  // Non-fatal — cleanup failure should not block marking complete\n}\n\n// Pass through original item data for Mark Complete\nreturn { json: item };"
+      }
+    },
+    {
+      "id": "q9-mark-complete",
+      "name": "Mark Complete",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1792, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Mark the queue item as complete\nconst item = $input.item.json;\nconst url = item.supabase_url;\nconst key = item.supabase_key;\nconst headers = {\n  apikey: key,\n  Authorization: 'Bearer ' + key,\n  'Content-Type': 'application/json',\n  Prefer: 'return=minimal'\n};\n\ntry {\n  // Count leads found for this metro\n  const companies = await this.helpers.httpRequest({\n    method: 'GET',\n    url: url + '/rest/v1/companies',\n    qs: {\n      discovery_metro: 'eq.' + item.metro_name,\n      select: 'id'\n    },\n    headers: { apikey: key, Authorization: 'Bearer ' + key },\n    json: true\n  });\n\n  const leadsFound = companies ? companies.length : 0;\n\n  // PATCH queue item to complete\n  await this.helpers.httpRequest({\n    method: 'PATCH',\n    url: url + '/rest/v1/pipeline_queue',\n    qs: { id: 'eq.' + item.queue_id },\n    headers: headers,\n    body: {\n      status: 'complete',\n      completed_at: new Date().toISOString(),\n      leads_found: leadsFound\n    },\n    json: true\n  });\n\n  console.log('Queue complete: ' + item.metro_name + ' — ' + leadsFound + ' leads found');\n  return { json: { ...item, status: 'complete', leads_found: leadsFound } };\n\n} catch (err) {\n  // If marking complete fails, try to mark as failed\n  try {\n    await this.helpers.httpRequest({\n      method: 'PATCH',\n      url: url + '/rest/v1/pipeline_queue',\n      qs: { id: 'eq.' + item.queue_id },\n      headers: headers,\n      body: {\n        status: 'failed',\n        error_message: 'Mark complete failed: ' + err.message\n      },\n      json: true\n    });\n  } catch (e) { /* best effort */ }\n  throw err;\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          { "node": "Set Config", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          { "node": "Set Config", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set Config": {
+      "main": [
+        [
+          { "node": "Fetch Next Pending", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Next Pending": {
+      "main": [
+        [
+          { "node": "IF Has Metro", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Has Metro": {
+      "main": [
+        [
+          { "node": "Create Pipeline Run", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Create Pipeline Run": {
+      "main": [
+        [
+          { "node": "Trigger Pipeline", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Trigger Pipeline": {
+      "main": [
+        [
+          { "node": "Poll Pipeline Status", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Poll Pipeline Status": {
+      "main": [
+        [
+          { "node": "Run Cleanup", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Run Cleanup": {
+      "main": [
+        [
+          { "node": "Mark Complete", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 3600,
+    "errorWorkflow": "Qdwt8jW18uRslMtT"
+  }
+}

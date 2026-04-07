@@ -50,6 +50,84 @@
 - [x] **Update contacts.source CHECK** — Added 'solo_detection' + 'import' to constraint, schema docs updated. SQL executed and verified live. (2026-02-18, BUG-F015)
 - [x] **Clean up blocked domains in Supabase** — Cleared booking platform domains from existing companies (20 platforms). (2026-02-18, BUG-F013 remediation)
 
+## Queuing System v1 — ADR-040 Deployed (Session 99) — [Tracker](../projects/queueing-system-v1/TRACKER.md)
+
+- [x] **Phase 1: SQL schema** — pipeline_queue, category_blocklist, chain_blocklist tables + seed data
+- [x] **Phase 2: Cleanup functions** — 5 PL/pgSQL functions + orchestrator RPC
+- [x] **Phase 3: Validation queries** — dry-run SELECT-only previews
+- [x] **Phase 4: Queue Wrapper workflow** — Deployed to n8n `7Ix8ajJ5Rp9NyYk8` (10 nodes, INACTIVE)
+- [x] **Phase 5: Integration notes + seed loader** — Wiring guide, monitoring queries, seed workflow
+- [x] **Phase 6: Pipeline Failure Resilience (ADR-040, Session 99)** — Queue Error Handler, Workflow Controller, Create Pipeline Run, Poll Pipeline Status, error handler wiring
+- [x] **Run SQL scripts 01-04 in Supabase** — Tables and functions created by Zack
+- [x] **Run 05-test-cleanup.sql** — Dry-run reviewed; confirmed companies to clean
+- [x] **Run post-discovery cleanup across all metros** — 0 deletions across 22 metros (Session 94)
+- [x] **Import seed loader workflow** — Deployed as `I1QRETjRmMh7A1bT` (Session 93)
+- [x] **Wire Execute Step 1 placeholder** — Replaced NoOp with "Trigger Pipeline" Code node (Session 93)
+- [x] **Add Error Handler node** — Queue Error Handler (`Qdwt8jW18uRslMtT`) deployed + `errorWorkflow` set. Fire-and-forget → completion polling (Session 99, ADR-040)
+- [x] **Run seed loader from n8n editor** — Done (metros were being processed before BUG-057)
+- [x] **Add MAIN_WORKFLOW_WEBHOOK_URL env var in Coolify** — Done (queue wrapper was triggering pipeline successfully)
+- [x] **Verify remote n8n state** — Session 101: MCP reconnected. Queue Wrapper structure matches ADR-040 (10 nodes). errorWorkflow set correctly.
+- [x] **Circuit breaker deployed (ADR-041, Session 101)** — Fetch Next Pending now checks for 3+ consecutive failures in 3 hours. Prevents systemic failures from burning through queue.
+- [x] **Assess queue damage from BUG-057** — 797 complete, 150 failed, 4 stuck running, 468 failed pipeline_runs
+- [x] **Cooldown requeue deployed (ADR-042)** — Error handler does 3-tier retry: fast (3x) → cooldown (24h, 3 cycles) → permanent fail. Fetch Next Pending skips cooldown metros.
+- [x] **Run `09-add-retry-after.sql` in Supabase** — Columns added (deployed by Session 101b)
+- [x] **Run `08-requeue-bug057-metros.sql` in Supabase** — Metros requeued (deployed by Session 101b)
+- [x] **Reactivate Queue Wrapper** — Reactivated Session 101b. 18 metros completed in first 24h. Circuit breaker + cooldown working.
+- [ ] **Resolve Apify monthly quota** — Billing resets April 14. Check if current plan is sufficient for remaining ~3,200 metros.
+- [x] **Reduce Yelp searchLimit (ADR-043)** — 100→20, ~80% cost reduction ($70→$14/day est.)
+- [ ] **Refine search queries** — Currently 12 queries per metro, many overlap. Reduce to 6-8 for additional ~33-50% savings.
+- [ ] **Verify Yelp results at searchLimit=20** — After Apify renews, check that small metros still get adequate coverage
+- [ ] **Run diagnostic SQL** (`06-diagnose-failed-runs.sql`) — Identify pre-ADR-040 metros falsely marked complete with leads_found=0
+- [ ] **Optimize Yelp Apify scraper cost** — Currently ~$70/day when queue is running. Scraping far more than we capture. Investigate: reduce searchLimit, tighten geo radius, skip already-discovered metros, or switch to cheaper scraper.
+## Lead Scoring v2 (ADR-046, Session 102) — COMPLETE
+- [x] **Root cause analysis** — Max practical score 40/100. Groupon rule 0% match, 81% NULL estimated_size, rules capped at ~45
+- [x] **Add denormalized columns** — metro_population, contact_count, has_verified_email_contact on companies
+- [x] **Enhance calculate_lead_scores()** — Pre-scoring phase populates denormalized columns before rules run
+- [x] **Update scoring rules** — Removed Groupon, adjusted solo 20→15, added 5 new rules (pop <10K/25K, verified email, contacts, rating)
+- [x] **Verify results** — Max 40→65, avg 10→18.9, Warm 0→48, Zero 6,237→361
+- [ ] **Iterate if needed** — Score distribution still skews low. Will improve as more small-metro data comes through.
+
+## API Issues (Session 102)
+- [ ] **Renew Telnyx API key** — Returning 403 on all phone verification calls. 80% of phones unverified (4,321 contacts). Zack needs to check Telnyx account.
+- [ ] **Re-run phone verification** — After Telnyx is fixed, backfill verification for 4,321 unverified contacts
+- [ ] **Monitor Hunter yield** — 0% for small metros (data coverage), effective for larger cities. Not a bug.
+
+## Lead Quality Improvements v1 — [Tracker](../projects/quality_improvements_v1/TRACKER.md)
+
+### Phase 1: Investigation — COMPLETE (Session 101)
+- [x] Diagnostic SQL queries + follow-up queries
+- [x] Category audit, filter impact analysis, false positive review (86 records, 1.2% FP rate)
+- [x] Investigation results documented
+
+### Phase 2: Implementation — Priority 1 (SQL only) — COMPLETE (Session 101)
+- [x] **Expand `category_blocklist`** — 26 new patterns added
+- [x] **Add 8 franchise brands** to `chain_blocklist` (9 entries including 2 Massage Heights domains)
+- [x] **Dry-run + single-metro test** — Oxford city verified
+- [x] **Full pipeline cleanup** — 4,741 companies + 1,579 contacts + 7,253 social_profiles deleted
+
+### Phase 2: Implementation — Priority 2 (Workflow changes) — COMPLETE (Session 101)
+- [x] **Name-pattern filters** deployed to both normalization nodes (22 patterns + 5 safe terms)
+- [x] **Name-pattern SQL cleanup** — 793 additional companies from existing data
+- [x] **Mobile practice detection** — `is_mobile_practice` column + flag + scoring rule (-20 pts)
+- [x] **Store `additional_types`** — JSONB column added + enrich-companies.js deployed via MCP
+- [x] **find-contacts.js deployed** via Python script (SKIP_GOOGLE_REVIEWS=true)
+
+### Phase 2: Implementation — Priority 3 (Scoring + Audit) — COMPLETE (Session 101)
+- [x] **Language barrier soft scoring** — `is_language_barrier_risk` flag + scoring rule (-20 pts), 740 flagged
+- [x] **Franchise flag** — `is_franchise` column, set before chain deletion
+- [x] **Audit log** — `filtered_companies_log` table, cleanup functions log every deletion
+- [x] **Cleanup function updated** — auto-flags language barrier + mobile practice on future metros
+- [x] **Test run passed** — Social Circle city, GA: 119→111 companies, all systems working
+
+### Phase 2.5: Apollo Cleanup
+- [ ] **Quantify Apollo orphans** — ~3,525 companies synced then deleted
+- [ ] **Decide cleanup approach** (archive/tag/remove from lists)
+- [ ] **Execute Apollo cleanup**
+
+### Phase 3: Validation (after Apify renews April 14)
+- [ ] Test run on one metro, compare results, verify no false positives
+- [ ] Verify Apollo Sync, Report Generator, Queue Wrapper still work
+
 ## Apollo Sync v1 — In Progress
 
 - [x] **Build workflow (ADR-039, Session 75)** — 11 nodes, schedule trigger → setup fields → fetch → upsert → mark synced
@@ -61,6 +139,10 @@
 - [x] **Fix Contact Role collision (Session 81)** — Renamed to "Meridian Role", removed debug code, restored production query (limit=50)
 - [x] **Fix duplicate creation (Session 82)** — Immediate Supabase save (Node 7 + Node 9) + name-based account search fallback (Node 7). BUG-053 FIXED.
 - [x] **Expand enriched field coverage (Session 83)** — 20 new custom fields (12 account + 8 contact), social_profiles JOIN, truthy-only mapping, domain cleaning. All 4 nodes deployed.
+- [x] **Add Prospect List Assignment node (Session 96)** — "Assign to Prospect List" Code node added between Upsert Contacts and Mark Synced. 1000-cap rotation, bulk_update in batches of 25. Workflow now 12 nodes.
+- [ ] **Confirm `pipeline_config` row exists** — `SELECT * FROM pipeline_config WHERE key = 'active_prospect_list'` should return `VerveLabs-Prospects-001`
+- [ ] **Test Prospect List Assignment** — Trigger Apollo sync, verify contacts appear under `VerveLabs-Prospects-001` label in Apollo, check node output for errors
+- [ ] **Test list rotation** — Temporarily change threshold to >=2, run, verify rotation to `VerveLabs-Prospects-002`, then revert
 - [ ] **First successful production test run** — Activate workflow, verify: new custom fields created in Apollo, social URLs populated, no duplicates
 - [ ] **Clean up existing Apollo duplicates** — Manual cleanup in Apollo UI (or one-off API script) for dupes created before BUG-053 fix
 - [ ] **Set APOLLO_API_KEY env var in Coolify** — Required before test run

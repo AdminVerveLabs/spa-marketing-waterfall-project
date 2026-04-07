@@ -1,0 +1,95 @@
+Q13: QUICK SUMMARY CARD
+-- One row per metro with the key decision metrics
+-- ============================================================
+[
+  {
+    "discovery_metro": "Durango, CO",
+    "total_found": 113,
+    "pct_on_target": "92",
+    "sendable": 109,
+    "tier1_leads": 21,
+    "with_email": 10,
+    "pct_with_domain": "69"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "total_found": 67,
+    "pct_on_target": "30",
+    "sendable": 66,
+    "tier1_leads": 15,
+    "with_email": 7,
+    "pct_with_domain": "52"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "total_found": 64,
+    "pct_on_target": "72",
+    "sendable": 63,
+    "tier1_leads": 12,
+    "with_email": 5,
+    "pct_with_domain": "45"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "total_found": 61,
+    "pct_on_target": "33",
+    "sendable": 61,
+    "tier1_leads": 14,
+    "with_email": 6,
+    "pct_with_domain": "46"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "total_found": 63,
+    "pct_on_target": "25",
+    "sendable": 59,
+    "tier1_leads": 3,
+    "with_email": 1,
+    "pct_with_domain": "49"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "total_found": 59,
+    "pct_on_target": "17",
+    "sendable": 58,
+    "tier1_leads": 8,
+    "with_email": 4,
+    "pct_with_domain": "64"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "total_found": 56,
+    "pct_on_target": "82",
+    "sendable": 56,
+    "tier1_leads": 2,
+    "with_email": 0,
+    "pct_with_domain": "57"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "total_found": 58,
+    "pct_on_target": "24",
+    "sendable": 54,
+    "tier1_leads": 10,
+    "with_email": 2,
+    "pct_with_domain": "53"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "total_found": 54,
+    "pct_on_target": "76",
+    "sendable": 53,
+    "tier1_leads": 6,
+    "with_email": 4,
+    "pct_with_domain": "57"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "total_found": 37,
+    "pct_on_target": "51",
+    "sendable": 35,
+    "tier1_leads": 6,
+    "with_email": 4,
+    "pct_with_domain": "54"
+  }
+]

@@ -71,7 +71,7 @@ if (latitude && longitude) {
       metro_name: metroName,
       latitude: String(latitude),
       longitude: String(longitude),
-      radius_meters: String(radiusMeters || '15000'),
+      radius_meters: String(Math.min(Number(radiusMeters) || 15000, 50000)),
       search_queries: queries,
       yelp_location: yelpLocation || metroName,
       run_id: runId

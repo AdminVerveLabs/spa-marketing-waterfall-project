@@ -1,0 +1,105 @@
+Q7: SOCIAL PROFILE COVERAGE
+-- What platforms are we finding per metro?
+-- ============================================================
+[
+  {
+    "discovery_metro": "Durango, CO",
+    "companies": 113,
+    "with_instagram": 39,
+    "with_facebook": 56,
+    "with_tiktok": 4,
+    "with_linkedin": 4,
+    "with_youtube": 7,
+    "pct_with_any_social": "51.3"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "companies": 67,
+    "with_instagram": 14,
+    "with_facebook": 16,
+    "with_tiktok": 5,
+    "with_linkedin": 3,
+    "with_youtube": 3,
+    "pct_with_any_social": "28.4"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "companies": 64,
+    "with_instagram": 10,
+    "with_facebook": 17,
+    "with_tiktok": 2,
+    "with_linkedin": 3,
+    "with_youtube": 1,
+    "pct_with_any_social": "26.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "companies": 63,
+    "with_instagram": 17,
+    "with_facebook": 22,
+    "with_tiktok": 3,
+    "with_linkedin": 2,
+    "with_youtube": 2,
+    "pct_with_any_social": "34.9"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "companies": 61,
+    "with_instagram": 8,
+    "with_facebook": 14,
+    "with_tiktok": 1,
+    "with_linkedin": 3,
+    "with_youtube": 0,
+    "pct_with_any_social": "26.2"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "companies": 59,
+    "with_instagram": 20,
+    "with_facebook": 22,
+    "with_tiktok": 1,
+    "with_linkedin": 2,
+    "with_youtube": 2,
+    "pct_with_any_social": "40.7"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "companies": 58,
+    "with_instagram": 13,
+    "with_facebook": 17,
+    "with_tiktok": 0,
+    "with_linkedin": 6,
+    "with_youtube": 3,
+    "pct_with_any_social": "31.0"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "companies": 56,
+    "with_instagram": 15,
+    "with_facebook": 20,
+    "with_tiktok": 3,
+    "with_linkedin": 4,
+    "with_youtube": 3,
+    "pct_with_any_social": "39.3"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "companies": 54,
+    "with_instagram": 20,
+    "with_facebook": 21,
+    "with_tiktok": 4,
+    "with_linkedin": 2,
+    "with_youtube": 3,
+    "pct_with_any_social": "42.6"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "companies": 37,
+    "with_instagram": 8,
+    "with_facebook": 11,
+    "with_tiktok": 2,
+    "with_linkedin": 1,
+    "with_youtube": 1,
+    "pct_with_any_social": "29.7"
+  }
+]

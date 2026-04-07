@@ -1,0 +1,135 @@
+#Create a Contact
+post
+https://api.apollo.io/api/v1/contacts
+
+Use the Create a Contact endpoint to add a new contact to your team's Apollo account.
+
+In Apollo terminology, a contact is a person that your team has explicitly added to your database. A contact will have their data enriched in some way, such as accessing an email address or a phone number.
+
+By default, Apollo does not apply deduplication processes when you create a new contact via the API. If your entry has the same name, email address, or other details as an existing contact, Apollo will create a new contact instead of updating the existing contact. To enable deduplication and prevent duplicate contacts, set the run_dedupe parameter to true.
+
+To update an existing contact, use the Update a Contact endpoint instead.
+
+Body Params
+first_name
+string
+The first name of the contact you want to create. Example: Tim
+
+last_name
+string
+The last name of the contact you want to create. Example: Zheng
+
+organization_name
+string
+The name of the contact's employer (company). Example: apollo
+
+title
+string
+The current job title that the contact holds. Example: senior research analyst
+
+account_id
+string
+The Apollo ID for the account. Example: 63f53afe4ceeca00016bdd2f
+
+email
+string
+The email address of the contact. Example: example@email.com
+
+website_url
+string
+The corporate website URL. Example: https://www.apollo.io/
+
+label_names
+array of strings
+Lists to which the contact belongs.
+
+
+ADD string
+contact_stage_id
+string
+The Apollo ID for the contact stage. Example: 6095a710bd01d100a506d4ae
+
+present_raw_address
+string
+The personal location for the contact. Example: Atlanta, United States
+
+direct_phone
+string
+The primary phone number. Example: 555-303-1234
+
+corporate_phone
+string
+The work/office phone number. Example: +44 7911 123456
+
+mobile_phone
+string
+The mobile phone number. Example: 555-303-1234
+
+home_phone
+string
+The home phone number. Example: 555-303-1234
+
+other_phone
+string
+Alternative phone number. Example: 555-303-1234
+
+typed_custom_fields
+object
+Add information to custom fields in Apollo.
+
+Your custom fields are unique to your team's Apollo account. This means that the examples in this documentation may not work for your testing purposes.
+
+To utilize this parameter successfully, call the Get a List of All Custom Fields endpoint and identify the id value for the custom field, as well as the appropriate data type. For example, if a custom field accepts picklist entries, you need to pass the accompanying id value for the picklist entry that you want to use as the input value.
+
+Example: When the Get a List of All Custom Fields endpoint returns an id of field:
+
+"60c39ed82bd02f01154c470a" (datetime)
+then the value passed should be:
+
+{"60c39ed82bd02f01154c470a": "2025-08-07"}
+
+
+typed_custom_fields object
+string
+newKey
+New Value
+
+Add Field
+run_dedupe
+boolean
+Defaults to false
+Set to true to enable deduplication logic that prevents creating duplicate contacts. When enabled, Apollo will check for existing contacts with matching email addresses, names, or other identifying information and return the existing contact instead of creating a duplicate. The default value is false.
+
+When deduplication is enabled, performance may be slightly impacted due to the additional validation checks, but this ensures data integrity and prevents duplicate entries in your database.
+
+
+false
+Headers
+accept
+string
+enum
+Defaults to application/json
+Generated from available response content types
+
+
+application/json
+Allowed:
+
+application/json
+
+text/plain
+
+#Create Contact Request
+curl --request POST \
+     --url https://api.apollo.io/api/v1/contacts \
+     --header 'Cache-Control: no-cache' \
+     --header 'Content-Type: application/json' \
+     --header 'accept: application/json' \
+     --data '
+{
+  "typed_custom_fields": {
+    "newKey": "New Value"
+  },
+  "run_dedupe": false
+}
+'

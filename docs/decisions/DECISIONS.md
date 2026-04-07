@@ -504,3 +504,94 @@
   3. `this.helpers.httpRequest()` instead of `fetch()` → Spec uses `fetch()` which works in Node 18+; fallback to helpers if task runner sandboxes fetch
 - **Risk:** `fetch()` may be blocked by n8n task runner sandbox. If so, convert Code nodes to use `this.helpers.httpRequest()`.
 - **Status:** Active — workflow built, pending deployment and first test
+
+## ADR-040: Pipeline Failure Resilience — run_id Lifecycle + Completion Polling + Error Recovery
+- **Date:** 2026-03-13
+- **Decision:** Overhaul the queue wrapper to: (1) create a `pipeline_runs` row and pass `run_id` to the main workflow, (2) poll `pipeline_runs.status` for completion instead of fire-and-forget, (3) catch failures via a dedicated Queue Error Handler workflow with retry logic.
+- **Reason:** Queue-triggered pipeline runs had no failure detection. The queue wrapper marked metros `complete` ~30s after triggering (before discovery finished), never created `pipeline_runs` rows (no `run_id`), and the Error Handler was defined but not wired. ~96 metros were marked `complete` with `leads_found: 0`.
+- **Architecture:**
+  - **Create Pipeline Run** node: INSERTs `pipeline_runs` row, PATCHes `pipeline_queue.run_id` FK
+  - **Trigger Pipeline**: now includes `run_id` in webhook payload (Metro Config already reads it)
+  - **Poll Pipeline Status**: polls every 30s for 45min, throws on failure/timeout
+  - **Queue Error Handler** (`Qdwt8jW18uRslMtT`): Error Trigger → Mark Queue Failed (retry up to 3x)
+  - **Workflow Controller** (`R28WPY4aopfaIw4O`): webhook for dashboard to activate/deactivate workflows
+- **Alternatives considered:**
+  1. n8n Execute Workflow node → waits synchronously but blocks queue wrapper, doesn't allow polling with status updates
+  2. Webhooks with callback URL → more complex, requires changes to main workflow
+  3. In-workflow error handler → Error Trigger can't access item data (queue_id, supabase_url)
+- **Risk:** Poll Pipeline Status can run up to 45min per metro. executionTimeout set to 3600s. n8n Schedule Trigger interval (30min) may overlap — mitigated by atomic claiming in Fetch Next Pending.
+- **Status:** Active — deployed to n8n, Schedule Trigger disabled pending data cleanup + testing
+
+## ADR-041: Circuit Breaker in Queue Wrapper Fetch Next Pending
+- **Date:** 2026-03-26
+- **Decision:** Add a circuit breaker check to the Fetch Next Pending node that queries `pipeline_runs` for recent failures before claiming a metro. If 3+ queue_wrapper-triggered runs failed in the last 3 hours with no successes, return `hasMetro: false` to skip processing.
+- **Reason:** BUG-057 — the Queue Wrapper ran in a failure loop for 2+ days when Apify hit its monthly limit. The error handler correctly retried and failed each metro, but the queue kept cycling through new metros. ~30-35 metros were permanently marked `failed` before the workflow was manually deactivated. A systemic failure (API quota, service outage) should halt the queue, not burn through it.
+- **Implementation:** Two Supabase queries at the top of Fetch Next Pending: (1) count recent failures, (2) if threshold met, check for any recent success. If all recent runs failed, circuit breaker trips. If there's a success mixed in, failures are intermittent and processing continues.
+- **Alternatives considered:**
+  1. Deactivate workflow via error handler → complex, error handler runs in different workflow context
+  2. Static data counter → resets on n8n restart, doesn't survive across executions cleanly
+  3. Supabase `circuit_breaker_status` table → over-engineered for this use case
+- **Status:** Active — deployed to n8n via MCP, local source at `scripts/nodes/fetch-next-pending.js`
+
+## ADR-042: Cooldown Requeue for Queue Error Handler
+- **Date:** 2026-03-26
+- **Decision:** Replace permanent failure after 3 retries with a cooldown-requeue cycle. After 3 fast retries fail, reset `retry_count=0`, set `retry_after=now()+24h`, increment `cooldown_count`. Metro re-enters the pending pool after 24h. After 3 cooldown cycles (12 total attempts across 4 cycles), permanently mark as `failed`.
+- **Reason:** BUG-057 showed that systemic failures (Apify quota) permanently burn through queue metros. Combined with the circuit breaker (ADR-041), cooldown requeue creates a fully self-managing queue: successful metros complete, failed metros retry later, systemic failures pause the queue, and the queue auto-resumes when the issue resolves.
+- **Implementation:**
+  - New columns: `pipeline_queue.retry_after` (TIMESTAMPTZ), `pipeline_queue.cooldown_count` (INT)
+  - Queue Error Handler: 3-tier logic (fast retry → cooldown requeue → permanent fail)
+  - Fetch Next Pending: `or=(retry_after.is.null,retry_after.lte.{now})` filter skips cooldown metros
+- **Self-managing behavior:**
+  - Normal: queue processes metros every 30 min
+  - Transient failure: 3 fast retries, then 24h cooldown, then retry
+  - Systemic failure: circuit breaker trips after 3 failures, pauses ~3h, probes again
+  - Recovery: when external issue resolves, next probe succeeds, queue resumes automatically
+- **Status:** Active — deployed to n8n (Queue Error Handler + Queue Wrapper)
+
+## ADR-043: Reduce Yelp Apify searchLimit from 100 to 20
+- **Date:** 2026-03-26
+- **Decision:** Reduce the Yelp Apify scraper's `searchLimit` from 100 to 20 results per query in the "Start Apify Run" HTTP Request node.
+- **Reason:** At 12 queries × 100 results = 1,200 raw results per metro, but only ~100-200 unique companies after dedup. The long tail (results 21-100) is heavily duplicated across queries. Apify charges by compute units (CU), which scale with scraping time. At $70/day for ~48 metros, this burned through the monthly quota in ~12 days. With searchLimit=20, raw results drop to 240/metro — still adequate for small metros — and cost drops ~80% to ~$14/day.
+- **Impact:** 12 queries × 20 = 240 raw results per metro. After dedup, expected yield similar to before for small metros (most unique businesses appear in the first 20 results of at least one query).
+- **Future:** Consolidate search queries from 12 to 6-8 for additional savings (separate task).
+- **Status:** Active — deployed to n8n main workflow via MCP
+
+## ADR-044: Lead Quality Filters — Category Blocklist Expansion + Name Patterns
+- **Date:** 2026-03-26
+- **Decision:** Expand category_blocklist from 12 to 39 patterns, add 9 franchise brands to chain_blocklist, and add name-pattern exclusion filters to discovery normalization nodes. All filters use safe-term exemption: if category or name contains Massage, Bodywork, Day Spa, Wellness, or Therapeutic, the business is kept.
+- **Reason:** Investigation of 30,193 companies found ~20% were non-massage businesses (chiropractors, PT clinics, car repair shops, med spas, franchises, etc.) wasting enrichment spend and sales time. 67% of outreach failures were preventable per scope doc analysis.
+- **Implementation:**
+  - 27 new category_blocklist patterns (Chiropractor, Physical Therapy, Acupuncture, Medical Clinic, Gym, Fitness, Doulas, Hospice, etc.)
+  - 9 report-only junk categories promoted to pipeline blocklist (Car repair = 622 companies)
+  - 9 franchise chain_blocklist entries (Massage Envy, Hand & Stone, Elements, Massage Heights, etc.)
+  - Name-pattern filters in Normalize Google Results + Normalize Yelp Results (22 patterns + 5 safe terms)
+  - Mobile practice flag (`is_mobile_practice` column) + scoring penalty (-20 pts)
+  - `additional_types` JSONB column for future richer filtering
+- **Results:** Companies 30,193 → 24,195 (5,998 deleted, 19.9%). 1.2% false positive rate on high-value leads (1 of 86 reviewed). 393 chiro+massage combos correctly kept by safe-term exemption.
+- **Status:** Active — all priorities complete. Apollo cleanup deferred.
+
+## ADR-045: Metered Enrollment System — Daily Sequence Enrollment
+- **Date:** 2026-03-26
+- **Decision:** Replace bulk prospect list enrollment with a metered daily enrollment workflow that controls how contacts flow from Supabase into Apollo call sequences. Cap of 500 active contacts at any time. Apollo Plays handle all state transitions (no answer → follow-up, callback, meeting booked, disqualified, exhausted).
+- **Reason:** Previous batch enrollment (~1,000 at a time) created uncontrollable task backlog, made sequence timing meaningless, and provided no visibility into actively-worked contacts. Rep capacity is ~150 calls/day — enrollment must match capacity.
+- **Architecture:**
+  - n8n Daily Enrollment (6am): checks Active stage count → calculates slots → fetches top contacts by lead_score via Supabase RPC → enrolls into Net New sequence via Apollo API → marks enrolled in Supabase
+  - Apollo Plays: 7 plays handle state transitions on call dispositions (No Answer → Follow-up, Callback Requested → Callback sequence, Meeting Booked/Disqualified/Exhausted → stage updates)
+  - Call Activity Webhook: receives disposition data from Apollo Play 7, logs to call_activity table
+  - Apollo Sync (existing): continues creating Account + Contact records; prospect list assignment disabled
+- **Key design choice:** Enrollment only picks up contacts with `apollo_contact_id IS NOT NULL AND sequence_enrolled_at IS NULL AND phone_direct IS NOT NULL`, ordered by `lead_score DESC`. Quality flags (mobile practice -20, language barrier -20) naturally deprioritize low-quality contacts without explicit exclusion.
+- **Status:** Active — Daily Enrollment running at 6am, 381 contacts enrolled in production test
+
+## ADR-046: Lead Scoring Recalibration — 3-Tier Model with Population + Contact Quality
+- **Date:** 2026-03-27
+- **Decision:** Overhaul the lead scoring model from 6 static business-opportunity rules (max practical score ~40) to a 12-rule 3-tier model incorporating business opportunity, market quality (metro population), and contact quality (verified email, contact count, Google rating). Enhanced `calculate_lead_scores()` function to denormalize cross-table data before applying rules.
+- **Reason:** All 25,692 companies scored 0-40 out of 100. Zero companies reached Warm (50+) or Hot (80+) buckets. Root causes: (1) `estimated_size` NULL for 81% of companies (solo +20 rule only hit 8.7%), (2) `on_groupon` rule matched 0 companies (15 dead points), (3) remaining rules could only sum to ~45. The enrollment workflow was enrolling "best" contacts at scores of 10-20.
+- **Implementation:**
+  - Added 3 denormalized columns to companies: `metro_population` (INT), `contact_count` (INT), `has_verified_email_contact` (BOOLEAN)
+  - `calculate_lead_scores()` pre-scoring phase: populates columns from pipeline_queue + contacts tables
+  - Removed dead Groupon rule, adjusted solo: 20→15
+  - 5 new rules: metro pop <10K (+10), pop <25K (+5, stacks), verified email contact (+15), has contacts (+10), high rating >4.0 (+5)
+  - Max theoretical: ~90, max practical: 65, max observed: 65
+- **Results:** Max score 40→65, avg 10.0→18.9, Warm bucket 0→48 companies, Zero bucket 6,237→361 (94% reduction). Score distribution now: Cool 59%, Cold 38%, Warm 0.2%, Negative 1.4%.
+- **Trade-offs:** Population scoring rewards small metros over large ones — intentional per business strategy (less competition). `has_verified_email_contact` requires cross-table query on every scoring run (acceptable performance for 25K companies).
+- **Status:** Active — deployed to Supabase, all scores recalculated

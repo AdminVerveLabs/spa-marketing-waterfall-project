@@ -1,0 +1,85 @@
+Q11: "ON TARGET" RATE - % of results in/near target metro
+-- This is the key metric for radius blowout severity
+-- ============================================================
+[
+  {
+    "discovery_metro": "Price, UT",
+    "total": 59,
+    "exact_city_match": 10,
+    "pct_on_target": "16.9",
+    "same_state": 59,
+    "pct_same_state": "100.0"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "total": 58,
+    "exact_city_match": 14,
+    "pct_on_target": "24.1",
+    "same_state": 55,
+    "pct_same_state": "94.8"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "total": 63,
+    "exact_city_match": 16,
+    "pct_on_target": "25.4",
+    "same_state": 62,
+    "pct_same_state": "98.4"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "total": 67,
+    "exact_city_match": 20,
+    "pct_on_target": "29.9",
+    "same_state": 67,
+    "pct_same_state": "100.0"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "total": 61,
+    "exact_city_match": 20,
+    "pct_on_target": "32.8",
+    "same_state": 29,
+    "pct_same_state": "47.5"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "total": 37,
+    "exact_city_match": 19,
+    "pct_on_target": "51.4",
+    "same_state": 37,
+    "pct_same_state": "100.0"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "total": 64,
+    "exact_city_match": 46,
+    "pct_on_target": "71.9",
+    "same_state": 50,
+    "pct_same_state": "78.1"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "total": 54,
+    "exact_city_match": 41,
+    "pct_on_target": "75.9",
+    "same_state": 54,
+    "pct_same_state": "100.0"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "total": 56,
+    "exact_city_match": 46,
+    "pct_on_target": "82.1",
+    "same_state": 54,
+    "pct_same_state": "96.4"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "total": 113,
+    "exact_city_match": 104,
+    "pct_on_target": "92.0",
+    "same_state": 111,
+    "pct_same_state": "98.2"
+  }
+]

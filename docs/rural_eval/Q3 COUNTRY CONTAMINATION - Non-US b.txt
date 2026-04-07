@@ -1,0 +1,84 @@
+Q3: COUNTRY CONTAMINATION - Non-US businesses (BC/ON ghost leads)
+-- ============================================================
+[
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Mississauga, ON",
+    "country": "CA",
+    "name": "AHC WELLNESS CLINIC",
+    "category": "Massage",
+    "domain": "ahcwellnessclinic.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "New Westminster, BC",
+    "country": "CA",
+    "name": "Queen's Park Massage Therapy",
+    "category": "Massage",
+    "domain": "queensparkmassagetherapy.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Surrey, BC",
+    "country": "CA",
+    "name": "Against the Grain Registered Massage Therapy",
+    "category": "Massage",
+    "domain": "againstthegrainrmt.ca"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Vancouver, BC",
+    "country": "CA",
+    "name": "RMTBC",
+    "category": "Corporate Office",
+    "domain": "rmtbc.ca"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Vancouver, BC",
+    "country": "CA",
+    "name": "Oceana Massage",
+    "category": "Massage",
+    "domain": "oceanamassage.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "White Rock, BC",
+    "country": "CA",
+    "name": "Waterfront Massage Therapy",
+    "category": "Massage",
+    "domain": "waterfrontmassage.com"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Burnaby, BC",
+    "country": "CA",
+    "name": "Royal Treatment Therapeutics",
+    "category": "Massage",
+    "domain": "royaltreatmenttherapeutics.com"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Belleville, ON",
+    "country": "CA",
+    "name": "Quinte Mind & Body",
+    "category": "Medical Clinic",
+    "domain": "quintemindandbody.ca"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Vancouver, BC",
+    "country": "CA",
+    "name": "City Sports + Physio Clinic",
+    "category": "Physical Therapist",
+    "domain": "citysportsphysio.com"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "actual_location": "Westminster, CO",
+    "country": "US",
+    "name": "Michelle Therapy massage clinic",
+    "category": "Massage",
+    "domain": "michelle86.com"
+  }
+]

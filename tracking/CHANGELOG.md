@@ -1,5 +1,308 @@
 # Changelog
 
+## 2026-03-27 (Session 102 — Pipeline Health Review + Lead Scoring Recalibration)
+
+### Pipeline health review
+- **Comprehensive audit** of all systems running since Session 101 reactivation
+- **18 metros completed** in 24h with 100% batch completion, 98-100% enrichment
+- **Queue Wrapper active** and processing ~1 metro/hour, circuit breaker + cooldown working
+- **Apollo Sync healthy:** 25,268/25,692 companies synced (98.3%), 15-min cadence
+- **Daily Enrollment running:** 276 contacts enrolled 3/27, 523 on 3/26, 799 total
+- **Aberdeen report stuck** at 'generating' for 12h — manually PATCHed to completed
+
+### Lead scoring recalibration (ADR-046)
+- **Root cause:** Max practical score was 40/100. Three issues: 81% of companies have NULL estimated_size (+20 rule only hit 8.7%), Groupon rule matched 0 companies (15 dead points), remaining rules capped at ~45 max.
+- **New model:** 3-tier scoring (Business Opportunity + Market Quality + Contact Quality)
+  - Added 3 denormalized columns: `metro_population`, `contact_count`, `has_verified_email_contact`
+  - Enhanced `calculate_lead_scores()` function to populate columns before scoring
+  - Removed dead Groupon rule, adjusted solo: 20→15
+  - Added 5 new rules: metro pop <10K (+10), pop <25K (+5, stacks), verified email contact (+15), has contacts (+10), high rating (+5)
+  - **Results:** Max score 40→65, avg 10→18.9, Warm bucket 0→48, Zero bucket 6,237→361 (94% reduction)
+
+### Radius clamp (BUG-058)
+- **Bug:** Google Places API rejects radius > 50,000m. Queue had metros with 80,000m radius, causing pipeline failures (Williston ND, Dickinson ND, Prescott Valley AZ)
+- **Fix:** Added `Math.min(radius, 50000)` clamp to Metro Config node. Deployed to n8n via MCP.
+
+### API status findings
+- **Hunter Domain Search:** Working but 0 yield for small metros — data coverage issue, not a bug. Hunter's DB doesn't index small-town massage businesses.
+- **Telnyx:** Confirmed 403 on every phone verification call. API key needs renewal. 80% of phones unverified.
+- **NamSor:** 100% cultural affinity coverage — working perfectly
+- **Hunter Verifier:** Working for emails that exist
+
+## 2026-03-26 (Session 101 — Emergency Queue Wrapper Deactivation + Circuit Breaker)
+
+### Emergency: Queue Wrapper failure loop (BUG-057)
+- **Discovered** Queue Wrapper firing every 30 min despite Schedule Trigger being disabled (n8n bug: disabling trigger node doesn't unregister cron)
+- **Root cause:** Apify monthly usage hard limit exceeded → every pipeline run fails at Yelp discovery → error handler retries 3x per metro then permanently fails → next metro picked up
+- **Running for 2+ days** (since ~2026-03-24 13:30 UTC) — 100+ consecutive failed executions, ~30-35 metros burned through
+- **Deactivated** Queue Wrapper via MCP (enableNode + deactivateWorkflow + disableNode workaround)
+
+### Circuit breaker (ADR-041)
+- **New file:** `scripts/nodes/fetch-next-pending.js` — extracted Fetch Next Pending source with circuit breaker
+- **Circuit breaker logic:** Queries `pipeline_runs` for 3+ consecutive queue_wrapper failures in last 3 hours. If all failures and no successes, returns `hasMetro: false` to stop claiming metros. If a success is mixed in, treats failures as intermittent and continues.
+- **Deployed** to n8n via MCP `updateNode` with `mode: "runOnceForAllItems"` preserved (BUG-055 prevention)
+- **Updated** local `queue-wrapper-workflow.json` to match
+
+### Damage assessment
+- **797 metros completed** successfully before Apify quota exhausted
+- **150 metros failed** (all retry_count=3, error handler working correctly)
+- **468 failed pipeline_runs** total (150 metros x ~3 retries)
+- **4 metros stuck as 'running'** from before error handler was wired (Prescott Valley AZ, Barberton OH, Staunton VA, Parkersburg WV)
+- Failures started 2026-03-13 (not 03-24 as initially estimated) — Queue Wrapper ran successfully for ~797 metros before hitting Apify limit
+- **New file:** `projects/queueing-system-v1/sql/08-requeue-bug057-metros.sql` — resets 150 failed + 4 stuck metros to pending
+
+### Cooldown requeue (ADR-042)
+- **SQL migration:** `09-add-retry-after.sql` — adds `retry_after` TIMESTAMPTZ + `cooldown_count` INT to `pipeline_queue`
+- **Queue Error Handler updated:** 3-tier retry logic:
+  - Fast retry: retry_count < 3 → immediate retry (existing)
+  - Cooldown requeue: retry_count >= 3, cooldown_count < 3 → reset retry_count=0, retry_after=now()+24h, cooldown_count++
+  - Permanent fail: retry_count >= 3, cooldown_count >= 3 → failed (12 total attempts)
+- **Fetch Next Pending updated:** `or=(retry_after.is.null,retry_after.lte.{now})` filter skips cooldown metros
+- **Deployed** both nodes to n8n via MCP with `mode` preserved
+
+### Yelp Apify cost optimization (ADR-043)
+- **Reduced `searchLimit` from 100 to 20** in "Start Apify Run" HTTP Request node on main workflow
+- Expected cost reduction: ~80% ($70/day → ~$14/day)
+- Deployed via MCP `updateNode` with full parameters preserved
+- Updated local `workflows/current/deployed-fixed.json` to match
+
+### Lead Quality Investigation — Phase 1 Complete
+- **New file:** `projects/quality_improvements_v1/sql/01-investigation-queries.sql` — 30 diagnostic queries across 8 sections
+- **New file:** `projects/quality_improvements_v1/INVESTIGATION-RESULTS.md` — full findings document
+- **Key findings:** 3,043 companies (10%) match proposed filters. Category blocklist has 12 patterns but misses ~15 high-count non-massage categories. Cultural affinity data 97% reliable. 96% of affected records already in Apollo.
+- **Disabled Google Reviews** (`SKIP_GOOGLE_REVIEWS=true` in find-contacts.js) — 0% yield, duplicates solo detection. Local file updated, needs n8n deployment.
+- **Yelp Owner root cause:** HTTP 403 from Yelp bot detection. Needs headless browser to fix.
+- **New file:** `docs/enrichment-pipeline-catalogue.md` — complete catalogue of all 16+ enrichment sources
+
+### Phase 2 Priority 1 — Blocklist expansion EXECUTED
+- **Downstream impact assessment:** CASCADE only affects contacts + social_profiles. No FK from pipeline_runs/pipeline_queue.
+- **26 new category_blocklist patterns** + **9 franchise chain_blocklist entries** INSERTed
+- **Single-metro test** (Oxford city): 18/69 deleted, exact dry-run match, CASCADE correct
+- **Full pipeline cleanup:**
+  - Companies: 30,175 → 25,434 (**4,741 deleted**, 15.7%)
+  - Contacts: 7,148 → 5,569 (**1,579 cascade**, 22.1%)
+  - Social profiles: 29,389 → 22,136 (**7,253 cascade**, 24.7%)
+- **Sanity check:** 0 pure chiropractors, 0 car repair, 0 franchises remaining. 393 chiro+massage combos correctly kept.
+
+### Phase 2 Priority 2 — Name filters + mobile + additional_types EXECUTED
+- **Name-pattern filters deployed** to Normalize Google Results + Normalize Yelp Results nodes via MCP. 22 exclusion patterns (physical therapy, chiropractic, med spa, acupuncture, energy healing, float/salt) + 5 safe terms (massage, bodywork, day spa, wellness, therapeutic).
+- **Name-pattern SQL cleanup** on existing data: 793 additional companies deleted (companies whose category had a safe term but name reveals non-massage primary business)
+- **"Physical Therapy" added** to category_blocklist (was missed — only had "Physical Therapist")
+- **Mobile practice detection:** `is_mobile_practice` BOOLEAN column added, 122 companies flagged, scoring rule added (-20 pts), all lead scores recalculated
+- **`additional_types` JSONB column** added to companies table. `enrich-companies.js` updated to include in PATCH payload. Deployed to n8n via MCP (23K chars — MCP limit has increased beyond 9.5K).
+- **`find-contacts.js` deployed** to n8n via Python deploy script (48K chars, `SKIP_GOOGLE_REVIEWS=true`). No manual paste needed.
+- **Cumulative cleanup (P1+P2):** Companies 30,193 → 24,195 (5,998 deleted, 19.9%). Contacts 7,153 → 5,134 (2,019 deleted, 28.2%). Social profiles 29,389 → 20,001 (9,388 deleted, 32.0%).
+
+### Phase 2 Priority 3 — Language barrier scoring + audit infrastructure
+- **`is_language_barrier_risk` BOOLEAN** column added, 740 companies flagged via name patterns (Thai/Asian/Chinese/Korean massage, foot massage, reflexology)
+- **Scoring rule** (-20 pts) added to `scoring_rules` table. Lead scores recalculated. Avg score: -6.3 (flagged) vs 12.8 (normal). 0 flagged companies in high-value tier.
+- **`run_post_discovery_cleanup()` updated** to flag language barrier + mobile practice companies on future metros automatically
+- **`is_franchise` BOOLEAN** column added. Chain cleanup flags companies before deletion.
+- **`filtered_companies_log` audit table** created. Both category and chain cleanup functions now log every deletion with company details, filter type, reason, lead_score, apollo_synced_at.
+- **Test run (Social Circle city, GA):** 119 discovered → 111 after cleanup (8 filtered: 6 category + 2 chain). `additional_types` populated on 104/111 (94%). 29 contacts found. Pipeline fully operational with all changes.
+
+### Metered Enrollment System
+- **Schema:** `sequence_enrolled_at`, `enrollment_batch` columns on contacts + `call_activity` table + `get_pending_enrollment()` RPC
+- **Daily Enrollment workflow** (`mEcwH3Q3fR63ib6g`, 11 nodes, ACTIVE) — daily 6am, cap 500, enrolls top contacts by lead_score into Net New sequence
+- **Call Activity Webhook** (`kgtvLxRsgfd8iuCL`, 4 nodes, ACTIVE) — receives call dispositions from Apollo Play 7
+- **Production test:** 381 contacts enrolled successfully (9 min). 134 pre-existing actioned contacts excluded.
+- **Apollo Sync "Assign to Prospect List" disabled** — redundant with metered enrollment
+- **Configuration documented** in `projects/metered_enrollment_v1/CONFIGURATION.md`
+
+### Google Places Radius Fix
+- 744 queue metros had `radius_meters` 50,000-80,000 (Google API max is 50,000). Capped all to 49,999.
+
+### Pending
+- Apollo cleanup debt (~3,525 orphaned records) — `projects/quality_improvements_v1/APOLLO-CLEANUP-DEBT.md`
+- Refine search queries (12→6-8) — future session
+- Telnyx API key renewal, Hunter credits renewal
+
+## 2026-03-26 (Session 100 — Post-Freeze Reconciliation + Requeue Investigation)
+
+### Post-freeze verification
+- Verified all Session 99 local files match intended implementation (Cursor handoff cross-reference)
+- Added missing `errorWorkflow: "Qdwt8jW18uRslMtT"` to local `queue-wrapper-workflow.json` settings
+- Updated stale TRACKER.md from old 9-node layout to current 10-node ADR-040 architecture
+- Backfilled Sessions 96-99 entries in PROGRESS.md
+
+### Diagnostic & requeue SQL
+- **New file:** `projects/queueing-system-v1/sql/06-diagnose-failed-runs.sql` — 7 queries to identify metros falsely marked complete with leads_found=0 (pre-ADR-040 fire-and-forget issue)
+- **New file:** `projects/queueing-system-v1/sql/07-requeue-failed-metros.sql` — dry-run preview + UPDATE statements (commented) to reset affected metros to 'pending'
+
+### n8n MCP auth
+- MCP authentication failing — remote n8n state cannot be verified. Queue Wrapper errorWorkflow setting, Schedule Trigger state, and workflow node graphs need manual UI verification.
+
+## 2026-03-13 (Session 99 — Pipeline Failure Resilience Overhaul)
+
+### Fix 1: Queue Wrapper creates pipeline_runs row and passes run_id
+- **New node: "Create Pipeline Run"** replaces old passthrough "Mark Running" in queue wrapper
+- INSERTs `pipeline_runs` row with metro config (status: queued, triggered_by: queue_wrapper)
+- PATCHes `pipeline_queue.run_id` FK to link queue item ↔ pipeline run
+- Passes `run_id` to Trigger Pipeline → main workflow now gets `run_id` in webhook body
+- **Result:** Queue-triggered runs now create trackable pipeline_runs rows (previously skipped)
+
+### Fix 2: Replace fire-and-forget with completion polling
+- **New node: "Poll Pipeline Status"** replaces NoOp "Execute Steps 2-4"
+- Polls `pipeline_runs.status` every 30s for up to 45 minutes
+- Returns on `completed`, throws on `failed` or timeout
+- Run Cleanup + Mark Complete now fire AFTER pipeline finishes (previously fired immediately after webhook POST)
+- **Result:** `leads_found` count is now accurate; failures are detected
+
+### Fix 3: Queue Error Handler workflow
+- **New workflow: "Queue Error Handler"** (`Qdwt8jW18uRslMtT`, 2 nodes, ACTIVE)
+- Error Trigger → Mark Queue Failed: finds running queue item, increments retry_count
+- If retry_count < max_retries (3) → resets to `pending` for auto-retry
+- If retry_count >= max_retries → marks `failed` permanently
+- Also marks the linked `pipeline_runs` row as failed
+- Queue wrapper `errorWorkflow` set to this workflow
+
+### Step 0.75: Workflow Controller
+- **New workflow: "Workflow Controller"** (`R28WPY4aopfaIw4O`, 3 nodes, ACTIVE)
+- Webhook (POST, path: `workflow-controller`) → Process Action → Respond
+- Supports `activate`, `deactivate`, `status` actions via n8n internal API
+- Requires `N8N_API_KEY` + `N8N_API_URL` env vars in Coolify
+- Dashboard can toggle workflows via stable HTTP endpoint
+
+### Fix 4: Sub-workflow errorWorkflow
+- Set `errorWorkflow: ovArmKkj1bs5Af3G` (Pipeline Error Handler) on sub-workflow `fGm4IP0rWxgHptN8`
+- Sub-workflow errors now trigger the Pipeline Error Handler
+
+### Fix 5: API Health Check script
+- **New file:** `scripts/nodes/api-health-check.js`
+- Checks Apollo, Hunter, NamSor APIs before pipeline processing
+- Throws on failure → converts silent degradation to loud early failure
+- Opt-in: skip with `skip_health_check=true` in webhook body
+- **Not yet deployed** to main workflow — script ready for future integration
+
+### Queue Wrapper updated flow
+- `Schedule/Manual → Set Config → Fetch Next → IF → Create Pipeline Run → Trigger Pipeline → Poll Pipeline Status → Run Cleanup → Mark Complete`
+- executionTimeout: 3600s (1 hour)
+- Schedule Trigger disabled (pending testing + data cleanup)
+
+### New files
+- `scripts/nodes/create-pipeline-run.js` — Fix 1 source
+- `scripts/nodes/poll-pipeline-status.js` — Fix 2 source
+- `scripts/nodes/api-health-check.js` — Fix 5 source
+- `projects/queueing-system-v1/n8n/queue-error-handler-workflow.json` — Fix 3 workflow
+- `projects/queueing-system-v1/n8n/workflow-controller-workflow.json` — Step 0.75 workflow
+
+## 2026-03-10 (Session 98 — VerveLabs Run Tag uses prospect list name)
+
+### Changed VerveLabs Run Tag to use prospect list name instead of run_tag
+- **Fetch Unsynced:** Added Supabase GET to `pipeline_config?key=eq.active_prospect_list` to fetch the active prospect list name (fallback: `VerveLabs-Prospects-001`). Passes `prospect_list` field in each output item alongside `run_tag`.
+- **Upsert Account:** Changed `VerveLabs Run Tag` custom field from `run_tag` to `prospect_list || run_tag`. Passes `prospect_list` through to Upsert Contacts.
+- **Upsert Contacts:** Changed `VerveLabs Run Tag` custom field from `run_tag` to `prospect_list || run_tag`.
+- **Result:** Apollo accounts and contacts now show the prospect list name (e.g., `VerveLabs-Prospects-002`) in the `VerveLabs Run Tag` field, matching the actual list they're assigned to.
+- **Deployed** via MCP `updateNode` × 3, all with `mode` preserved (BUG-055 prevention)
+- **Validation:** 0 errors, 19 warnings (all pre-existing)
+- **Local snapshot updated:** `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`
+
+## 2026-03-10 (Session 97 — Remove per-run label_names)
+
+### Removed per-run label_names from Upsert Contacts
+- **Removed** `contactPayload.label_names = [run_tag]` from the new-contact creation branch in Upsert Contacts node
+- **Reason:** Per-run Apollo Lists (e.g. `vervelabs-2026-03-10-2145`) conflicted with the Prospect List assignment node. The run_tag is already stored as a custom field (`VerveLabs Run Tag`) on contacts, so no data is lost.
+- **Deployed** via MCP `updateNode` with `mode: runOnceForEachItem` preserved (BUG-055 prevention)
+- **Validation:** 0 errors, 19 warnings (all pre-existing)
+- **Local snapshot updated:** `projects/apollo_integration_v1/workflow/apollo-sync-workflow.json`
+
+## 2026-03-10 (Session 96 — Prospect List Assignment Node)
+
+### Added "Assign to Prospect List" node to Apollo Sync v1
+- **New node:** `Assign to Prospect List` (Code, `runOnceForAllItems`) inserted between Upsert Contacts and Mark Synced
+- **Workflow now 12 nodes** (was 11). Node ID: `b7f3a1d2-4e5c-6f78-9a0b-1c2d3e4f5a6b`, position `[1984, 0]`
+- **Mark Synced** shifted right to `[2208, 0]` to make visual room
+- **Connections rewired:** Upsert Contacts → Assign to Prospect List → Mark Synced
+- **Key corrections from Zack's guide:**
+  1. `fetch()` → `this.helpers.httpRequest()` (n8n task runner compatibility)
+  2. `$('Set Config').item.json` → `_config` passthrough pattern
+  3. Returns all original items with `_config` intact (Mark Synced needs per-company items, not a summary)
+- **Logic:** Reads `active_prospect_list` from Supabase `pipeline_config`, counts contacts in Apollo list via search, rotates to next list name if >=1000 contacts, assigns all Apollo contact IDs via `bulk_update` in batches of 25 with 700ms delay
+- **Source saved:** `scripts/nodes/assign-to-prospect-list.js`
+- **Validation:** 0 errors, 19 warnings (all pre-existing)
+- **Pending:** First test run (needs APOLLO_API_KEY env var + unsynced companies)
+
+## 2026-02-28 (Session 95 — Queue Wrapper Mark Complete Fix)
+
+### Fixed BUG-056: Queue Wrapper "Mark Complete" data flow bug
+- **Root cause:** Run Cleanup was an HTTP Request node. HTTP Request nodes **replace** item data with the API response. Mark Complete received `{geo: 0, chain: 0, metro: "Oro Valley town"}` instead of `{supabase_url, supabase_key, queue_id, metro_name, ...}`. When the code tried `url + '/rest/v1/companies'` with `url = undefined`, the task runner threw "Unknown error".
+- **Fix:** Replaced Run Cleanup from `n8n-nodes-base.httpRequest` to `n8n-nodes-base.code` (v2, `runOnceForEachItem`). New Code node makes the same Supabase RPC call via `this.helpers.httpRequest()` and passes through original item data with `return { json: item }`.
+- **Oro Valley queue item reset:** PATCH from `running` → `pending` (stuck since exec #534)
+- **Deployed:** MCP partial update (4 ops: removeNode, addNode, 2x addConnection)
+- **Local JSON updated:** `projects/queueing-system-v1/n8n/queue-wrapper-workflow.json`
+
+## 2026-02-28 (Session 94 — Post-Discovery Cleanup Execution)
+
+### Ran cleanup functions across all 22 metros
+- **Method:** Temporary n8n workflow with Schedule Trigger + Code node calling `run_post_discovery_cleanup()` RPC for each metro via paginated Supabase REST API
+- **Result:** 0 total deletions — all 22 metros already clean. Country filter (0), category blocklist (0), chain blocklist (0), geo filter (skipped/skeleton)
+- **Verification:** 0 non-US companies remaining, 2,881 total companies across 22 metros
+- **Root cause of zero deletes:** Pipeline's existing discovery-time filters (20-domain blocklist, 10-keyword business type blocklist, category filtering in Normalize node) already prevent non-target businesses from entering Supabase
+- **Toronto ON absent** from companies table — no rows found with that discovery_metro value
+- **Temp workflow created/activated/deactivated/deleted** — no lasting changes to n8n
+
+### Lessons learned
+- Supabase REST API enforces `max_rows=1000` server-side regardless of `limit` query param. Must paginate with `Range` header + `offset` to fetch >1000 rows.
+- n8n Schedule Triggers register correctly when activated via API/MCP (unlike Webhook triggers which require UI activation — the known pitfall only applies to webhooks).
+
+## 2026-02-28 (Session 93 — Queue Wrapper Wiring)
+
+### Queue Wrapper v1: Wired to main pipeline + seed loader deployed
+- **Trigger Pipeline node:** Replaced NoOp "Execute Step 1" with Code node that POSTs metro config to `$env.MAIN_WORKFLOW_WEBHOOK_URL`. Fire-and-forget with 10s timeout (n8n webhook doesn't respond until pipeline finishes, so timeout is expected/normal).
+- **Seed Loader workflow:** Deployed as `I1QRETjRmMh7A1bT` (4 nodes: Manual Trigger → Set Config → Generate 10 rural metros → Upsert to Queue). Run from n8n editor.
+- **Validation:** Queue Wrapper passes with 0 errors (11 cosmetic warnings).
+- **Pending:** `MAIN_WORKFLOW_WEBHOOK_URL` env var in Coolify, run seed loader, dry-run test, then activate schedule.
+
+### n8n Workflows Modified
+- Queue Wrapper `7Ix8ajJ5Rp9NyYk8` — replaced NoOp with "Trigger Pipeline" Code node via MCP partial update (5 operations: removeNode, cleanStaleConnections, addNode, 2x addConnection)
+
+### n8n Workflows Created
+- Queue Seed Loader `I1QRETjRmMh7A1bT` — 4-node utility workflow for seeding pipeline_queue with 10 rural test metros
+
+## 2026-02-27 (Session 92 — Metro Seed List Generation)
+
+### Metro Seed List: 3,987 cities generated, SQL ready for Supabase
+- **Data pipeline:** 2020 Gazetteer (geography) + Census Subcounty Estimates 2024 (population) → merged via `merge_gazetteer_pop.py` → `generate_metro_seed.py` → CSV → SQL
+- **Output:** 3,987 cities (2,441 rural / 1,345 suburban / 201 metro) across 49 states
+- **All 8 verification checks passed:** shape, territories, pop bounds, radius, spot-checks, coverage, dupes, lat/lon
+- **Schema changes:** Added `market_type` column + `UNIQUE(metro_name, state)` to pipeline_queue; Added `latitude`/`longitude`/`earthdistance` to companies
+- **SQL files:** 8 batch INSERT files (500 rows each), all idempotent with ON CONFLICT DO UPDATE
+- **Report:** `projects/metro-seed-list-v1/output/SEED-GENERATION-REPORT.md`
+
+### Files Created
+- `projects/metro-seed-list-v1/merge_gazetteer_pop.py` — joins Gazetteer + population estimates
+- `projects/metro-seed-list-v1/generate_seed_sql.py` — generates SQL from CSV
+- `projects/metro-seed-list-v1/output/metro_seed_5k-50k.csv` — 3,987-city seed list
+- `projects/metro-seed-list-v1/output/SEED-GENERATION-REPORT.md`
+- `projects/queueing-system-v1/sql/00-companies-migration.sql` — lat/lon + earthdistance
+- `projects/queueing-system-v1/sql/02-seed-pipeline-queue-batch01..08.sql` — seed data
+- `projects/queueing-system-v1/sql/03-verify-seed.sql` — verification queries
+
+### Files Modified
+- `projects/queueing-system-v1/sql/01-pipeline-queue-table.sql` — added market_type, fixed unique constraint
+
+## 2026-02-27 (Session 91 — Queuing System v1)
+
+### New Feature: Sequential Metro Queue + Post-Discovery Cleanup
+- **pipeline_queue table** — sequential processing queue with priority, retry logic, and pipeline_runs FK
+- **category_blocklist table** — 12 seed patterns (dental, nail salon, hair salon, etc.) with safe-term exemption protecting "Massage + X" combos
+- **chain_blocklist table** — 5 non-massage retail chains (Sally Beauty, Ulta, RMT Supply/Equipment, Arctic Spas)
+- **5 cleanup PL/pgSQL functions** — country filter, category blocklist, chain blocklist, geo filter (skeleton), orchestrator (`run_post_discovery_cleanup` RPC)
+- **Dry-run validation queries** — SELECT-only preview of what would be deleted across all 23 metros
+- **Queue Wrapper workflow** deployed to n8n (`7Ix8ajJ5Rp9NyYk8`, 9 nodes, INACTIVE) — Schedule Trigger (30min) → atomic claim → cleanup → mark complete
+- **Seed Loader workflow** — inserts 10 rural test metros into pipeline_queue
+
+### Files Created
+- `projects/queueing-system-v1/sql/01-pipeline-queue-table.sql`
+- `projects/queueing-system-v1/sql/02-category-blocklist.sql`
+- `projects/queueing-system-v1/sql/03-chain-blocklist.sql`
+- `projects/queueing-system-v1/sql/04-cleanup-functions.sql`
+- `projects/queueing-system-v1/sql/05-test-cleanup.sql`
+- `projects/queueing-system-v1/n8n/queue-wrapper-workflow.json`
+- `projects/queueing-system-v1/n8n/seed-loader-workflow.json`
+- `projects/queueing-system-v1/INTEGRATION-NOTES.md`
+- `projects/queueing-system-v1/TRACKER.md`
+
 ## 2026-02-27 (Session 90 — Project Handoff Documentation)
 
 ### Documentation

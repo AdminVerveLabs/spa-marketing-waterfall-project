@@ -1,0 +1,80 @@
+Q9: BOOKING PLATFORM DISTRIBUTION
+-- What booking tools are rural businesses using?
+
+[
+  {
+    "booking_platform": "unknown",
+    "total": 64,
+    "metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "booking_platform": "wix_bookings",
+    "total": 31,
+    "metros": "Alice, TX, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "booking_platform": "square",
+    "total": 19,
+    "metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO"
+  },
+  {
+    "booking_platform": "vagaro",
+    "total": 15,
+    "metros": "Alice, TX, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Sterling, CO, Vernal, UT"
+  },
+  {
+    "booking_platform": "acuity",
+    "total": 13,
+    "metros": "Alice, TX, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "booking_platform": "jane_app",
+    "total": 11,
+    "metros": "Alice, TX, Clovis, NM, Durango, CO, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE"
+  },
+  {
+    "booking_platform": "massagebook",
+    "total": 6,
+    "metros": "Clovis, NM, Durango, CO, Scottsbluff, NE, Sterling, CO"
+  },
+  {
+    "booking_platform": "mindbody",
+    "total": 5,
+    "metros": "Durango, CO, Lewistown, MT, Price, UT"
+  },
+  {
+    "booking_platform": "calendly",
+    "total": 3,
+    "metros": "Alice, TX, Durango, CO"
+  },
+  {
+    "booking_platform": "noterro",
+    "total": 2,
+    "metros": "Lewistown, MT, Scottsbluff, NE"
+  },
+  {
+    "booking_platform": "clinicsense",
+    "total": 2,
+    "metros": "Clovis, NM, Price, UT"
+  },
+  {
+    "booking_platform": "booksy",
+    "total": 1,
+    "metros": "Price, UT"
+  },
+  {
+    "booking_platform": "schedulicity",
+    "total": 1,
+    "metros": "Price, UT"
+  },
+  {
+    "booking_platform": "schedulista",
+    "total": 1,
+    "metros": "Elko, NV"
+  },
+  {
+    "booking_platform": "fresha",
+    "total": 1,
+    "metros": "Lewistown, MT"
+  }
+]

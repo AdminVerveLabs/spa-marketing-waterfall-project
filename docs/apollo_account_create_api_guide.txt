@@ -1,0 +1,111 @@
+#Create an Account
+post
+https://api.apollo.io/api/v1/accounts
+
+Use the Create an Account endpoint to add a new account to your team's Apollo account.
+
+In Apollo terminology, an account is a company that your team has explicitly added to your database.
+
+Apollo does not apply deduplication processes when you create a new account via the API. If your entry has the same name, domain, or other details as an existing account, Apollo will create a new account instead of updating the existing account. To update an existing account, use the Update an Account endpoint instead.
+
+This endpoint requires a master API key. If you attempt to call the endpoint without a master key, you will receive a 403 response. Refer to Create API Keys to learn how to create a master API key.
+
+Body Params
+name
+string
+Name the account that you are creating. This should be a human-readable name.
+
+Example: The Irish Copywriters
+
+domain
+string
+The domain name for the account.
+
+Do not include www. or similar.
+
+Example: apollo.io or microsoft.com
+
+owner_id
+string
+The ID for the account owner within your team's Apollo account.
+
+Use the Get a List of Users endpoint to retrieve IDs for all of the users within your Apollo account.
+
+Example: 66302798d03b9601c7934ebf
+
+account_stage_id
+string
+The Apollo ID for the account stage to which you want to assign the account. Call the List Account Stages endpoint to retrieve a list of all the account stage IDs available in your Apollo account.
+
+If you do not specify the account stage, Apollo automatically assigns the account to a stage as determined by your team's Apollo account. To change the order of account stages, launch the Apollo product and go to Settings > Objects > Accounts. Then, access the Triggers tab and change the stage for when an account is created.
+
+Example: 6095a710bd01d100a506d4b9
+
+phone
+string
+The primary phone number for the account.
+
+This can be the phone number for the corporate headquarters, a branch location, or a direct dial to the primary point of contact for the account.
+
+Apollo sanitizes phone numbers, so you can enter them in any format. The sanitized number can be viewed in the endpoint response.
+
+Examples: 555-303-1234; +44 7911 123456
+
+raw_address
+string
+The corporate location for the account. This can include a city, US state, and country.
+
+Apollo matches the location you provide to the most applicable pre-defined location.
+
+Examples: Belfield, Dublin 4, Ireland; Dallas, United States
+
+typed_custom_fields
+object
+Add information to custom fields in Apollo.
+
+Your custom fields are unique to your team's Apollo account. This means that the examples in this documentation may not work for your testing purposes.
+
+To utilize this parameter successfully, call the Get a List of All Custom Fields endpoint and identify the id value for the custom field, as well as the appropriate data type. For example, if a custom field accepts picklist entries, you need to pass the accompanying id value for the picklist entry that you want to use as the input value.
+
+Example: When the Get a List of All Custom Fields endpoint returns an id of field:
+
+"60c39ed82bd02f01154c470a" (datetime)
+then the value passed should be:
+
+{"60c39ed82bd02f01154c470a": "2025-08-07"}
+
+
+typed_custom_fields object
+string
+newKey
+New Value
+
+Add Field
+Headers
+accept
+string
+enum
+Defaults to application/json
+Generated from available response content types
+
+
+application/json
+Allowed:
+
+application/json
+
+text/plain
+
+#Request:
+curl --request POST \
+     --url https://api.apollo.io/api/v1/accounts \
+     --header 'Cache-Control: no-cache' \
+     --header 'Content-Type: application/json' \
+     --header 'accept: application/json' \
+     --data '
+{
+  "typed_custom_fields": {
+    "newKey": "New Value"
+  }
+}
+'

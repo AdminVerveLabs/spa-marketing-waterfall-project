@@ -1,0 +1,606 @@
+Q2: RADIUS BLOWOUT - Where did the businesses actually land?
+-- Shows city/state for each discovery_metro run
+-- Flag: if city != discovery metro city, it's spillover
+-- ============================================================
+[
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Corpus Christi, TX",
+    "companies": 30,
+    "pct_of_run": "44.8"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Alice, TX",
+    "companies": 20,
+    "pct_of_run": "29.9"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Kingsville, TX",
+    "companies": 6,
+    "pct_of_run": "9.0"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Portland, TX",
+    "companies": 2,
+    "pct_of_run": "3.0"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Odem, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Robstown, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Rockport, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Victoria, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Eagle Pass, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Ingleside, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Orange Grove, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "Port Aransas, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "actual_location": "McAllen, TX",
+    "companies": 1,
+    "pct_of_run": "1.5"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Clovis, NM",
+    "companies": 46,
+    "pct_of_run": "71.9"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Lubbock, TX",
+    "companies": 3,
+    "pct_of_run": "4.7"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Texico, NM",
+    "companies": 2,
+    "pct_of_run": "3.1"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Portales, NM",
+    "companies": 2,
+    "pct_of_run": "3.1"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Vancouver, BC",
+    "companies": 2,
+    "pct_of_run": "3.1"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Mississauga, ON",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Borger, TX",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Farwell, TX",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Hereford, TX",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "New Westminster, BC",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Rochester, NY",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Surrey, BC",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "Toledo, OH",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "actual_location": "White Rock, BC",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Durango, CO",
+    "companies": 104,
+    "pct_of_run": "92.0"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Pagosa Springs, CO",
+    "companies": 2,
+    "pct_of_run": "1.8"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Burnaby, BC",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Campus, CO",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Grand Junction, CO",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Montrose, CO",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Bayfield, CO",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "South Fork, CO",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "actual_location": "Bernalillo, NM",
+    "companies": 1,
+    "pct_of_run": "0.9"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "actual_location": "Elko, NV",
+    "companies": 46,
+    "pct_of_run": "82.1"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "actual_location": "Spring Creek, NV",
+    "companies": 8,
+    "pct_of_run": "14.3"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "actual_location": "Irvine, CA",
+    "companies": 1,
+    "pct_of_run": "1.8"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "actual_location": "Kaysville, UT",
+    "companies": 1,
+    "pct_of_run": "1.8"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Lewistown, MT",
+    "companies": 16,
+    "pct_of_run": "25.4"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Great Falls, MT",
+    "companies": 12,
+    "pct_of_run": "19.0"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Bozeman, MT",
+    "companies": 10,
+    "pct_of_run": "15.9"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Billings, MT",
+    "companies": 9,
+    "pct_of_run": "14.3"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Helena, MT",
+    "companies": 3,
+    "pct_of_run": "4.8"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Roundup, MT",
+    "companies": 2,
+    "pct_of_run": "3.2"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Sidney, MT",
+    "companies": 2,
+    "pct_of_run": "3.2"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Forsyth, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Livingston, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Red Lodge, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Dickinson, ND",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Seeley Lake, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Sun River, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "White Sulphur Springs, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Ennis, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "actual_location": "Stanford, MT",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Price, UT",
+    "companies": 10,
+    "pct_of_run": "16.9"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Orem, UT",
+    "companies": 9,
+    "pct_of_run": "15.3"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Provo, UT",
+    "companies": 6,
+    "pct_of_run": "10.2"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Moab, UT",
+    "companies": 4,
+    "pct_of_run": "6.8"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Spanish Fork, UT",
+    "companies": 4,
+    "pct_of_run": "6.8"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Springville, UT",
+    "companies": 3,
+    "pct_of_run": "5.1"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Payson, UT",
+    "companies": 2,
+    "pct_of_run": "3.4"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Roosevelt, UT",
+    "companies": 2,
+    "pct_of_run": "3.4"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Mount Pleasant, UT",
+    "companies": 2,
+    "pct_of_run": "3.4"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Ephraim, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Pleasant Grove, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Eagle Mountain, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Duchesne, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Richfield, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Salem, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Salt Lake City, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Sandy Utah, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Vernal, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Sterling, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Sundance, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Torrey, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Huntington, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Helper, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Lehi, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Manti, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "actual_location": "Fairview, UT",
+    "companies": 1,
+    "pct_of_run": "1.7"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Riverton, WY",
+    "companies": 19,
+    "pct_of_run": "51.4"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Lander, WY",
+    "companies": 10,
+    "pct_of_run": "27.0"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Saratoga, WY",
+    "companies": 3,
+    "pct_of_run": "8.1"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Thermopolis, WY",
+    "companies": 2,
+    "pct_of_run": "5.4"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Midval, WY",
+    "companies": 1,
+    "pct_of_run": "2.7"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Pinedale, WY",
+    "companies": 1,
+    "pct_of_run": "2.7"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "actual_location": "Rock Springs, WY",
+    "companies": 1,
+    "pct_of_run": "2.7"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Scottsbluff, NE",
+    "companies": 20,
+    "pct_of_run": "32.8"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Cheyenne, WY",
+    "companies": 14,
+    "pct_of_run": "23.0"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Torrington, WY",
+    "companies": 4,
+    "pct_of_run": "6.6"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Wheatland, WY",
+    "companies": 3,
+    "pct_of_run": "4.9"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Windsor, CO",
+    "companies": 2,
+    "pct_of_run": "3.3"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Fort Collins, CO",
+    "companies": 2,
+    "pct_of_run": "3.3"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Gering, NE",
+    "companies": 2,
+    "pct_of_run": "3.3"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Sidney, NE",
+    "companies": 2,
+    "pct_of_run": "3.3"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Hemingford, NE",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Kimball, NE",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "actual_location": "Laramie, WY",
+    "companies": 1,
+    "pct_of_run": "1.6"
+  }
+]

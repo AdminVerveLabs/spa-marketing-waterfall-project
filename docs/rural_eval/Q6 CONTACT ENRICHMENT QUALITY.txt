@@ -1,0 +1,115 @@
+-- Q6: CONTACT ENRICHMENT QUALITY
+-- How many contacts per metro, and what do we have on them?
+-- ============================================================
+[
+  {
+    "discovery_metro": "Durango, CO",
+    "companies": 113,
+    "total_contacts": 21,
+    "with_name": 21,
+    "confirmed_owners": 13,
+    "with_email": 10,
+    "with_phone": 20,
+    "with_linkedin": 6,
+    "with_cultural_affinity": 21
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "companies": 67,
+    "total_contacts": 15,
+    "with_name": 15,
+    "confirmed_owners": 11,
+    "with_email": 7,
+    "with_phone": 14,
+    "with_linkedin": 4,
+    "with_cultural_affinity": 15
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "companies": 64,
+    "total_contacts": 12,
+    "with_name": 12,
+    "confirmed_owners": 7,
+    "with_email": 5,
+    "with_phone": 12,
+    "with_linkedin": 2,
+    "with_cultural_affinity": 12
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "companies": 63,
+    "total_contacts": 3,
+    "with_name": 3,
+    "confirmed_owners": 2,
+    "with_email": 1,
+    "with_phone": 3,
+    "with_linkedin": 0,
+    "with_cultural_affinity": 3
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "companies": 61,
+    "total_contacts": 14,
+    "with_name": 14,
+    "confirmed_owners": 8,
+    "with_email": 6,
+    "with_phone": 13,
+    "with_linkedin": 4,
+    "with_cultural_affinity": 14
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "companies": 59,
+    "total_contacts": 8,
+    "with_name": 8,
+    "confirmed_owners": 6,
+    "with_email": 4,
+    "with_phone": 8,
+    "with_linkedin": 3,
+    "with_cultural_affinity": 8
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "companies": 58,
+    "total_contacts": 10,
+    "with_name": 10,
+    "confirmed_owners": 7,
+    "with_email": 2,
+    "with_phone": 10,
+    "with_linkedin": 2,
+    "with_cultural_affinity": 10
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "companies": 56,
+    "total_contacts": 2,
+    "with_name": 2,
+    "confirmed_owners": 2,
+    "with_email": 0,
+    "with_phone": 2,
+    "with_linkedin": 0,
+    "with_cultural_affinity": 2
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "companies": 54,
+    "total_contacts": 6,
+    "with_name": 6,
+    "confirmed_owners": 3,
+    "with_email": 4,
+    "with_phone": 6,
+    "with_linkedin": 3,
+    "with_cultural_affinity": 6
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "companies": 37,
+    "total_contacts": 6,
+    "with_name": 6,
+    "confirmed_owners": 3,
+    "with_email": 4,
+    "with_phone": 5,
+    "with_linkedin": 5,
+    "with_cultural_affinity": 6
+  }
+]

@@ -456,6 +456,11 @@ for (const company of companies) {
       enriched_at: now
     };
 
+    // Google Details data
+    if (googleDetails.additional_types && googleDetails.additional_types.length > 0) {
+      updatePayload.additional_types = JSON.stringify(googleDetails.additional_types);
+    }
+
     // Backfill data
     if (backfillPatch.domain) updatePayload.domain = backfillPatch.domain;
     if (backfillPatch.google_place_id) updatePayload.google_place_id = backfillPatch.google_place_id;

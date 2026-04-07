@@ -1,0 +1,505 @@
+Q4: CATEGORY BREAKDOWN - What types of businesses are we finding?
+-- Helps identify junk categories to blocklist
+-- ============================================================
+[
+  {
+    "category": "Massage",
+    "total": 177,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Spa",
+    "total": 64,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Massage Spa",
+    "total": 51,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy",
+    "total": 31,
+    "found_in_metros": "Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Scottsbluff, NE, Sterling, CO"
+  },
+  {
+    "category": "Beauty Salon",
+    "total": 25,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Medical Clinic",
+    "total": 21,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Beauty & Spas, Massage",
+    "total": 20,
+    "found_in_metros": "Alice, TX, Clovis, NM, Durango, CO, Elko, NV, Price, UT, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Chiropractor",
+    "total": 20,
+    "found_in_metros": "Alice, TX, Elko, NV, Lewistown, MT, Price, UT, Riverton, WY, Scottsbluff, NE, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Wellness Center",
+    "total": 11,
+    "found_in_metros": "Alice, TX, Durango, CO, Elko, NV, Price, UT, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Hair Salon",
+    "total": 10,
+    "found_in_metros": "Clovis, NM, Elko, NV, Riverton, WY, Scottsbluff, NE, Vernal, UT"
+  },
+  {
+    "category": "Beauty & Spas, Nail Salons",
+    "total": 9,
+    "found_in_metros": "Alice, TX, Clovis, NM, Elko, NV, Lewistown, MT, Vernal, UT"
+  },
+  {
+    "category": "Beauty & Spas, Massage, Health & Medical, Massage Therapy",
+    "total": 8,
+    "found_in_metros": "Alice, TX, Durango, CO, Price, UT, Scottsbluff, NE"
+  },
+  {
+    "category": "Store",
+    "total": 7,
+    "found_in_metros": "Alice, TX, Elko, NV, Lewistown, MT, Scottsbluff, NE, Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Massage",
+    "total": 7,
+    "found_in_metros": "Alice, TX, Durango, CO, Elko, NV, Lewistown, MT, Riverton, WY, Scottsbluff, NE"
+  },
+  {
+    "category": "Health",
+    "total": 6,
+    "found_in_metros": "Price, UT, Riverton, WY, Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Physical Therapy",
+    "total": 5,
+    "found_in_metros": "Alice, TX, Durango, CO, Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Chiropractors",
+    "total": 5,
+    "found_in_metros": "Durango, CO, Riverton, WY"
+  },
+  {
+    "category": "Nail Salon",
+    "total": 4,
+    "found_in_metros": "Price, UT, Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": null,
+    "total": 3,
+    "found_in_metros": "Elko, NV, Lewistown, MT"
+  },
+  {
+    "category": "Beauty & Spas, Cosmetics & Beauty Supply",
+    "total": 3,
+    "found_in_metros": "Alice, TX, Clovis, NM, Elko, NV"
+  },
+  {
+    "category": "Beauty & Spas, Hair Salons",
+    "total": 3,
+    "found_in_metros": "Durango, CO, Elko, NV"
+  },
+  {
+    "category": "Services",
+    "total": 3,
+    "found_in_metros": "Durango, CO, Lewistown, MT, Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Chiropractors, Massage Therapy",
+    "total": 2,
+    "found_in_metros": "Durango, CO, Scottsbluff, NE"
+  },
+  {
+    "category": "Mover",
+    "total": 2,
+    "found_in_metros": "Sterling, CO, Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Physical Therapy, Active Life, Fitness & Instruction, Trainers, Massage Therapy",
+    "total": 2,
+    "found_in_metros": "Durango, CO, Scottsbluff, NE"
+  },
+  {
+    "category": "Beauty & Spas, Barbers",
+    "total": 2,
+    "found_in_metros": "Clovis, NM, Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Reiki, Professional Services, Life Coach, Active Life, Fitness & Instruction, Yoga",
+    "total": 2,
+    "found_in_metros": "Scottsbluff, NE, Sterling, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Reiki",
+    "total": 2,
+    "found_in_metros": "Lewistown, MT, Scottsbluff, NE"
+  },
+  {
+    "category": "Gym",
+    "total": 2,
+    "found_in_metros": "Elko, NV, Lewistown, MT"
+  },
+  {
+    "category": "Beauty & Spas, Hair Salons, Skin Care, Nail Salons",
+    "total": 2,
+    "found_in_metros": "Durango, CO, Riverton, WY"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Reflexology",
+    "total": 2,
+    "found_in_metros": "Alice, TX, Scottsbluff, NE"
+  },
+  {
+    "category": "Transportation Service",
+    "total": 2,
+    "found_in_metros": "Scottsbluff, NE, Sterling, CO"
+  },
+  {
+    "category": "Beauty & Spas, Massage, Health & Medical, Massage Therapy, Reflexology",
+    "total": 2,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Physical Therapist",
+    "total": 2,
+    "found_in_metros": "Durango, CO, Scottsbluff, NE"
+  },
+  {
+    "category": "Beauty & Spas, Skin Care, Hair Salons, Hair Removal",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Beauty & Spas, Skin Care, Health & Medical, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Price, UT"
+  },
+  {
+    "category": "Beauty & Spas, Skin Care, Health & Medical, Medical Spas",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Beauty & Spas, Skin Care, Massage",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Beauty & Spas, Skin Care, Tanning, Nail Salons",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Beauty & Spas, Tattoo, Massage",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Beauty & Spas, Tattoo, Piercing, Health & Medical, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Building Materials Store",
+    "total": 1,
+    "found_in_metros": "Lewistown, MT"
+  },
+  {
+    "category": "Business Center",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Car Rental Agency",
+    "total": 1,
+    "found_in_metros": "Clovis, NM"
+  },
+  {
+    "category": "Car repair and maintenance service",
+    "total": 1,
+    "found_in_metros": "Sterling, CO"
+  },
+  {
+    "category": "Clothing Store",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Corporate Office",
+    "total": 1,
+    "found_in_metros": "Clovis, NM"
+  },
+  {
+    "category": "Cosmetics Store",
+    "total": 1,
+    "found_in_metros": "Vernal, UT"
+  },
+  {
+    "category": "Dental Clinic",
+    "total": 1,
+    "found_in_metros": "Price, UT"
+  },
+  {
+    "category": "Educational Institution",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Food, Juice Bars & Smoothies, Health & Medical, Massage Therapy, Acupuncture",
+    "total": 1,
+    "found_in_metros": "Price, UT"
+  },
+  {
+    "category": "Food, Specialty Food, Herbs & Spices, Health & Medical, Herbal Shops",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Acupuncture",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Acupuncture, Chiropractors, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Sterling, CO"
+  },
+  {
+    "category": "Health & Medical, Acupuncture, Doctors, Oncologist, Naturopathic/Holistic",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Acupuncture, Traditional Chinese Medicine",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Acupuncture, Traditional Chinese Medicine, Tui Na",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Assisted Living Facilities",
+    "total": 1,
+    "found_in_metros": "Clovis, NM"
+  },
+  {
+    "category": "Health & Medical, Cannabis Clinics",
+    "total": 1,
+    "found_in_metros": "Clovis, NM"
+  },
+  {
+    "category": "Health & Medical, Chiropractors, Nutritionists",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Dentists, General Dentistry",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Health & Medical, Diagnostic Services, Laboratory Testing, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Health & Medical, Doctors, Dermatologists, Beauty & Spas, Skin Care, Medical Spas",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Doctors, Neurologist",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Doctors, Ophthalmologists",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Doctors, Podiatrists",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Doctors, Sports Medicine, Orthopedists",
+    "total": 1,
+    "found_in_metros": "Riverton, WY"
+  },
+  {
+    "category": "Health & Medical, Doulas",
+    "total": 1,
+    "found_in_metros": "Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Herbal Shops",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Home Health Care, Personal Care Services",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Health & Medical, Hospice, Home Health Care, Personal Care Services",
+    "total": 1,
+    "found_in_metros": "Clovis, NM"
+  },
+  {
+    "category": "Health & Medical, Hypnosis/Hypnotherapy, Professional Services, Life Coach, Reiki",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Active Life, Fitness & Instruction, Dance Studios",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Acupuncture, Doctors, Naturopathic/Holistic",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Massage, Reflexology",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  },
+  {
+    "category": "Active Life, Fitness & Instruction, Gyms, Professional Services, Life Coach, Yoga",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Nail Salons, Tanning, Tanning Beds",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Piercing",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Skin Care",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Skin Care, Active Life, Fitness & Instruction, Trainers",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Health Coach",
+    "total": 1,
+    "found_in_metros": "Price, UT"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Hypnosis/Hypnotherapy, Active Life, Fitness & Instruction, Yoga",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Reflexology, Ayurveda",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Reflexology, Reiki",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Reiki, Beauty & Spas, Massage",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Shopping, Vitamins & Supplements, Professional Services, Life Coach",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Massage Therapy, Traditional Chinese Medicine",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Medical Centers",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Medical Spas",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Medical Spas, Beauty & Spas, Skin Care",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Medical Spas, IV Hydration, Doctors, Pain Management",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Medical Spas, Weight Loss Centers, Beauty & Spas, Acne Treatment",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Midwives, Prenatal/Perinatal Care, Doulas",
+    "total": 1,
+    "found_in_metros": "Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Occupational Therapy, Speech Therapists, Physical Therapy",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Orthotics",
+    "total": 1,
+    "found_in_metros": "Vernal, UT"
+  },
+  {
+    "category": "Health & Medical, Physical Therapy, Diagnostic Services, Diagnostic Imaging, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Elko, NV"
+  },
+  {
+    "category": "Health & Medical, Physical Therapy, Occupational Therapy, Doctors, Sports Medicine",
+    "total": 1,
+    "found_in_metros": "Riverton, WY"
+  },
+  {
+    "category": "Health & Medical, Reflexology, Massage Therapy",
+    "total": 1,
+    "found_in_metros": "Scottsbluff, NE"
+  },
+  {
+    "category": "Health & Medical, Reflexology, Massage Therapy, Active Life, Fitness & Instruction, Yoga",
+    "total": 1,
+    "found_in_metros": "Durango, CO"
+  },
+  {
+    "category": "Health & Medical, Reflexology, Massage Therapy, Reiki",
+    "total": 1,
+    "found_in_metros": "Alice, TX"
+  }
+]

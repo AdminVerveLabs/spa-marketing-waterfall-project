@@ -1,0 +1,95 @@
+-- Q1: OVERVIEW - Companies per discovery metro
+-- How many businesses did each run find?
+-- ============================================================
+[
+  {
+    "discovery_metro": "Durango, CO",
+    "total_companies": 113,
+    "with_domain": 78,
+    "with_phone": 109,
+    "avg_rating": "4.9",
+    "avg_reviews": "109",
+    "avg_score": "12.2"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "total_companies": 67,
+    "with_domain": 35,
+    "with_phone": 66,
+    "avg_rating": "4.7",
+    "avg_reviews": "67",
+    "avg_score": "17.0"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "total_companies": 64,
+    "with_domain": 29,
+    "with_phone": 63,
+    "avg_rating": "4.4",
+    "avg_reviews": "94",
+    "avg_score": "16.6"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "total_companies": 63,
+    "with_domain": 31,
+    "with_phone": 59,
+    "avg_rating": "4.8",
+    "avg_reviews": "71",
+    "avg_score": "14.4"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "total_companies": 61,
+    "with_domain": 28,
+    "with_phone": 60,
+    "avg_rating": "4.8",
+    "avg_reviews": "82",
+    "avg_score": "15.0"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "total_companies": 59,
+    "with_domain": 38,
+    "with_phone": 58,
+    "avg_rating": "4.9",
+    "avg_reviews": "115",
+    "avg_score": "11.9"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "total_companies": 58,
+    "with_domain": 31,
+    "with_phone": 54,
+    "avg_rating": "4.8",
+    "avg_reviews": "99",
+    "avg_score": "13.5"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "total_companies": 56,
+    "with_domain": 32,
+    "with_phone": 56,
+    "avg_rating": "4.8",
+    "avg_reviews": "80",
+    "avg_score": "14.3"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "total_companies": 54,
+    "with_domain": 31,
+    "with_phone": 53,
+    "avg_rating": "4.8",
+    "avg_reviews": "62",
+    "avg_score": "14.4"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "total_companies": 37,
+    "with_domain": 20,
+    "with_phone": 35,
+    "avg_rating": "4.8",
+    "avg_reviews": "61",
+    "avg_score": "14.9"
+  }
+]

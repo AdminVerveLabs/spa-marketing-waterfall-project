@@ -1,0 +1,368 @@
+Q5: SUSPECT CATEGORIES - Likely not our target market
+-- ============================================================
+[
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "Sally Beauty",
+    "category": "Beauty & Spas, Cosmetics & Beauty Supply",
+    "location": "Alice, TX",
+    "domain": "stores.sallybeauty.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "Sally Beauty",
+    "category": "Beauty & Spas, Cosmetics & Beauty Supply",
+    "location": "Clovis, NM",
+    "domain": "stores.sallybeauty.com"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Sally Beauty",
+    "category": "Beauty & Spas, Cosmetics & Beauty Supply",
+    "location": "Elko, NV",
+    "domain": "stores.sallybeauty.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Sally Beauty",
+    "category": "Beauty & Spas, Cosmetics & Beauty Supply, Shopping, Eyewear & Opticians, Sunglasses, Piercing",
+    "location": "Vernal, UT",
+    "domain": "stores.sallybeauty.com"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Rumors Hair and Nails",
+    "category": "Beauty & Spas, Hair Salons, Nail Salons",
+    "location": "Elko, NV",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "name": "Studio 23",
+    "category": "Beauty & Spas, Hair Salons, Nail Salons, Permanent Makeup",
+    "location": "Vernal, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "name": "Hair Fusion",
+    "category": "Beauty & Spas, Hair Salons, Skin Care, Nail Salons",
+    "location": "Durango, CO",
+    "domain": "hairfusiondurango.com"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "name": "Icons & Rebels",
+    "category": "Beauty & Spas, Hair Salons, Skin Care, Nail Salons",
+    "location": "Riverton, WY",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "name": "Attractions On Main Salon",
+    "category": "Beauty & Spas, Massage, Hair Salons, Hair Stylists, Nail Salons",
+    "location": "Durango, CO",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Hair Affair",
+    "category": "Beauty & Spas, Massage, Nail Salons",
+    "location": "Vernal, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "Peter's Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Alice, TX",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "Top Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Alice, TX",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "MC Star Nails ",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Clovis, NM",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "Usa Nails Too",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Clovis, NM",
+    "domain": "usanailstoo.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "USA Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Clovis, NM",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Davi Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Elko, NV",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "TL Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Elko, NV",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "name": "Wildflower Nail & Foot Care",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Lewistown, MT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Lee Nails",
+    "category": "Beauty & Spas, Nail Salons",
+    "location": "Vernal, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "TJ Nails & Spa",
+    "category": "Beauty & Spas, Nail Salons, Hair Removal, Waxing",
+    "location": "Clovis, NM",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Raven's Nest Beauty Parlor",
+    "category": "Beauty & Spas, Nail Salons, Hair Salons, Skin Care, Estheticians",
+    "location": "Elko, NV",
+    "domain": "ravensnestbeautyparlor.com"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "name": "Sun Haven Tanning and Nails",
+    "category": "Beauty & Spas, Nail Salons, Tanning, Spray Tanning",
+    "location": "Billings, MT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Shears",
+    "category": "Beauty & Spas, Skin Care, Tanning, Nail Salons",
+    "location": "Elko, NV",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "name": "RMT Supply",
+    "category": "Building Materials Store",
+    "location": "Helena, MT",
+    "domain": "rmtsupplyhelena.com"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "Chateau Jolie",
+    "category": "Clothing Store",
+    "location": "Alice, TX",
+    "domain": "chateaujolie.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Ulta Beauty",
+    "category": "Cosmetics Store",
+    "location": "Vernal, UT",
+    "domain": "ulta.com"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "name": "A Perfect Smile",
+    "category": "Dental Clinic",
+    "location": "Price, UT",
+    "domain": "aperfectsmileinprice.com"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "name": "Me Myself and I Day Spa",
+    "category": "Health & Medical, Massage Therapy, Beauty & Spas, Nail Salons, Tanning, Tanning Beds",
+    "location": "Cheyenne, WY",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "name": "Hot Springs Hotel and Spa",
+    "category": "Hotel",
+    "location": "Thermopolis, WY",
+    "domain": "thermopolishotspringshotel.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "RMT - Revolution Machine Tools",
+    "category": "Manufacturer",
+    "location": "North Salt Lake, UT",
+    "domain": "rmtus.com"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "Massage Envy",
+    "category": "Massage Spa",
+    "location": "Corpus Christi, TX",
+    "domain": "locations.massageenvy.com"
+  },
+  {
+    "discovery_metro": "Clovis, NM",
+    "name": "Massage Envy",
+    "category": "Massage Spa",
+    "location": "Lubbock, TX",
+    "domain": "locations.massageenvy.com"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "name": "Massage Envy",
+    "category": "Massage Spa",
+    "location": "Billings, MT",
+    "domain": "locations.massageenvy.com"
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "name": "Massage Envy",
+    "category": "Massage Spa",
+    "location": "Orem, UT",
+    "domain": "locations.massageenvy.com"
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "name": "Rocky Mt Transload Inc",
+    "category": "Mover",
+    "location": "Commerce City, CO",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "RMT",
+    "category": "Mover",
+    "location": "Duchesne, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Price, UT",
+    "name": "The Nail Lounge by Joyce",
+    "category": "Nail Salon",
+    "location": "Price, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Sterling, CO",
+    "name": "DD Nail Spa Sterling (New Owner)",
+    "category": "Nail Salon",
+    "location": "Sterling, CO",
+    "domain": "ddnailspasterling.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Libby Grace Nails @magnolianailco",
+    "category": "Nail Salon",
+    "location": "Vernal, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Nailed by Chelina",
+    "category": "Nail Salon",
+    "location": "Vernal, UT",
+    "domain": null
+  },
+  {
+    "discovery_metro": "Durango, CO",
+    "name": "Rocky Mountain Therapy Services - Montrose",
+    "category": "Physical Therapist",
+    "location": "Montrose, CO",
+    "domain": "rmts.clinic"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "name": "City Sports + Physio Clinic",
+    "category": "Physical Therapist",
+    "location": "Vancouver, BC",
+    "domain": "citysportsphysio.com"
+  },
+  {
+    "discovery_metro": "Riverton, WY",
+    "name": "Saratoga Hot Springs Resort",
+    "category": "Resort hotel",
+    "location": "Saratoga, WY",
+    "domain": "saratogahotspringsresort.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Soulful Strides Sanctuary Equine Therapy",
+    "category": "Sports Activity Location",
+    "location": "Vernal, UT",
+    "domain": "soulfulstridessanctuary.org"
+  },
+  {
+    "discovery_metro": "Alice, TX",
+    "name": "The Sculpting Spa",
+    "category": "Store",
+    "location": "Alice, TX",
+    "domain": "l.facebook.com"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "Newe Dispensary",
+    "category": "Store",
+    "location": "Elko, NV",
+    "domain": "newecannabis.com"
+  },
+  {
+    "discovery_metro": "Elko, NV",
+    "name": "The Retreat Red Light Therapy & Wellness",
+    "category": "Store",
+    "location": "Elko, NV",
+    "domain": "theretreatrlt.com"
+  },
+  {
+    "discovery_metro": "Lewistown, MT",
+    "name": "Arctic Spas Great Falls / HealthPro Massage Chairs",
+    "category": "Store",
+    "location": "Great Falls, MT",
+    "domain": "arcticspasgreatfalls.com"
+  },
+  {
+    "discovery_metro": "Scottsbluff, NE",
+    "name": "Golden Glow Esthetics LLC",
+    "category": "Store",
+    "location": "Scottsbluff, NE",
+    "domain": "golden-glow-esthetics-llc.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Red Rock Spas Vernal",
+    "category": "Store",
+    "location": "Vernal, UT",
+    "domain": "redrockspas.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "RMT Equipment",
+    "category": "Store",
+    "location": "Salt Lake City, UT",
+    "domain": "rmtequipment.com"
+  },
+  {
+    "discovery_metro": "Vernal, UT",
+    "name": "Sand Sun and Spa",
+    "category": "Tanning Salon",
+    "location": "Vernal, UT",
+    "domain": "sandsunspa.com"
+  }
+]

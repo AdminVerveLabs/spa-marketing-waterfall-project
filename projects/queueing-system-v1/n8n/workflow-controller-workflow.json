@@ -1,0 +1,58 @@
+{
+  "name": "Workflow Controller",
+  "nodes": [
+    {
+      "id": "wc-webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "path": "workflow-controller",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "id": "wc-process",
+      "name": "Process Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [300, 0],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Process workflow activate/deactivate/status requests\n// Calls n8n internal API to control other workflows\n\nconst item = $input.item.json;\nconst body = item.body || item;\nconst action = body.action;\nconst workflowId = body.workflow_id;\n\nif (!action || !workflowId) {\n  return { json: { success: false, error: 'Missing action or workflow_id. Send {action: activate|deactivate|status, workflow_id: string}' } };\n}\n\nconst apiUrl = $env.N8N_API_URL || 'http://localhost:5678/api/v1';\nconst apiKey = $env.N8N_API_KEY;\n\nif (!apiKey) {\n  return { json: { success: false, error: 'N8N_API_KEY env var not set' } };\n}\n\nconst headers = { 'X-N8N-API-KEY': apiKey };\n\ntry {\n  if (action === 'activate') {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: apiUrl + '/workflows/' + workflowId + '/activate',\n      headers: headers,\n      json: true\n    });\n    return { json: { success: true, workflow_id: workflowId, active: true, action: 'activated' } };\n  }\n\n  if (action === 'deactivate') {\n    await this.helpers.httpRequest({\n      method: 'POST',\n      url: apiUrl + '/workflows/' + workflowId + '/deactivate',\n      headers: headers,\n      json: true\n    });\n    return { json: { success: true, workflow_id: workflowId, active: false, action: 'deactivated' } };\n  }\n\n  if (action === 'status') {\n    const wf = await this.helpers.httpRequest({\n      method: 'GET',\n      url: apiUrl + '/workflows/' + workflowId,\n      headers: headers,\n      json: true\n    });\n    return { json: { success: true, workflow_id: workflowId, name: wf.name, active: wf.active } };\n  }\n\n  return { json: { success: false, error: 'Unknown action: ' + action + '. Use activate, deactivate, or status.' } };\n} catch(e) {\n  return { json: { success: false, error: e.message } };\n}"
+      }
+    },
+    {
+      "id": "wc-respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [600, 0],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Process Action", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Process Action": {
+      "main": [
+        [
+          { "node": "Respond", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,944 @@
+[
+  {
+    "company_id": "a378be5b-8836-4322-a19e-769a765c0fb7",
+    "company_name": "A Peace of Balance by Priscilla Nerio",
+    "apollo_account_id": "699fccf41725270011845a50",
+    "account_action": "created",
+    "contact_results": [
+      {
+        "supabase_contact_id": "79b2defd-55d2-4179-9694-c5902d2a376a",
+        "apollo_contact_id": "699faac8d714e300214d41fc",
+        "name": "Priscilla Nerio",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "12fccc7f-b594-4de1-b4c1-8aaf3d4df4ec",
+    "company_name": "Alice Cost Containment",
+    "apollo_account_id": "699faabc1ada190019cbae35",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "e4b8e2db-22c7-4e84-a8f0-c7c00d34e04a",
+    "company_name": "Better Health Chiropractic",
+    "apollo_account_id": "699fccf71725270011845a54",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "29a12e2f-1ed5-4839-8c56-bf7de2a00b80",
+    "company_name": "Casamara Wellness & Spa",
+    "apollo_account_id": "699faabe1ada190019cbae6a",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "51abffdc-039f-4a1b-82a5-5ea581859721",
+    "company_name": "Chateau Jolie",
+    "apollo_account_id": "699faac0b2ca3c00159f2452",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "f19f21d0-d184-4149-b7ef-59b5dad0ba50",
+    "company_name": "Dental World",
+    "apollo_account_id": "699fb7641d27f9001d06c47c",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "4ccebbc4-4a66-4505-bf34-aadbf206703b",
+    "company_name": "Gloria's Hair Productions",
+    "apollo_account_id": "699fccfd6eded80011696c97",
+    "account_action": "created",
+    "contact_results": [
+      {
+        "supabase_contact_id": "afdfbb7e-60e6-4afd-93a6-500a932f51e5",
+        "apollo_contact_id": "699fcd16e10a2d00119e536f",
+        "name": "Gloria null",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "7523c0b7-1b36-460c-b696-591907bdecc0",
+    "company_name": "Humpal Physical Therapy - Alice",
+    "apollo_account_id": "699fb767ef4a44001d1aeacf",
+    "account_action": "updated",
+    "contact_results": [
+      {
+        "supabase_contact_id": "3bc011ca-5338-43bb-a7d4-6d39348010e3",
+        "apollo_contact_id": "699fb76e5f2b7800115784e9",
+        "name": "Ken Weir",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "de6e38ad-d6b9-4d5f-af34-3be8d6705248",
+    "company_name": "Jim Wells County Chiropractic",
+    "apollo_account_id": "699fb7693d7ea00015eefe91",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "75c38e04-80d9-4d83-97b9-7f69374e7729",
+    "company_name": "Lush Life Med Spa",
+    "apollo_account_id": "699fcd0208dc8d0011d7e6b5",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "94a8ad03-cfec-4bd5-809a-9e640894a205",
+    "company_name": "Massage Therapy With Samantha",
+    "apollo_account_id": "699fcd024b531600192da9af",
+    "account_action": "created",
+    "contact_results": [
+      {
+        "supabase_contact_id": "b08f291b-24c5-40e4-b1b8-4a4b99d218c4",
+        "apollo_contact_id": "699fcd181725270011845b86",
+        "name": "Samantha null",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "ad0d0c3e-8aab-4469-8eca-d7ce93fa64ef",
+    "company_name": "NOT YA MAMAS SALON",
+    "apollo_account_id": "699fcd031725270011845ae4",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "9226a5b8-1b93-4cbe-9231-2518ff1d23de",
+    "company_name": "Peaceful Massage",
+    "apollo_account_id": "699fcd04120fc7000da2e65c",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "c2733639-eb14-458c-8bf7-66227068cb17",
+    "company_name": "Peter's Nails",
+    "apollo_account_id": "699fcd0508dc8d0011d7e6ce",
+    "account_action": "created",
+    "contact_results": [
+      {
+        "supabase_contact_id": "ae262ee5-0fde-4b34-9294-371c1ffef6e6",
+        "apollo_contact_id": "699fcd19e10a2d00119e5383",
+        "name": "Peter null",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "63251ab2-ce2e-4435-8698-a29f5d90af36",
+    "company_name": "Pure Therapeutics, PLLC",
+    "apollo_account_id": "699fcd06981edd0019012dd6",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "6c894631-5640-4b7c-be4e-fcbc57d1333d",
+    "company_name": "Sally Beauty",
+    "apollo_account_id": "699fcd084b531600192daa08",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "b3d98197-abc4-4fa5-b2b9-5752c8946a53",
+    "company_name": "STELLAR MASSAGE THERAPY, LLC",
+    "apollo_account_id": "699fcd094b531600192daa0e",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "9d095f8a-bf97-4619-8928-e850f045204c",
+    "company_name": "The Sculpting Spa",
+    "apollo_account_id": "699faaba1ada190019cbae27",
+    "account_action": "updated",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "a9059fa7-7852-4680-a3b5-6d79778a0a1c",
+    "company_name": "Top Nails",
+    "apollo_account_id": "699fcd0ce10a2d00119e5367",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "46df60ef-0107-421d-b222-d2f91298d8ac",
+    "company_name": "Torture Me Gorgeous LLC",
+    "apollo_account_id": "699fcd0e1725270011845b31",
+    "account_action": "created",
+    "contact_results": [
+      {
+        "supabase_contact_id": "89e1fa18-4cbf-44be-b066-1a439061d8ce",
+        "apollo_contact_id": "699fcd1a120fc7000da2e69b",
+        "name": "Patrick Sullivan",
+        "action": "created"
+      }
+    ],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "a4baa5b5-224a-4318-b731-8d537c0616b0",
+    "company_name": "Christopherson Massage",
+    "apollo_account_id": "699fcd0f4b531600192daa37",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "94fffba3-aa5c-4ec7-8ea0-a0956f7e1525",
+    "company_name": "Heal By 3",
+    "apollo_account_id": "699fcd106eded800116970d5",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "38be3360-924b-4178-9431-baaa4d9b4a83",
+    "company_name": "Heal By 3",
+    "apollo_account_id": "699fcd11e10a2d00119e536b",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "f564631b-4ec6-4d13-946f-b1140bca8825",
+    "company_name": "Heal By 3",
+    "apollo_account_id": "699fcd126eded800116970d9",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  },
+  {
+    "company_id": "73c1c197-d0d4-414c-a805-86bd5c62cc0a",
+    "company_name": "Meg’s Massage and Bodyworks",
+    "apollo_account_id": "699fcd121725270011845b6f",
+    "account_action": "created",
+    "contact_results": [],
+    "_config": {
+      "apollo_api_key": "DjDP0mbAyZP9jqDQKqXzoA",
+      "supabase_url": "https://cjruzmimbkmnhmpcvwnn.supabase.co",
+      "supabase_service_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqcnV6bWltYmttbmhtcGN2d25uIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTA4MTIwNSwiZXhwIjoyMDg2NjU3MjA1fQ.ZXNPYvExymEb_RvhcbO4te6BobuVdw6mxVUUZ6VN9I0",
+      "field_mapping": {
+        "account": {
+          "Booking Platform": "account.699fa9d0b6817f001c93b77e",
+          "Category": "account.699fa9d8093eb500117fb427",
+          "Enrichment Status": "account.699fa9d78e56430021cbac8d",
+          "Estimated Size": "account.699fa9d6f81fe200117f540f",
+          "Google Rating": "account.699fa9d538c2910011bfdb6d",
+          "Google Review Count": "account.699fa9d4d597f90019cd132a",
+          "Has Online Booking": "account.699fa9cff81fe200117f5274",
+          "Has Paid Ads": "account.699fa9d138c2910011bfdb0f",
+          "Has Website": "account.699fa9ce38c2910011bfda62",
+          "Lead Score": "account.699fa9ce093eb500117fb362",
+          "On Groupon": "account.699fa9d238c2910011bfdb11",
+          "On Yelp": "account.699fa9d39501ed001da93396",
+          "VerveLabs Run Tag": "account.699fa9d99501ed001da93435"
+        },
+        "contact": {
+          "Contact Source": "contact.699fa9db55aa650021a408db",
+          "Cultural Affinity": "contact.699fa9d99501ed001945f7e4",
+          "Is Owner": "contact.699fa9da9501ed001945f7fd",
+          "Meridian Role": "contact.699fccf2120fc7000da2e651",
+          "VerveLabs Run Tag": "contact.699fa9dcb6817f001c93b7a6"
+        }
+      }
+    }
+  }
+]
